@@ -4,11 +4,16 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "dev-json-server": "next dev & json-server db.json -p 5001",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint . --ignore-path .gitignore --fix"
+    "lint": "next lint",
+    "type-check": "tsc --noEmit",
+    "format": "prettier --write ."
   },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@9",
   "dependencies": {
     "@heroicons/react": "^2.2.0",
     "@radix-ui/react-checkbox": "^1.1.2",
