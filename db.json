@@ -1,0 +1,39 @@
+{
+  "todos": [
+    {
+      "id": "1",
+      "title": "Complete quarterly report",
+      "status": "not-started",
+      "created": "2024-12-01",
+      "lastModified": "2024-12-08"
+    },
+    {
+      "id": "2",
+      "title": "Schedule team building event",
+      "status": "not-started",
+      "created": "2024-12-02",
+      "lastModified": "2024-12-08"
+    },
+    {
+      "id": "3",
+      "title": "Update website content",
+      "status": "not-started",
+      "created": "2024-12-03",
+      "lastModified": "2024-12-08"
+    },
+    {
+      "id": "4",
+      "title": "Fix login bug",
+      "status": "done",
+      "created": "2024-12-04",
+      "lastModified": "2024-12-19"
+    },
+    {
+      "id": "5",
+      "title": "Prepare client presentation",
+      "status": "done",
+      "created": "2024-12-05",
+      "lastModified": "2024-12-19"
+    }
+  ]
+}
