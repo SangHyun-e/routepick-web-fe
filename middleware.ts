@@ -1,9 +1,9 @@
-import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
-const AUTH_COOKIE_KEY = "routepick-auth";
-const SIGN_IN_PATH = "/auth/sign-in";
-const PROTECTED_PATHS = ["/planner", "/favorites", "/community"] as const;
+const AUTH_COOKIE_KEY = 'routepick-auth';
+const SIGN_IN_PATH = '/auth/sign-in';
+const PROTECTED_PATHS = ['/planner', '/favorites', '/community'] as const;
 
 const PROTECTED_MATCHERS = PROTECTED_PATHS.map((path) => `${path}/:path*`);
 
@@ -16,7 +16,7 @@ export function middleware(request: NextRequest) {
 
   const signInUrl = nextUrl.clone();
   signInUrl.pathname = SIGN_IN_PATH;
-  signInUrl.searchParams.set("redirectTo", nextUrl.pathname);
+  signInUrl.searchParams.set('redirectTo', nextUrl.pathname);
 
   return NextResponse.redirect(signInUrl);
 }
