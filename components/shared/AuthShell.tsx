@@ -17,7 +17,7 @@ export default function AuthShell({ children }: { children: React.ReactNode }) {
         {/* Main card */}
         <Card className="border-border/50 bg-white/80 p-8 shadow-xl backdrop-blur-sm">
           <div className="mb-6">
-            <h1 className="text-balance text-2xl font-bold tracking-tight">로그인</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-balance">로그인</h1>
             <p className="text-muted-foreground mt-2 text-sm">
               드라이브 코스를 탐색하고 공유해보세요
             </p>
