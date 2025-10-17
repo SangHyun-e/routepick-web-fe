@@ -1,5 +1,6 @@
 import { ACCESS_TOKEN_COOKIE, accessTokenCookieOptions } from '@/lib/cookies';
 import { SERVER_BASE_URL } from '@/lib/env';
+import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
@@ -37,7 +38,7 @@ export async function POST(req: Request) {
     const c = cookies();
     c.set(ACCESS_TOKEN_COOKIE, accessToken, accessTokenCookieOptions);
     return NextResponse.json({ ok: true });
-  } catch (err) {
+  } catch {
     return NextResponse.json({ message: 'Unexpected error' }, { status: 500 });
   }
 }

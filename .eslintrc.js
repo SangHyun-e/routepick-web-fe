@@ -14,7 +14,6 @@ module.exports = {
     'plugin:react/recommended',
     'plugin:react-hooks/recommended',
     'plugin:jsx-a11y/recommended',
-    'plugin:tailwindcss/recommended',
     'plugin:prettier/recommended',
     'plugin:@next/next/recommended',
   ],
