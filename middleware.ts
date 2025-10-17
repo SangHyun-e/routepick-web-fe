@@ -1,26 +1,40 @@
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-const AUTH_COOKIE_KEY = 'routepick-auth';
-const SIGN_IN_PATH = '/auth/sign-in';
-const PROTECTED_PATHS = ['/planner', '/favorites', '/community'] as const;
+const LOGIN_PATH = '/login';
+const HOME_PATH = '/';
+const PROTECTED_PREFIXED = ['/me', '/posts/write'];
+const ACCESS_TOKEN_COOKIE = 'rp_at';
 
-const PROTECTED_MATCHERS = PROTECTED_PATHS.map((path) => `${path}/:path*`);
-
-export function middleware(request: NextRequest) {
-  const { cookies, nextUrl } = request;
-
-  if (cookies.has(AUTH_COOKIE_KEY)) {
-    return NextResponse.next();
-  }
-
-  const signInUrl = nextUrl.clone();
-  signInUrl.pathname = SIGN_IN_PATH;
-  signInUrl.searchParams.set('redirectTo', nextUrl.pathname);
-
-  return NextResponse.redirect(signInUrl);
+function isProtected(pathname: string) {
+  return PROTECTED_PREFIXED.some((p) => pathname.startsWith(p));
 }
 
+export function middleware(req: NextRequest) {
+  const { nextUrl, cookies } = req;
+  const pathname = nextUrl.pathname;
+
+  // 쿠키에 액세스토큰 있는지 확인
+  const token = cookies.get(ACCESS_TOKEN_COOKIE)?.value ?? '';
+  const authed = token.length > 0;
+
+  // 1) 보호 경로인데 비로그인 → /login?from=...
+  if (isProtected(pathname) && !authed) {
+    const url = new URL(LOGIN_PATH, req.url);
+    url.searchParams.set('from', nextUrl.pathname + nextUrl.search);
+    return NextResponse.redirect(url);
+  }
+
+  // 2) 로그인 상태에서 /login 접근 → from 또는 홈으로
+  if (pathname === LOGIN_PATH && authed) {
+    const from = nextUrl.searchParams.get('from');
+    const dest = from && from.startsWith('/') ? from : HOME_PATH;
+    return NextResponse.redirect(new URL(dest, req.url));
+  }
+
+  // 통과
+  return NextResponse.next();
+}
+//
 export const config = {
-  matcher: PROTECTED_MATCHERS,
+  matcher: ['/me', '/posts/write', '/login'],
 };
