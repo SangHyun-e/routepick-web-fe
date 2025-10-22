@@ -28,16 +28,24 @@ export async function POST(req: Request) {
       return NextResponse.json(data ?? { message: 'Login failed' }, { status: res.status });
     }
 
-    // 백엔드 응답에서 accessToken 필드 탐색
-    const accessToken = data?.accessToken ?? data?.token ?? data?.data?.accessToken;
+    // 백엔드 스키마: accessTOken, expiresIn
+    const accessToken = typeof data?.accessToken === 'string' ? data.accessToken : null;
+    const expiresIn = typeof data?.expiresIn === 'number' ? data.expiresIn : null;
 
-    if (!accessToken || typeof accessToken !== 'string') {
+    if (!accessToken) {
       return NextResponse.json({ message: 'Token not found in response' }, { status: 500 });
     }
-    // 로그인 성공 → HttpOnly 쿠키로 저장
+
+    // Access Token만 FE 도메인 HttpOnly 쿠키로 저장
     const c = cookies();
     c.set(ACCESS_TOKEN_COOKIE, accessToken, accessTokenCookieOptions);
-    return NextResponse.json({ ok: true });
+
+    // Refresh Cookie는 백엔드가 Set-Cookie로 내려옴 → 원본 헤더를 그대로 클라이언트로 전달
+    const setCookieHeader = res.headers.get('set-cookie');
+
+    const response = NextResponse.json({ ok: true, expiresIn });
+    if (setCookieHeader) response.headers.set('set-cookie', setCookieHeader);
+    return response;
   } catch {
     return NextResponse.json({ message: 'Unexpected error' }, { status: 500 });
   }
