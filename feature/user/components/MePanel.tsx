@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import type { Me } from '@/types/user';
 import UserProfileCard from '@/components/user/UserProfileCard';
 import UserMetaGrid from '@/components/user/UserMetaGrid';
+import LogoutButton from '@/components/LogoutButton';
 
 export default function MePanel() {
   const [data, setData] = useState<Me | null>(null);
@@ -37,7 +38,7 @@ export default function MePanel() {
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           내 정보 로드 실패 (status {status ?? '-'})
         </div>
-        {/** 로그아웃 버튼 추가 예정 */}
+        <LogoutButton />
       </div>
     );
   }
@@ -46,7 +47,7 @@ export default function MePanel() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <h1 className="text-2xl font-bold">마이페이지</h1>
-        {/** 로그아웃 버튼 추가 예정 */}
+        <LogoutButton />
       </div>
 
       <UserProfileCard me={data} />
