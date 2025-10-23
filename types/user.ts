@@ -4,7 +4,7 @@ export type Me = {
   nickname?: string;
   role?: string;
   status?: string;
-  avataUrl?: string;
+  avatarUrl?: string;
   bio?: string;
   createdAt?: string;
   updatedAt?: string;
