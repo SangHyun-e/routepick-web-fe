@@ -28,4 +28,5 @@ export const expiredCookieOptions = {
   secure: isProd,
   path: '/',
   maxAge: 0,
+  expires: new Date(0),
 };

@@ -16,8 +16,7 @@ export function middleware(req: NextRequest) {
   // 쿠키에 액세스토큰 있는지 확인
   const hasAT = !!cookies.get(ACCESS_TOKEN_COOKIE)?.value;
   const hasRT = !!cookies.get(REFRESH_TOKEN_COOKIE)?.value;
-  const authed = hasAT || hasRT; // ← 핵심 한 줄: RT 있으면 통과
-
+  const authed = hasAT && hasRT;
   // 1) 보호 경로인데 비로그인 → /login?from=...
   if (isProtected(pathname) && !authed) {
     const url = new URL(LOGIN_PATH, req.url);
