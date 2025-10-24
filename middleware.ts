@@ -1,9 +1,9 @@
+import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from '@/lib/cookies';
 import { NextRequest, NextResponse } from 'next/server';
 
 const LOGIN_PATH = '/login';
 const HOME_PATH = '/';
 const PROTECTED_PREFIXED = ['/me', '/posts/write'];
-const ACCESS_TOKEN_COOKIE = 'rp_at';
 
 function isProtected(pathname: string) {
   return PROTECTED_PREFIXED.some((p) => pathname.startsWith(p));
@@ -14,8 +14,9 @@ export function middleware(req: NextRequest) {
   const pathname = nextUrl.pathname;
 
   // 쿠키에 액세스토큰 있는지 확인
-  const token = cookies.get(ACCESS_TOKEN_COOKIE)?.value ?? '';
-  const authed = token.length > 0;
+  const hasAT = !!cookies.get(ACCESS_TOKEN_COOKIE)?.value;
+  const hasRT = !!cookies.get(REFRESH_TOKEN_COOKIE)?.value;
+  const authed = hasAT || hasRT; // ← 핵심 한 줄: RT 있으면 통과
 
   // 1) 보호 경로인데 비로그인 → /login?from=...
   if (isProtected(pathname) && !authed) {

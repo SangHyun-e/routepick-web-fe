@@ -1,7 +1,7 @@
-// feature/user/components/MePanel.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
+import { bffFetch } from '@/lib/bffFetch';
 import type { Me } from '@/types/user';
 import UserProfileCard from '@/components/user/UserProfileCard';
 import UserMetaGrid from '@/components/user/UserMetaGrid';
@@ -16,9 +16,10 @@ export default function MePanel() {
     let mounted = true;
     (async () => {
       try {
-        const res = await fetch('/api/me', { cache: 'no-store' });
+        const res = await bffFetch('/api/me');
         const json = await res.json().catch(() => null);
         if (!mounted) return;
+
         setStatus(res.status);
         setData(res.ok ? (json as Me) : null);
       } finally {
@@ -37,6 +38,9 @@ export default function MePanel() {
       <div className="space-y-4">
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           내 정보 로드 실패 (status {status ?? '-'})
+          {status === 401 && (
+            <span className="text-muted-foreground ml-2 text-xs">세션이 만료되었습니다.</span>
+          )}
         </div>
         <LogoutButton />
       </div>
