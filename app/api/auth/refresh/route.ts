@@ -1,35 +1,32 @@
 // app/api/auth/refresh/route.ts
 import { NextResponse } from 'next/server';
-import { backendFetch } from '@/lib/backendFetch';
-import { ACCESS_TOKEN_COOKIE, expiredCookieOptions } from '@/lib/cookies';
+import { backendFetch, getSetCookies } from '@/lib/backendFetch';
+import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE, expiredCookieOptions } from '@/lib/cookies';
 
-function extractCookieValue(allSetCookie: string, name: string) {
-  // 여러 개의 Set-Cookie가 하나의 헤더 문자열에 합쳐질 수 있으니 쪼갠다.
-  const cookies = allSetCookie.split(/,(?=\s*[A-Za-z0-9_-]+=)/);
-  const target = cookies.find((c) =>
-    c
-      .trim()
-      .toLowerCase()
-      .startsWith(name.toLowerCase() + '='),
-  );
-  if (!target) return null;
-  const firstSegment = target.split(';', 1)[0];
-  const equalsIndex = firstSegment.indexOf('=');
-  if (equalsIndex < 0) return '';
-  return firstSegment.slice(equalsIndex + 1);
-}
+// 개별 Set-Cookie 문자열에서 특정 쿠키의 value / max-age를 추출
+function parseCookie(setCookie: string, target: string) {
+  const [nameValue, ...attributes] = setCookie.split(';');
+  if (!nameValue) return null;
 
-function extractMaxAge(allSetCookie: string, name: string) {
-  const cookies = allSetCookie.split(/,(?=\s*[A-Za-z0-9_-]+=)/);
-  const target = cookies.find((c) =>
-    c
-      .trim()
-      .toLowerCase()
-      .startsWith(name.toLowerCase() + '='),
-  );
-  if (!target) return undefined;
-  const m = target.match(/max-age=(\d+)/i);
-  return m ? parseInt(m[1], 10) : undefined;
+  const [name, ...valueParts] = nameValue.split('=');
+  if (!name) return null;
+  if (name.trim().toLowerCase() !== target.toLowerCase()) return null;
+
+  const value = valueParts.join('=');
+  let maxAge: number | undefined;
+
+  for (const attr of attributes) {
+    const [rawKey, rawVal] = attr.split('=');
+    if (!rawKey) continue;
+    if (rawKey.trim().toLowerCase() !== 'max-age') continue;
+
+    const parsed = Number.parseInt((rawVal ?? '').trim(), 10);
+    if (Number.isFinite(parsed)) {
+      maxAge = parsed;
+    }
+  }
+
+  return { value, maxAge };
 }
 
 export async function POST() {
@@ -41,7 +38,7 @@ export async function POST() {
     headers: { 'content-type': beRes.headers.get('content-type') ?? 'application/json' },
   });
 
-  // 1) 백엔드 바디에서 access 뽑아 rp_at 심기
+  // 1) 백엔드 body에서 access 추출 → rp_at 심기
   if (beRes.ok) {
     try {
       const json = JSON.parse(text);
@@ -60,25 +57,23 @@ export async function POST() {
       /* ignore */
     }
   } else {
-    // 실패면 rp_at 제거
+    // 실패 시 access 제거
     res.cookies.set(ACCESS_TOKEN_COOKIE, '', expiredCookieOptions);
   }
 
-  // 2) 백엔드 Set-Cookie에서 RP_REFRESH 값만 추출해서
-  //    프론트(origin) 스코프로 다시 심는다(도메인 불일치 방지).
-  const setCookie = beRes.headers.get('set-cookie');
-  if (setCookie) {
-    const refreshVal = extractCookieValue(setCookie, 'RP_REFRESH');
-    if (refreshVal !== null) {
-      const refreshMaxAge = extractMaxAge(setCookie, 'RP_REFRESH');
-      res.cookies.set('RP_REFRESH', refreshVal, {
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production',
-        path: '/',
-        ...(refreshMaxAge !== undefined ? { maxAge: refreshMaxAge } : {}),
-      });
-    }
+  // 2) 백엔드의 Set-Cookie들(회전된 RP_REFRESH 포함)을 배열로 받고, 거기서 RP_REFRESH만 뽑아 재설정
+  const setCookies = getSetCookies(beRes); // ← 정규식 split 대체
+  for (const c of setCookies) {
+    const parsed = parseCookie(c, REFRESH_TOKEN_COOKIE); // 'RP_REFRESH'
+    if (!parsed) continue;
+
+    res.cookies.set(REFRESH_TOKEN_COOKIE, parsed.value, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      ...(parsed.maxAge !== undefined ? { maxAge: parsed.maxAge } : {}),
+    });
   }
 
   return res;

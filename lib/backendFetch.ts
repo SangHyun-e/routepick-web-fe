@@ -15,7 +15,7 @@ export function getSetCookies(res: Response): string[] {
   const raw = res.headers.get('set-cookie');
   if (!raw) return [];
   // 다음 쿠키의 name= 시작 위치에서만 분리 (Expires=의 콤마 무시)
-  return raw.split(/,(?=\s*[A-Za-z0-9!#$%&'*+\-.^_`|~]+=[^;]+)/);
+  return raw.split(/,(?=\s*[-A-Za-z0-9!#$%&'*+.^_`|~]+=[^;]+)/);
 }
 
 export async function backendFetch(path: string, init: RequestInit = {}) {

@@ -6,7 +6,7 @@ import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE, expiredCookieOptions } from 
 function splitSetCookies(setCookieHeader: string | null): string[] {
   if (!setCookieHeader) return [];
   // Node fetch는 여러 개의 Set-Cookie를 콤마로 이어줄 수 있으므로 안전한 스플릿
-  return setCookieHeader.split(/,(?=\s*[A-Za-z0-9_\-]+=)/);
+  return setCookieHeader.split(/,(?=\s*[A-Za-z0-9_-]+=)/);
 }
 
 function pickCookieValue(src: string, name: string) {
