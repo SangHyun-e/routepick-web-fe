@@ -1,6 +1,6 @@
 // app/api/auth/refresh/route.ts
 import { NextResponse } from 'next/server';
-import { backendFetch, getSetCookies } from '@/lib/backendFetch';
+import { be, splitSetCookies } from '@/lib/be';
 import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE, expiredCookieOptions } from '@/lib/cookies';
 
 // 개별 Set-Cookie 문자열에서 특정 쿠키의 value / max-age를 추출
@@ -30,7 +30,7 @@ function parseCookie(setCookie: string, target: string) {
 }
 
 export async function POST() {
-  const beRes = await backendFetch('/auth/refresh', { method: 'POST' });
+  const beRes = await be('/auth/refresh', { method: 'POST' });
   const text = await beRes.text();
 
   const res = new NextResponse(text, {
@@ -62,7 +62,7 @@ export async function POST() {
   }
 
   // 2) 백엔드의 Set-Cookie들(회전된 RP_REFRESH 포함)을 배열로 받고, 거기서 RP_REFRESH만 뽑아 재설정
-  const setCookies = getSetCookies(beRes); // ← 정규식 split 대체
+  const setCookies = splitSetCookies(beRes); // ← 정규식 split 대체
   for (const c of setCookies) {
     const parsed = parseCookie(c, REFRESH_TOKEN_COOKIE); // 'RP_REFRESH'
     if (!parsed) continue;
