@@ -1,3 +1,4 @@
+// feature/user/components/MePanel.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -16,10 +17,10 @@ export default function MePanel() {
     let mounted = true;
     (async () => {
       try {
-        const res = await bffFetch('/api/me');
+        // 프록시 경유로 호출 (브라우저 요청이므로 Set-Cookie 전달됨)
+        const res = await bffFetch('/api/proxy/users/me');
         const json = await res.json().catch(() => null);
         if (!mounted) return;
-
         setStatus(res.status);
         setData(res.ok ? (json as Me) : null);
       } finally {
@@ -53,15 +54,12 @@ export default function MePanel() {
         <h1 className="text-2xl font-bold">마이페이지</h1>
         <LogoutButton />
       </div>
-
       <UserProfileCard me={data} />
       <UserMetaGrid me={data} />
-
       <section className="rounded-2xl border bg-white p-6 shadow-sm">
         <h3 className="text-lg font-semibold">활동</h3>
-        <p className="text-muted-foreground mt-2 text-sm">
-          내 글/댓글/스크랩은 이후 탭으로 확장 예정
-        </p>
+        {/* 필요 없으면 아래 프리뷰 블록 삭제해도 됨 */}
+        {/* <pre className="mt-3 rounded bg-gray-50 p-3 text-sm">{JSON.stringify(data, null, 2)}</pre> */}
       </section>
     </div>
   );
