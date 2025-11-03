@@ -1,30 +1,40 @@
 // app/api/me/route.ts
 import { NextResponse } from 'next/server';
-import { backendFetch } from '@/lib/backendFetch';
 import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE, expiredCookieOptions } from '@/lib/cookies';
+import { be, splitSetCookies } from '@/lib/be';
 
-function splitSetCookies(setCookieHeader: string | null): string[] {
-  if (!setCookieHeader) return [];
-  // Node fetch는 여러 개의 Set-Cookie를 콤마로 이어줄 수 있으므로 안전한 스플릿
-  return setCookieHeader.split(/,(?=\s*[A-Za-z0-9_-]+=)/);
-}
+function parseCookie(setCookie: string, target: string) {
+  const [nameValue, ...attributes] = setCookie.split(';');
+  if (!nameValue) return null;
 
-function pickCookieValue(src: string, name: string) {
-  const m = src.match(new RegExp(`${name}=([^;]+)`));
-  return m?.[1] ?? null;
-}
-function pickMaxAge(src: string) {
-  const m = src.match(/max-age=(\d+)/i);
-  return m ? parseInt(m[1], 10) : undefined;
+  const [name, ...valueParts] = nameValue.split('=');
+  if (!name) return null;
+  if (name.trim().toLowerCase() !== target.toLowerCase()) return null;
+
+  const value = valueParts.join('=');
+  let maxAge: number | undefined;
+
+  for (const attr of attributes) {
+    const [rawKey, rawVal] = attr.split('=');
+    if (!rawKey) continue;
+    if (rawKey.trim().toLowerCase() !== 'max-age') continue;
+
+    const parsed = Number.parseInt((rawVal ?? '').trim(), 10);
+    if (Number.isFinite(parsed)) {
+      maxAge = parsed;
+    }
+  }
+
+  return { value, maxAge };
 }
 
 export async function GET() {
   // 1차 시도
-  let beRes = await backendFetch('/users/me', { method: 'GET' });
+  let beRes = await be('/users/me', { method: 'GET' });
 
   // 401이면 refresh 1회
   if (beRes.status === 401) {
-    const refreshRes = await backendFetch('/auth/refresh', { method: 'POST' });
+    const refreshRes = await be('/auth/refresh', { method: 'POST' });
     const refreshText = await refreshRes.text();
 
     if (refreshRes.ok) {
@@ -52,20 +62,19 @@ export async function GET() {
       }
 
       // 백엔드의 Set-Cookie에서 RP_REFRESH 추출
-      const setCookieHeader = refreshRes.headers.get('set-cookie');
-      for (const c of splitSetCookies(setCookieHeader)) {
-        const rtVal = pickCookieValue(c, REFRESH_TOKEN_COOKIE); // 'RP_REFRESH'
-        if (rtVal) {
-          cookiesToSet.push({
-            name: REFRESH_TOKEN_COOKIE,
-            value: rtVal,
-            maxAge: pickMaxAge(c),
-          });
-        }
+      const setCookies = splitSetCookies(refreshRes);
+      for (const cookie of setCookies) {
+        const parsed = parseCookie(cookie, REFRESH_TOKEN_COOKIE);
+        if (!parsed) continue;
+        cookiesToSet.push({
+          name: REFRESH_TOKEN_COOKIE,
+          value: parsed.value,
+          maxAge: parsed.maxAge,
+        });
       }
 
       // 새 AT/RT 심은 뒤 실제 데이터 재조회
-      beRes = await backendFetch('/users/me', {
+      beRes = await be('/users/me', {
         method: 'GET',
         headers: access ? { Authorization: `Bearer ${access}` } : undefined, // ← 추가
       });
@@ -83,7 +92,7 @@ export async function GET() {
           sameSite: 'lax',
           secure: process.env.NODE_ENV === 'production',
           path: '/',
-          ...(ck.maxAge ? { maxAge: ck.maxAge } : {}),
+          ...(ck.maxAge !== undefined ? { maxAge: ck.maxAge } : {}),
         });
       }
 
