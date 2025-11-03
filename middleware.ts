@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const LOGIN_PATH = '/login';
 const HOME_PATH = '/';
-const PROTECTED_PREFIXED = ['/me', '/posts/write'];
+const PROTECTED_PREFIXED = ['/posts/write'];
 
 function isProtected(pathname: string) {
   return PROTECTED_PREFIXED.some((p) => pathname.startsWith(p));
@@ -16,7 +16,10 @@ export function middleware(req: NextRequest) {
   // 쿠키에 액세스토큰 있는지 확인
   const hasAT = !!cookies.get(ACCESS_TOKEN_COOKIE)?.value;
   const hasRT = !!cookies.get(REFRESH_TOKEN_COOKIE)?.value;
-  const authed = hasAT && hasRT;
+  const authed = hasAT || hasRT;
+
+  if (pathname === '/me') return NextResponse.next();
+
   // 1) 보호 경로인데 비로그인 → /login?from=...
   if (isProtected(pathname) && !authed) {
     const url = new URL(LOGIN_PATH, req.url);
@@ -36,5 +39,5 @@ export function middleware(req: NextRequest) {
 }
 //
 export const config = {
-  matcher: ['/me', '/posts/write', '/login'],
+  matcher: ['/posts/write', '/login'],
 };

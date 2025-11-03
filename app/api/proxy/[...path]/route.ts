@@ -1,4 +1,3 @@
-// app/api/proxy/[...path]/route.ts
 import { be, splitSetCookies } from '@/lib/be';
 import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from '@/lib/cookies';
 import { SERVER_BASE_URL } from '@/lib/env';
@@ -61,11 +60,19 @@ function passthroughHeaders(src: Response) {
 
 /** BE 응답 → 프록시 응답 생성 (Set-Cookie까지 append) */
 async function makeProxyResponse(beRes: Response) {
-  const body = await beRes.arrayBuffer();
-  const headers = passthroughHeaders(beRes);
-  for (const sc of splitSetCookies(beRes)) headers.append('set-cookie', sc);
-  return new Response(body, { status: beRes.status, headers });
+  const final = new NextResponse(await beRes.arrayBuffer(), {
+    status: beRes.status,
+    headers: passthroughHeaders(beRes),
+  });
+  for (const sc of splitSetCookies(beRes)) final.headers.append('set-cookie', sc);
+  return final;
 }
+
+/** (로그 확인용 마스킹) */
+// function mask(s?: string) {
+//   if (!s) return '';
+//   return s.slice(0, 16) + '…';
+// }
 
 /** 401 때 1회 refresh (절대 URL + 쿠키 전달) */
 async function refreshOnce(): Promise<{
@@ -111,72 +118,144 @@ async function refreshOnce(): Promise<{
 
 /** 공통 핸들러 */
 async function handle(method: string, req: Request, params: { path?: string[] }) {
-  const pathWithSearch = withSearch(joinPath(params.path ?? []), req);
+  const pathOnly = joinPath(params.path ?? []); // 쿼리 제외 경로 (특수처리 용)
+  const pathWithSearch = withSearch(pathOnly, req); // 쿼리 포함 경로 (일반 프록시 요청)
 
   const hasBody = !(method === 'GET' || method === 'DELETE');
-  const init: RequestInit = hasBody
-    ? {
-        method,
-        body: await req.arrayBuffer(),
-        headers: {
-          ...(req.headers.get('content-type')
-            ? { 'content-type': req.headers.get('content-type')! }
-            : {}),
-        },
-      }
-    : { method };
+  const body = hasBody ? await req.arrayBuffer() : undefined;
+
+  const REQUEST_HEADER_DROP = new Set([
+    'host',
+    'connection',
+    'content-length',
+    'content-encoding',
+    'transfer-encoding',
+  ]);
+
+  const forwardedHeaders = new Headers();
+  req.headers.forEach((value, key) => {
+    const lower = key.toLowerCase();
+    if (REQUEST_HEADER_DROP.has(lower)) return;
+    if (lower === 'cookie') return; // be() 에서 별도로 주입
+    forwardedHeaders.append(key, value);
+  });
+
+  const init: RequestInit = {
+    method,
+    headers: forwardedHeaders,
+    ...(body ? { body } : {}),
+  };
 
   // 1차 호출
   let res = await be(pathWithSearch, init);
-  if (res.status !== 401) {
-    // 정상 케이스: BE의 Set-Cookie/헤더 전부 전달
-    return makeProxyResponse(res);
+
+  if (pathOnly === '/auth/login' && res.ok) {
+    const text = await res.text();
+
+    let access: string | undefined;
+    let expiresInSec: number | undefined;
+    try {
+      const json = JSON.parse(text);
+      access = json?.access ?? json?.accessToken ?? json?.token ?? undefined;
+      expiresInSec = json?.expiresInSec ?? json?.expiresIn;
+    } catch {
+      /* ignore */
+    }
+
+    const final = new NextResponse(text, {
+      status: res.status,
+      headers: passthroughHeaders(res),
+    });
+
+    // 1) BE가 내려준 Set-Cookie 전부 전달 (원본 보존)
+    for (const sc of splitSetCookies(res)) final.headers.append('set-cookie', sc);
+
+    // 2) rp_at 강제 심기
+    if (access) {
+      final.cookies.set(ACCESS_TOKEN_COOKIE, access, {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        path: '/',
+        ...(typeof expiresInSec === 'number' && Number.isFinite(expiresInSec)
+          ? { maxAge: expiresInSec }
+          : {}),
+      });
+    }
+
+    // 3) RP_REFRESH도 강제 심기 (원본 헤더가 로컬 http 조건에서 버려지는 경우 대비)
+    let rtParsed: { value: string; maxAge?: number } | null = null;
+    for (const sc of splitSetCookies(res)) {
+      const p = parseCookie(sc, REFRESH_TOKEN_COOKIE);
+      if (p) {
+        rtParsed = p;
+        break;
+      }
+    }
+    if (rtParsed) {
+      final.cookies.set(REFRESH_TOKEN_COOKIE, rtParsed.value, {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production', // 로컬 http면 false
+        path: '/',
+        ...(rtParsed.maxAge !== undefined ? { maxAge: rtParsed.maxAge } : {}),
+      });
+    }
+
+    return final;
   }
 
   // 401 → refresh 1회 시도
-  const r = await refreshOnce();
-  if (!r.ok) {
-    // 실패면 기존 401을 그대로 전달(쿠키도 그대로 append)
-    return makeProxyResponse(res);
-  }
+  if (res.status === 401) {
+    const r = await refreshOnce();
+    if (!r.ok) {
+      // 실패면 기존 401을 그대로 전달(쿠키도 그대로 append)
+      return makeProxyResponse(res);
+    }
 
-  // refresh 성공 → access를 Authorization으로 붙여 안정적으로 재시도
-  const h2 = new Headers(init.headers || {});
-  if (r.access) h2.set('Authorization', `Bearer ${r.access}`);
-  res = await be(pathWithSearch, { ...init, headers: h2 });
+    // refresh 성공 → access를 Authorization으로 붙여 안정적으로 재시도
+    const h2 = new Headers(init.headers || {});
+    if (r.access) h2.set('Authorization', `Bearer ${r.access}`);
+    res = await be(pathWithSearch, { ...init, headers: h2 });
 
-  // 최종 응답 생성(재시도 응답의 쿠키/헤더 append)
-  const final = new NextResponse(await res.arrayBuffer(), {
-    status: res.status,
-    headers: passthroughHeaders(res),
-  });
-
-  // 재시도 응답의 Set-Cookie 전파
-  for (const sc of splitSetCookies(res)) final.headers.append('set-cookie', sc);
-
-  // rp_at 갱신
-  if (r.access) {
-    final.cookies.set(ACCESS_TOKEN_COOKIE, r.access, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      path: '/',
-      ...(Number.isFinite(r.expiresInSec as number) ? { maxAge: r.expiresInSec } : {}),
+    // 최종 응답 생성(재시도 응답의 쿠키/헤더 append)
+    const final = new NextResponse(await res.arrayBuffer(), {
+      status: res.status,
+      headers: passthroughHeaders(res),
     });
+
+    // 재시도 응답의 Set-Cookie 전파
+    for (const sc of splitSetCookies(res)) final.headers.append('set-cookie', sc);
+
+    // rp_at 갱신
+    if (r.access) {
+      final.cookies.set(ACCESS_TOKEN_COOKIE, r.access, {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        path: '/',
+        ...(typeof r.expiresInSec === 'number' && Number.isFinite(r.expiresInSec)
+          ? { maxAge: r.expiresInSec }
+          : {}),
+      });
+    }
+
+    // RP_REFRESH 회전 반영
+    if (r.rt) {
+      final.cookies.set(REFRESH_TOKEN_COOKIE, r.rt.value, {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        path: '/',
+        ...(r.rt.maxAge !== undefined ? { maxAge: r.rt.maxAge } : {}),
+      });
+    }
+
+    return final;
   }
 
-  // RP_REFRESH 회전 반영
-  if (r.rt) {
-    final.cookies.set(REFRESH_TOKEN_COOKIE, r.rt.value, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      path: '/',
-      ...(r.rt.maxAge !== undefined ? { maxAge: r.rt.maxAge } : {}),
-    });
-  }
-
-  return final;
+  // 정상 케이스: BE의 Set-Cookie/헤더 전부 전달
+  return makeProxyResponse(res);
 }
 
 export async function GET(req: Request, ctx: { params: { path?: string[] } }) {

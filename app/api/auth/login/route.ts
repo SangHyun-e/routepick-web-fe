@@ -1,51 +1,80 @@
-import { ACCESS_TOKEN_COOKIE, accessTokenCookieOptions } from '@/lib/cookies';
-import { SERVER_BASE_URL } from '@/lib/env';
-import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { SERVER_BASE_URL } from '@/lib/env';
+import { ACCESS_TOKEN_COOKIE, accessTokenCookieOptions } from '@/lib/cookies';
+
+// BE가 여러 개의 Set-Cookie를 보낼 수 있으므로 안전하게 분리
+function splitSetCookies(res: Response): string[] {
+  const raw = res.headers.get('set-cookie');
+  if (!raw) return [];
+  // Expires= 의 콤마는 무시하고, 다음 쿠키 name= 기준으로 분리
+  return raw.split(/,(?=\s*[-A-Za-z0-9!#$%&'*+.^_`|~]+=[^;]+)/);
+}
 
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
     const { email, password } = body as { email?: string; password?: string };
-
     if (!email || !password) {
       return NextResponse.json({ message: 'email/password required' }, { status: 400 });
     }
 
-    // 백엔드 로그인 호출
-    const res = await fetch(`${SERVER_BASE_URL}/auth/login`, {
+    // 1) BE 로그인 호출
+    const beRes = await fetch(`${SERVER_BASE_URL}/auth/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      // 캐시 금지
+      headers: { 'content-type': 'application/json' },
       cache: 'no-store',
       body: JSON.stringify({ email, password }),
+      redirect: 'manual',
     });
 
-    const data = await res.json().catch(() => null);
-
-    if (!res.ok) {
-      // 백엔드 에러 그대로 전달(가등하면 message만 추려서)
-      return NextResponse.json(data ?? { message: 'Login failed' }, { status: res.status });
+    const text = await beRes.text();
+    // 실패면 BE의 Set-Cookie(실패 케이스에도 있을 수 있음)까지 그대로 전달
+    if (!beRes.ok) {
+      const fail = new NextResponse(text, {
+        status: beRes.status,
+        headers: {
+          'content-type': beRes.headers.get('content-type') ?? 'application/json',
+        },
+      });
+      for (const sc of splitSetCookies(beRes)) fail.headers.append('set-cookie', sc);
+      return fail;
     }
 
-    // 백엔드 스키마: accessTOken, expiresIn
-    const accessToken = typeof data?.accessToken === 'string' ? data.accessToken : null;
-    const expiresIn = typeof data?.expiresIn === 'number' ? data.expiresIn : null;
-
-    if (!accessToken) {
-      return NextResponse.json({ message: 'Token not found in response' }, { status: 500 });
+    // 2) 성공: access / expires 파싱 (키 이름 다양성 대응)
+    let access: string | undefined;
+    let expiresInSec: number | undefined;
+    try {
+      const json = JSON.parse(text);
+      access = json?.access ?? json?.accessToken ?? json?.token ?? undefined;
+      const ex = json?.expiresInSec ?? json?.expiresIn;
+      if (typeof ex === 'number' && Number.isFinite(ex)) expiresInSec = ex;
+    } catch {
+      // ignore
     }
 
-    // Access Token만 FE 도메인 HttpOnly 쿠키로 저장
-    const c = cookies();
-    c.set(ACCESS_TOKEN_COOKIE, accessToken, accessTokenCookieOptions);
+    if (!access) {
+      const resp = NextResponse.json({ message: 'Token not found in response' }, { status: 500 });
+      // BE가 내려준 쿠키는 그대로 전달(디버깅/호환)
+      for (const sc of splitSetCookies(beRes)) resp.headers.append('set-cookie', sc);
+      return resp;
+    }
 
-    // Refresh Cookie는 백엔드가 Set-Cookie로 내려옴 → 원본 헤더를 그대로 클라이언트로 전달
-    const setCookieHeader = res.headers.get('set-cookie');
+    // 3) 최종 응답 생성
+    const ok = new NextResponse(text, {
+      status: 200,
+      headers: { 'content-type': beRes.headers.get('content-type') ?? 'application/json' },
+    });
 
-    const response = NextResponse.json({ ok: true, expiresIn });
-    if (setCookieHeader) response.headers.set('set-cookie', setCookieHeader);
-    return response;
+    // 4) rp_at(Access) 쿠키는 **우리가 직접** 심는다
+    ok.cookies.set(ACCESS_TOKEN_COOKIE, access, {
+      ...accessTokenCookieOptions,
+      ...(typeof expiresInSec === 'number' ? { maxAge: expiresInSec } : {}),
+    });
+
+    // 5) BE의 Set-Cookie(= RP_REFRESH 등) 전부 그대로 forward
+    for (const sc of splitSetCookies(beRes)) ok.headers.append('set-cookie', sc);
+
+    return ok;
   } catch {
     return NextResponse.json({ message: 'Unexpected error' }, { status: 500 });
   }
