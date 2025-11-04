@@ -1,5 +1,6 @@
 // feature/auth/api.ts
-import { ApiResult, LoginPayload } from '@/feature/auth/types';
+import { LoginPayload } from '@/feature/auth/types';
+import { ApiResult } from '@/types/http';
 
 export async function login(payload: LoginPayload): Promise<ApiResult> {
   const res = await fetch('/api/auth/login', {

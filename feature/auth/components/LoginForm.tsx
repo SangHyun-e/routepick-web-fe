@@ -70,7 +70,7 @@ export default function LoginForm({ redirectTo = '/' }: { redirectTo?: string })
                     placeholder="example@email.com"
                     autoComplete="email"
                     inputMode="email"
-                    className="h-11 bg-background"
+                    className="bg-background h-11"
                   />
                 </div>
               </FormControl>
@@ -93,13 +93,13 @@ export default function LoginForm({ redirectTo = '/' }: { redirectTo?: string })
                     type={showPassword ? 'text' : 'password'}
                     placeholder="비밀번호를 입력하세요"
                     autoComplete="current-password"
-                    className="h-11 bg-background pr-10"
+                    className="bg-background h-11 pr-10"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     aria-label={showPassword ? '비밀번호 숨기기' : '비밀번호 보기'}
-                    className="hover:bg-muted absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 transition-colors"
+                    className="hover:bg-muted absolute top-1/2 right-2 -translate-y-1/2 rounded-md p-1.5 transition-colors"
                   >
                     {showPassword ? (
                       <EyeOff className="text-muted-foreground size-4" />
@@ -118,7 +118,7 @@ export default function LoginForm({ redirectTo = '/' }: { redirectTo?: string })
         <div className="flex justify-end">
           <button
             type="button"
-            className="text-muted-foreground text-xs transition-colors hover:text-foreground"
+            className="text-muted-foreground hover:text-foreground text-xs transition-colors"
           >
             비밀번호를 잊으셨나요?
           </button>
