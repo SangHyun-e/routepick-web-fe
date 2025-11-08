@@ -58,24 +58,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <header className="bg-white shadow-sm">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
-          <div>
-            <h1 className="text-2xl font-semibold text-slate-900">RoutePick 테스트 페이지</h1>
-            <p className="mt-1 text-sm text-slate-500">
-              UI 컴포넌트와 상태 변경을 빠르게 확인할 수 있는 임시 화면입니다.
-            </p>
-          </div>
-
-          <Link
-            href="/"
-            className="rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700"
-          >
-            돌아가기
-          </Link>
-        </div>
-      </header>
-
       <main className="mx-auto max-w-5xl space-y-12 px-6 py-10">
         <section className="rounded-2xl bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">

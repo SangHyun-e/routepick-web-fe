@@ -1,16 +1,29 @@
 'use client';
-
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, type ComponentProps } from 'react';
+import { LogOut } from 'lucide-react';
 
-export default function LogoutButton({ className = '' }: { className?: string }) {
+import { Button } from '@/components/ui/button';
+import { logout } from '@/feature/auth/api';
+
+type LogoutButtonProps = {
+  className?: string;
+  variant?: ComponentProps<typeof Button>['variant'];
+  size?: ComponentProps<typeof Button>['size'];
+};
+
+export default function LogoutButton({
+  className = '',
+  variant = 'outline',
+  size = 'sm',
+}: LogoutButtonProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   const doLogout = async () => {
     try {
       setLoading(true);
-      await fetch('/api/auth/logout', { method: 'POST', cache: 'no-store' });
+      await logout();
       router.replace('/login');
       router.refresh();
     } finally {
@@ -19,12 +32,15 @@ export default function LogoutButton({ className = '' }: { className?: string })
   };
 
   return (
-    <button
+    <Button
       onClick={doLogout}
       disabled={loading}
-      className={`h-10 rounded-xl border bg-white px-4 text-sm shadow-sm transition hover:bg-gray-50 active:scale-[0.99] ${className}`}
+      variant={variant}
+      size={size}
+      className={`gap-2 ${className}`}
     >
-      {loading ? '로그아웃 중...' : 'Logout'}
-    </button>
+      <LogOut className="size-4" />
+      {loading ? '로그아웃 중...' : '로그아웃'}
+    </Button>
   );
 }

@@ -1,31 +1,38 @@
-import {
+import type {
   PostCreateRequest,
   PostListItemResponse,
   PostResponse,
   PostUpdateRequest,
+  PaginatedResponse,
 } from '@/feature/post/types';
-import { ApiResult } from '@/types/http';
+import type { ApiResult } from '@/types/http';
+import { bffFetch } from '@/lib/bffFetch';
+
+function buildQuery(params: Record<string, string | number | undefined>) {
+  const entries = Object.entries(params).filter(([, value]) => value !== undefined);
+  const converted = entries.map(([key, value]) => [key, String(value)] as [string, string]);
+  return new URLSearchParams(converted).toString();
+}
 
 /** 게시물 목록 조회 */
-export async function fetchPosts(): Promise<ApiResult<PostListItemResponse[]>> {
-  const res = await fetch('/api/procy/posts', {
-    cache: 'no-store',
-    credentials: 'include',
-  });
+export async function fetchPosts(
+  page = 0,
+  size = 20,
+): Promise<ApiResult<PaginatedResponse<PostListItemResponse>>> {
+  const query = buildQuery({ page, size });
+  const res = await bffFetch(`/api/proxy/posts?${query}`, { cache: 'no-store' });
 
   if (!res.ok) {
     return { ok: false, message: `게시글 목록을 불러오지 못했습니다. (${res.status})` };
   }
 
-  const data = (await res.json()) as PostListItemResponse[];
-  return { ok: true, data };
+  const json = (await res.json()) as PaginatedResponse<PostListItemResponse>;
+  return { ok: true, data: json };
 }
+
 /** 단일 게시글 조회 */
 export async function fetchPost(id: number): Promise<ApiResult<PostResponse>> {
-  const res = await fetch(`/api/proxy/posts/${id}`, {
-    cache: 'no-store',
-    credentials: 'include',
-  });
+  const res = await bffFetch(`/api/proxy/posts/${id}`, { cache: 'no-store' });
 
   if (!res.ok) {
     return { ok: false, message: `게시글을 불러오지 못했습니다. (${res.status})` };
@@ -37,10 +44,9 @@ export async function fetchPost(id: number): Promise<ApiResult<PostResponse>> {
 
 /** 게시글 생성 */
 export async function createPost(payload: PostCreateRequest): Promise<ApiResult<PostResponse>> {
-  const res = await fetch('/api/proxy/posts', {
+  const res = await bffFetch('/api/proxy/posts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
     body: JSON.stringify(payload),
   });
 
@@ -57,10 +63,9 @@ export async function updatePost(
   id: number,
   payload: PostUpdateRequest,
 ): Promise<ApiResult<PostResponse>> {
-  const res = await fetch(`/api/proxy/posts/${id}`, {
+  const res = await bffFetch(`/api/proxy/posts/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
     body: JSON.stringify(payload),
   });
 
@@ -75,10 +80,7 @@ export async function updatePost(
 
 /** 게시글 삭제 */
 export async function deletePost(id: number): Promise<ApiResult<null>> {
-  const res = await fetch(`/api/proxy/posts/${id}`, {
-    method: 'DELETE',
-    credentials: 'include',
-  });
+  const res = await bffFetch(`/api/proxy/posts/${id}`, { method: 'DELETE' });
 
   if (!res.ok) {
     const err = await res.json().catch(() => null);

@@ -1,5 +1,3 @@
-import { ApiResult } from '@/types/http';
-
 export type PostStatus = 'ACTIVE' | 'HIDDEN' | 'DELETED';
 
 // PostListItemResponse
@@ -13,6 +11,14 @@ export type PostListItemResponse = {
   createdAt: string;
   authorId: number | null;
   authorNickname: string | null;
+};
+
+export type PaginatedResponse<T> = {
+  content: T[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
 };
 
 // PostResponse
