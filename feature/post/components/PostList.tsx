@@ -6,7 +6,9 @@ type PostListProps = {
 };
 
 export default function PostList({ items }: PostListProps) {
-  if (items.length === 0) {
+  const list = Array.isArray(items) ? items : [];
+
+  if (list.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 py-12 text-center">
         <div className="flex flex-col items-center gap-3">

@@ -14,6 +14,23 @@ function buildQuery(params: Record<string, string | number | undefined>) {
   return new URLSearchParams(converted).toString();
 }
 
+function normalizePage<T>(raw: any): PaginatedResponse<T> {
+  const content = Array.isArray(raw?.content) ? (raw.content as T[]) : [];
+  return {
+    content,
+    number: Number.isFinite(raw?.number) ? raw.number : 0,
+    size: Number.isFinite(raw?.size) ? raw.size : content.length,
+    totalElements: Number.isFinite(raw?.totalElements) ? raw.totalElements : content.length,
+    totalPages: Number.isFinite(raw?.totalPages) ? raw.totalPages : 1,
+    first: Boolean(raw?.first),
+    last: Boolean(raw?.last),
+    numberOfElements: Number.isFinite(raw?.numberOfElements)
+      ? raw.numberOfElements
+      : content.length,
+    empty: content.length === 0,
+  };
+}
+
 /** 게시물 목록 조회 */
 export async function fetchPosts(
   page = 0,
@@ -26,7 +43,8 @@ export async function fetchPosts(
     return { ok: false, message: `게시글 목록을 불러오지 못했습니다. (${res.status})` };
   }
 
-  const json = (await res.json()) as PaginatedResponse<PostListItemResponse>;
+  const raw = await res.json().catch(() => ({}));
+  const json = normalizePage<PostListItemResponse>(raw);
   return { ok: true, data: json };
 }
 
