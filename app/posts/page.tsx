@@ -15,22 +15,18 @@ export default function Page() {
 
   useEffect(() => {
     let mounted = true;
-
-    const loadPosts = async () => {
+    (async () => {
       setLoading(true);
       const res = await fetchPosts(currentPage, pageSize);
-      if (mounted) {
-        if (res.ok && res.data) {
-          setData(res.data);
-        } else {
-          setData(null);
-        }
-        setLoading(false);
+      if (!mounted) return;
+      if (res.ok && res.data) {
+        setData(res.data);
+        setCurrentPage(res.data.number);
+      } else {
+        setData(null);
       }
-    };
-
-    loadPosts();
-
+      setLoading(false);
+    })();
     return () => {
       mounted = false;
     };
