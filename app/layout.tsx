@@ -1,6 +1,8 @@
 // app/layout.tsx
 import './globals.css';
 import type { Metadata } from 'next';
+import SiteHeader from '@/components/shared/SiteHeader';
+import SiteFooter from '@/components/shared/SiteFooter';
 
 export const metadata: Metadata = {
   title: 'RoutePick',
@@ -15,10 +17,16 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko" className="h-full">
-      <body className="min-h-screen antialiased">{children}</body>
+      <body className="min-h-screen bg-slate-50 text-slate-900 antialiased">
+        <div className="flex min-h-screen flex-col">
+          <SiteHeader />
+          <main className="flex-1">{children}</main>
+          <SiteFooter />
+        </div>
+      </body>
     </html>
   );
 }

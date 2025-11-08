@@ -1,5 +1,6 @@
 // feature/auth/api.ts
-import { ApiResult, LoginPayload } from '@/feature/auth/types';
+import { LoginPayload } from '@/feature/auth/types';
+import { ApiResult } from '@/types/http';
 
 export async function login(payload: LoginPayload): Promise<ApiResult> {
   const res = await fetch('/api/auth/login', {
@@ -19,8 +20,7 @@ export async function login(payload: LoginPayload): Promise<ApiResult> {
 }
 
 export async function logout(): Promise<void> {
-  await fetch('/api/proxy/auth/logout', {
-    // 로그아웃은 프록시 그대로 OK
+  await fetch('/api/auth/logout', {
     method: 'POST',
     credentials: 'include',
     cache: 'no-store',

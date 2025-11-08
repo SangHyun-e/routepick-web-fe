@@ -1,6 +1,14 @@
-export default function BrandLogo({ className = '' }: { className?: string }) {
-  return (
-    <div className={`flex items-center gap-2.5 ${className}`}>
+import Link from 'next/link';
+
+type BrandLogoProps = {
+  className?: string;
+  href?: string | null;
+  showText?: boolean;
+};
+
+export default function BrandLogo({ className = '', href = '/', showText = true }: BrandLogoProps) {
+  const content = (
+    <>
       <svg width="32" height="32" viewBox="0 0 48 48" aria-hidden="true">
         <defs>
           <linearGradient id="rpGrad" x1="0" x2="1" y1="0" y2="1">
@@ -15,7 +23,17 @@ export default function BrandLogo({ className = '' }: { className?: string }) {
         <circle cx="24" cy="17" r="5" fill="white" />
         <rect x="22.6" y="26" width="2.8" height="8" rx="1.4" fill="white" opacity="0.9" />
       </svg>
-      <span className="text-2xl font-bold tracking-tight">RoutePick</span>
-    </div>
+      {showText && <span className="text-2xl font-bold tracking-tight">RoutePick</span>}
+    </>
   );
+
+  if (href) {
+    return (
+      <Link href={href} className={`inline-flex items-center gap-2.5 ${className}`}>
+        {content}
+      </Link>
+    );
+  }
+
+  return <span className={`inline-flex items-center gap-2.5 ${className}`}>{content}</span>;
 }

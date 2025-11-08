@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { be, splitSetCookies } from '@/lib/be';
 import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE, expiredCookieOptions } from '@/lib/cookies';
+import { cookies } from 'next/headers';
 
 // 개별 Set-Cookie 문자열에서 특정 쿠키의 value / max-age를 추출
 function parseCookie(setCookie: string, target: string) {
@@ -30,6 +31,15 @@ function parseCookie(setCookie: string, target: string) {
 }
 
 export async function POST() {
+  const cookieStore = cookies();
+  const refreshCookie = cookieStore.get(REFRESH_TOKEN_COOKIE)?.value;
+  if (!refreshCookie) {
+    return NextResponse.json(
+      { message: 'refresh token missing' },
+      { status: 401, headers: { 'cache-control': 'no-store' } },
+    );
+  }
+
   const beRes = await be('/auth/refresh', { method: 'POST' });
   const text = await beRes.text();
 

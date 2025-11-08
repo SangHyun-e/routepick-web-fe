@@ -4,10 +4,7 @@ import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-
-import { login } from '@/feature/auth/api';
-import { loginSchema } from '@/feature/auth/schemas';
-import type { LoginValues } from '@/feature/auth/schemas';
+import { Eye, EyeOff } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -19,7 +16,10 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Eye, EyeOff } from 'lucide-react';
+
+import { login } from '@/feature/auth/api';
+import { loginSchema } from '@/feature/auth/schemas';
+import type { LoginValues } from '@/feature/auth/schemas';
 
 export default function LoginForm({ redirectTo = '/' }: { redirectTo?: string }) {
   const router = useRouter();
@@ -63,16 +63,14 @@ export default function LoginForm({ redirectTo = '/' }: { redirectTo?: string })
             <FormItem>
               <FormLabel className="text-sm font-medium">이메일</FormLabel>
               <FormControl>
-                <div>
-                  <Input
-                    {...field}
-                    type="email"
-                    placeholder="example@email.com"
-                    autoComplete="email"
-                    inputMode="email"
-                    className="h-11 bg-background"
-                  />
-                </div>
+                <Input
+                  {...field}
+                  type="email"
+                  placeholder="example@email.com"
+                  autoComplete="email"
+                  inputMode="email"
+                  className="h-11"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -93,18 +91,18 @@ export default function LoginForm({ redirectTo = '/' }: { redirectTo?: string })
                     type={showPassword ? 'text' : 'password'}
                     placeholder="비밀번호를 입력하세요"
                     autoComplete="current-password"
-                    className="h-11 bg-background pr-10"
+                    className="h-11 pr-10"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     aria-label={showPassword ? '비밀번호 숨기기' : '비밀번호 보기'}
-                    className="hover:bg-muted absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 transition-colors"
+                    className="absolute top-1/2 right-2 -translate-y-1/2 rounded-md p-1.5 transition-colors hover:bg-slate-100"
                   >
                     {showPassword ? (
-                      <EyeOff className="text-muted-foreground size-4" />
+                      <EyeOff className="size-4 text-slate-500" />
                     ) : (
-                      <Eye className="text-muted-foreground size-4" />
+                      <Eye className="size-4 text-slate-500" />
                     )}
                   </button>
                 </div>
@@ -118,7 +116,7 @@ export default function LoginForm({ redirectTo = '/' }: { redirectTo?: string })
         <div className="flex justify-end">
           <button
             type="button"
-            className="text-muted-foreground text-xs transition-colors hover:text-foreground"
+            className="text-xs text-slate-600 transition-colors hover:text-slate-900"
           >
             비밀번호를 잊으셨나요?
           </button>
@@ -126,10 +124,7 @@ export default function LoginForm({ redirectTo = '/' }: { redirectTo?: string })
 
         {/* Server error */}
         {serverError && (
-          <div
-            className="bg-destructive/10 text-destructive rounded-lg p-3 text-sm"
-            aria-live="polite"
-          >
+          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700" aria-live="polite">
             {serverError}
           </div>
         )}
