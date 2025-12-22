@@ -1,24 +1,49 @@
+// lib/bffFetch.ts
 let refreshPromise: Promise<Response> | null = null;
 const REFRESH_URL = '/api/proxy/auth/refresh';
 
+// 서버에서 상대경로를 절대 URL로 바꿔주는 헬퍼
+function makeAbsolute(input: RequestInfo): RequestInfo {
+  // Request 객체면 그대로
+  if (typeof input !== 'string') return input;
+
+  // 이미 http(s)면 그대로
+  if (input.startsWith('http://') || input.startsWith('https://')) return input;
+
+  // 브라우저에서는 상대경로 그대로 써도 됨
+  if (typeof window !== 'undefined') return input;
+
+  // 서버에서는 origin 기준으로 절대 URL로 변환
+  const origin =
+    process.env.NEXT_PUBLIC_SITE_URL ?? process.env.SITE_URL ?? 'http://localhost:3000';
+
+  // 앞에 / 없으면 붙여주기
+  const path = input.startsWith('/') ? input : `/${input}`;
+  return origin + path;
+}
+
 async function callRefresh() {
   if (!refreshPromise) {
-    refreshPromise = fetch(REFRESH_URL, {
+    const refreshUrl = makeAbsolute(REFRESH_URL);
+    refreshPromise = fetch(refreshUrl, {
       method: 'POST',
       credentials: 'include',
       cache: 'no-store',
       headers: { 'x-bff-refresh': '1' }, // 로깅/디버깅용
-    }).finally(() => (refreshPromise = null));
+    }).finally(() => {
+      refreshPromise = null;
+    });
   }
   return refreshPromise;
 }
 
 export async function bffFetch(input: RequestInfo, init: RequestInit = {}) {
-  const url = typeof input === 'string' ? input : (input as Request).url;
+  const absInput = makeAbsolute(input);
+  const url = typeof absInput === 'string' ? absInput : (absInput as Request).url;
   const isRefresh = url.includes('/api/proxy/auth/refresh');
 
   const doFetch = () =>
-    fetch(input, {
+    fetch(absInput, {
       cache: init.cache ?? 'no-store',
       credentials: init.credentials ?? 'include',
       ...init,
