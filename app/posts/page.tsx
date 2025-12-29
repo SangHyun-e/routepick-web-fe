@@ -2,16 +2,19 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { fetchPosts } from '@/feature/post/api';
-import PostList from '@/feature/post/components/PostList';
-import Pagination from '@/feature/post/components/Pagination';
+import PostList from '@/feature/post/list/PostList';
+import Pagination from '@/feature/post/list/Pagination';
 import type { PostListItemResponse, PaginatedResponse } from '@/feature/post/types';
 import { ChevronRight } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 export default function Page() {
   const [data, setData] = useState<PaginatedResponse<PostListItemResponse> | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
   const pageSize = 20;
+
+  const router = useRouter();
 
   useEffect(() => {
     let mounted = true;
@@ -36,6 +39,10 @@ export default function Page() {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
+
+  const handleWriteClick = useCallback(() => {
+    router.push('/login?from=/posts/write');
+  }, [router]);
 
   if (loading) {
     return (
@@ -78,13 +85,13 @@ export default function Page() {
 
         {/* Action Bar */}
         <div className="mb-8 flex justify-end">
-          <a
-            href="/posts/write"
+          <button
+            onClick={handleWriteClick}
             className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-slate-800 hover:shadow-md active:scale-95"
           >
             <span>새 글 쓰기</span>
             <ChevronRight className="h-4 w-4" />
-          </a>
+          </button>
         </div>
 
         {/* Post List */}

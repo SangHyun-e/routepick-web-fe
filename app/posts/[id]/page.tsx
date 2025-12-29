@@ -1,7 +1,7 @@
 import { fetchPost } from '@/feature/post/api';
-import PostDetailHeader from '@/feature/post/components/PostDetailHeader';
-import PostDetailContent from '@/feature/post/components/PostDetailContent';
-import PostDetailError from '@/feature/post/components/PostDetailError';
+import PostDetailHeader from '@/feature/post/detail/PostDetailHeader';
+import PostDetailContent from '@/feature/post/detail/PostDetailContent';
+import PostDetailError from '@/feature/post/detail/PostDetailError';
 
 interface PageProps {
   params: { id: string };
