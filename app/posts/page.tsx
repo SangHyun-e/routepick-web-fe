@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { fetchPosts } from '@/feature/post/api';
-import PostList from '@/feature/post/components/PostList';
-import Pagination from '@/feature/post/components/Pagination';
+import PostList from '@/feature/post/list/PostList';
+import Pagination from '@/feature/post/list/Pagination';
 import type { PostListItemResponse, PaginatedResponse } from '@/feature/post/types';
 import { ChevronRight } from 'lucide-react';
 

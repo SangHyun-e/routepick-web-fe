@@ -1,4 +1,4 @@
-import PostDetailSkeleton from '@/feature/post/components/PostDetailSkeleton';
+import PostDetailSkeleton from '@/feature/post/detail/PostDetailSkeleton';
 
 export default function PostDetailLoading() {
   return (

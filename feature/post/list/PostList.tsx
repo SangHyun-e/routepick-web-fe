@@ -1,4 +1,4 @@
-import PostListItem from '@/feature/post/components/PostListItem';
+import PostListItem from '@/feature/post/list/PostListItem';
 import type { PostListItemResponse } from '@/feature/post/types';
 
 type PostListProps = {
