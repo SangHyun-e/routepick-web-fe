@@ -8,7 +8,7 @@ import {
   toPostCreatePayload,
   validatePostWrite,
 } from '@/feature/post/write/validatePostWrite';
-import router from 'next/router';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 const EMPTY_DRAFT: PostWriteDraft = {
@@ -21,6 +21,7 @@ const EMPTY_DRAFT: PostWriteDraft = {
 };
 
 export default function PostWrite() {
+  const router = useRouter();
   const [draft, setDraft] = useState<PostWriteDraft>(EMPTY_DRAFT);
   const [errors, setErrors] = useState<PostWriteErrors>({});
   const [submitting, setSubmitting] = useState(false);
@@ -33,34 +34,28 @@ export default function PostWrite() {
   }
 
   async function handleSubmit() {
+    if (submitting) return;
+
     const nextErrors = validatePostWrite(draft);
     setErrors(nextErrors);
-
     if (!isEmptyErrors(nextErrors)) {
       return;
     }
 
-    // 여기까지 오면 백엔드 validation 통과 보장
     const payload = toPostCreatePayload(draft);
-    console.log('POST payload (preview):', payload);
-
-    // const tags = parseTags(draft.tagsText);
-    // console.log('tags length', tags.length, tags);
 
     setSubmitting(true);
     try {
       const res = await createPost(payload);
       if (!res.ok) {
-        alert(res.message);
+        // 백엔드 에러 메세지(또는 fallback) 노출
+        setErrors({ form: res.message });
         return;
       }
-
       const postId = res.data?.id;
-      if (postId) {
-        router.push(`/posts/${postId}`);
-      } else {
-        router.push('/posts');
-      }
+      router.push(postId ? `/posts/${postId}` : '/posts');
+    } catch {
+      setErrors({ form: '요청 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' });
     } finally {
       setSubmitting(false);
     }
@@ -151,7 +146,7 @@ export default function PostWrite() {
           disabled={submitting}
           className="rounded bg-slate-900 px-4 py-2 text-white disabled:opacity-50"
         >
-          등록
+          {submitting ? '등록 중..' : '등록'}
         </button>
       </div>
     </div>
