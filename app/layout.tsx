@@ -3,6 +3,7 @@ import './globals.css';
 import type { Metadata } from 'next';
 import SiteHeader from '@/components/shared/SiteHeader';
 import SiteFooter from '@/components/shared/SiteFooter';
+import { Toaster } from 'sonner';
 
 export const metadata: Metadata = {
   title: 'RoutePick',
@@ -26,6 +27,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <main className="flex-1">{children}</main>
           <SiteFooter />
         </div>
+
+        <Toaster position="top-center" richColors />
       </body>
     </html>
   );
