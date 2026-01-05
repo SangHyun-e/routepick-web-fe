@@ -43,8 +43,25 @@ export function usePostWrite() {
     setSubmitting(true);
     try {
       const res = await createPost(payload);
+
       if (!res.ok) {
-        setErrors({ form: res.message });
+        // 401: 로그인 필요
+        if (res.status === 401) {
+          setErrors({ form: '로그인이 필요합니다. 로그인 후 다시 시도해주세요.' });
+          router.push('/login?from=/posts/write');
+          return;
+        }
+
+        // 400: 서버 검증 실패(일단 form으로)
+        if (res.status === 400) {
+          setErrors({ form: res.message || '입력값을 확인해주세요.' });
+          return;
+        }
+
+        // 그 외
+        setErrors({
+          form: res.message || '요청 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+        });
         return;
       }
 

@@ -1,1 +1,1 @@
-export type ApiResult<T = unknown> = { ok: true; data?: T } | { ok: false; message: string };
+export type ApiResult<T> = { ok: true; data: T } | { ok: false; status: number; message: string };
