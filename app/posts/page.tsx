@@ -41,7 +41,7 @@ export default function Page() {
   }, []);
 
   const handleWriteClick = useCallback(() => {
-    router.push('/login?from=/posts/write');
+    router.push('/posts/write');
   }, [router]);
 
   if (loading) {

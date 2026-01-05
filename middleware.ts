@@ -1,4 +1,4 @@
-import { ACCESS_TOKEN_COOKIE } from '@/lib/cookies';
+import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from '@/lib/cookies';
 import { NextRequest, NextResponse } from 'next/server';
 
 const LOGIN_PATH = '/login';
@@ -16,10 +16,19 @@ export function middleware(req: NextRequest) {
   // /me는 항상 통과(페이지 내부에서 401→리프레시 처리)
   if (pathname === '/me') return NextResponse.next();
 
-  const hasAT = !!cookies.get(ACCESS_TOKEN_COOKIE)?.value;
+  const hasAT = Boolean(cookies.get(ACCESS_TOKEN_COOKIE)?.value);
+  const hasRT = Boolean(cookies.get(REFRESH_TOKEN_COOKIE)?.value);
 
-  // 보호 경로: AT 없으면 로그인으로
+  // 보호 경로: AT 없으면
   if (isProtected(pathname) && !hasAT) {
+    // RT 있으면: refresh 시도 -> 성공하면 원래 페이지로 리다이렉트
+    if (hasRT) {
+      const url = new URL('/auth/refresh-redirect', req.url);
+      url.searchParams.set('from', nextUrl.pathname + nextUrl.search);
+      return NextResponse.redirect(url);
+    }
+
+    // RT도 없으면: 로그인
     const url = new URL(LOGIN_PATH, req.url);
     url.searchParams.set('from', nextUrl.pathname + nextUrl.search);
     return NextResponse.redirect(url);
@@ -36,5 +45,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/posts/write', '/login', '/me'],
+  matcher: ['/posts/write/:path*', '/login', '/me', '/auth/refresh-redirect'],
 };

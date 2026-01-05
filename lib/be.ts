@@ -27,10 +27,3 @@ export async function be(path: string, init: RequestInit = {}) {
     redirect: 'manual',
   });
 }
-
-// 백엔드 Set-Cookie 여러 개를 안전하게 분리
-export function splitSetCookies(res: Response): string[] {
-  const raw = res.headers.get('set-cookie');
-  if (!raw) return [];
-  return raw.split(/,(?=\s*[-A-Za-z0-9!#$%&'*+.^_`|~]+=[^;]+)/);
-}

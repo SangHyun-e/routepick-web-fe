@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest';
-
-// splitSetCookies 테스트
-function splitSetCookies(header: string | null): string[] {
-  if (!header) return [];
-  // 콤마로 여러 쿠키 나누되, Expires=Fri, 01 Nov 2025 같은 콤마는 무시
-  return header.split(/,(?=\s*[-A-Za-z0-9!#$%&'*+.^_`|~]+=)/);
-}
+import { parseSetCookie, splitSetCookies } from '@/lib/httpCookies';
 
 describe('splitSetCookies()', () => {
   it('단일 쿠키 1개만 있을 때는 그대로 반환', () => {
@@ -27,66 +21,6 @@ describe('splitSetCookies()', () => {
     expect(splitSetCookies(null)).toEqual([]);
   });
 });
-
-// parseSetCookie 테스트
-type ParsedCookie = {
-  name: string;
-  value: string;
-  path?: string;
-  maxAge?: number;
-  sameSite?: 'lax' | 'strict' | 'none';
-  secure?: boolean;
-  httpOnly?: boolean;
-};
-
-// 실제 파서 복사
-function parseSetCookie(cookie: string): ParsedCookie | null {
-  const [nameValue, ...rest] = cookie.split(';');
-  if (!nameValue) return null;
-
-  const [rawName, ...valueParts] = nameValue.split('=');
-  if (!rawName) return null;
-
-  const name = rawName.trim();
-  const value = valueParts.join('=');
-
-  const parsed: ParsedCookie = { name, value };
-
-  for (const part of rest) {
-    const [rawKey, rawVal] = part.split('=');
-    const key = rawKey?.trim().toLowerCase();
-    const val = rawVal?.trim();
-
-    switch (key) {
-      case 'path':
-        parsed.path = val;
-        break;
-      case 'max-age': {
-        const n = Number.parseInt(val ?? '', 10);
-        if (Number.isFinite(n)) parsed.maxAge = n;
-        break;
-      }
-      case 'samesite': {
-        const lowered = (val ?? '').toLowerCase();
-        if (['lax', 'strict', 'none'].includes(lowered)) {
-          parsed.sameSite = lowered as ParsedCookie['sameSite'];
-        }
-        break;
-      }
-      case 'secure':
-        parsed.secure = true;
-        break;
-      case 'httponly':
-        parsed.httpOnly = true;
-        break;
-      default:
-        if (!key && rawKey?.trim().toLowerCase() === 'secure') parsed.secure = true;
-        if (!key && rawKey?.trim().toLowerCase() === 'httponly') parsed.httpOnly = true;
-        break;
-    }
-  }
-  return parsed;
-}
 
 describe('parseSetCookie()', () => {
   it('기본 name/value를 올바르게 파싱해야 함', () => {

@@ -1,6 +1,6 @@
 // lib/bffFetch.ts
 let refreshPromise: Promise<Response> | null = null;
-const REFRESH_URL = '/api/proxy/auth/refresh';
+const REFRESH_URL = '/api/auth/refresh';
 
 // 서버에서 상대경로를 절대 URL로 바꿔주는 헬퍼
 function makeAbsolute(input: RequestInfo): RequestInfo {
@@ -40,7 +40,7 @@ async function callRefresh() {
 export async function bffFetch(input: RequestInfo, init: RequestInit = {}) {
   const absInput = makeAbsolute(input);
   const url = typeof absInput === 'string' ? absInput : (absInput as Request).url;
-  const isRefresh = url.includes('/api/proxy/auth/refresh');
+  const isRefresh = url.includes('/api/auth/refresh');
 
   const doFetch = () =>
     fetch(absInput, {

@@ -1,29 +1,14 @@
-import { be, splitSetCookies } from '@/lib/be';
+import { be } from '@/lib/be';
+import {
+  appendSetCookies,
+  applyAuthCookies,
+  parseAccessTokenPayload,
+  readRefreshCookie,
+} from '@/lib/authTokens';
 import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from '@/lib/cookies';
 import { SERVER_BASE_URL } from '@/lib/env';
 import { NextResponse } from 'next/server';
 import { headers as nextHeaders } from 'next/headers';
-
-/** Set-Cookie 한 줄에서 target 쿠키의 value / max-age 추출 */
-function parseCookie(setCookie: string, target: string) {
-  const [nameValue, ...attrs] = setCookie.split(';');
-  if (!nameValue) return null;
-
-  const [name, ...valueParts] = nameValue.split('=');
-  if (!name || name.trim().toLowerCase() !== target.toLowerCase()) return null;
-
-  const value = valueParts.join('=');
-  let maxAge: number | undefined;
-
-  for (const a of attrs) {
-    const [k, v] = a.split('=');
-    if (k && k.trim().toLowerCase() === 'max-age') {
-      const n = Number.parseInt((v ?? '').trim(), 10);
-      if (Number.isFinite(n)) maxAge = n;
-    }
-  }
-  return { value, maxAge };
-}
 
 /** /a//b/ → /a/b 정규화 */
 function joinPath(segments: string[]) {
@@ -64,7 +49,7 @@ async function makeProxyResponse(beRes: Response) {
     status: beRes.status,
     headers: passthroughHeaders(beRes),
   });
-  for (const sc of splitSetCookies(beRes)) final.headers.append('set-cookie', sc);
+  appendSetCookies(final, beRes);
   return final;
 }
 
@@ -94,26 +79,10 @@ async function refreshOnce(): Promise<{
   const text = await r.text();
   if (!r.ok) return { ok: false };
 
-  let access: string | undefined;
-  let expiresInSec: number | undefined;
-  try {
-    const json = JSON.parse(text);
-    access = json?.access ?? json?.accessToken ?? json?.token ?? undefined;
-    expiresInSec = json?.expiresInSec ?? json?.expiresIn;
-  } catch {
-    /* ignore */
-  }
+  const { access, expiresInSec } = parseAccessTokenPayload(text);
+  const rt = readRefreshCookie(r) ?? undefined;
 
-  let rtCookie: { value: string; maxAge?: number } | undefined;
-  for (const c of splitSetCookies(r)) {
-    const parsed = parseCookie(c, REFRESH_TOKEN_COOKIE);
-    if (parsed) {
-      rtCookie = { value: parsed.value, maxAge: parsed.maxAge };
-      break;
-    }
-  }
-
-  return { ok: true, access, expiresInSec, rt: rtCookie };
+  return { ok: true, access, expiresInSec, rt };
 }
 
 /** 공통 핸들러 */
@@ -152,55 +121,15 @@ async function handle(method: string, req: Request, params: { path?: string[] })
   if (pathOnly === '/auth/login' && res.ok) {
     const text = await res.text();
 
-    let access: string | undefined;
-    let expiresInSec: number | undefined;
-    try {
-      const json = JSON.parse(text);
-      access = json?.access ?? json?.accessToken ?? json?.token ?? undefined;
-      expiresInSec = json?.expiresInSec ?? json?.expiresIn;
-    } catch {
-      /* ignore */
-    }
-
+    const { access, expiresInSec } = parseAccessTokenPayload(text);
+    const refresh = readRefreshCookie(res);
     const final = new NextResponse(text, {
       status: res.status,
       headers: passthroughHeaders(res),
     });
 
-    // 1) BE가 내려준 Set-Cookie 전부 전달 (원본 보존)
-    for (const sc of splitSetCookies(res)) final.headers.append('set-cookie', sc);
-
-    // 2) rp_at 강제 심기
-    if (access) {
-      final.cookies.set(ACCESS_TOKEN_COOKIE, access, {
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production',
-        path: '/',
-        ...(typeof expiresInSec === 'number' && Number.isFinite(expiresInSec)
-          ? { maxAge: expiresInSec }
-          : {}),
-      });
-    }
-
-    // 3) RP_REFRESH도 강제 심기 (원본 헤더가 로컬 http 조건에서 버려지는 경우 대비)
-    let rtParsed: { value: string; maxAge?: number } | null = null;
-    for (const sc of splitSetCookies(res)) {
-      const p = parseCookie(sc, REFRESH_TOKEN_COOKIE);
-      if (p) {
-        rtParsed = p;
-        break;
-      }
-    }
-    if (rtParsed) {
-      final.cookies.set(REFRESH_TOKEN_COOKIE, rtParsed.value, {
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production', // 로컬 http면 false
-        path: '/',
-        ...(rtParsed.maxAge !== undefined ? { maxAge: rtParsed.maxAge } : {}),
-      });
-    }
+    applyAuthCookies(final, { access, expiresInSec, refresh: refresh ?? undefined });
+    appendSetCookies(final, res, new Set([ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE]));
 
     return final;
   }
@@ -225,31 +154,12 @@ async function handle(method: string, req: Request, params: { path?: string[] })
     });
 
     // 재시도 응답의 Set-Cookie 전파
-    for (const sc of splitSetCookies(res)) final.headers.append('set-cookie', sc);
-
-    // rp_at 갱신
-    if (r.access) {
-      final.cookies.set(ACCESS_TOKEN_COOKIE, r.access, {
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production',
-        path: '/',
-        ...(typeof r.expiresInSec === 'number' && Number.isFinite(r.expiresInSec)
-          ? { maxAge: r.expiresInSec }
-          : {}),
-      });
-    }
-
-    // RP_REFRESH 회전 반영
-    if (r.rt) {
-      final.cookies.set(REFRESH_TOKEN_COOKIE, r.rt.value, {
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production',
-        path: '/',
-        ...(r.rt.maxAge !== undefined ? { maxAge: r.rt.maxAge } : {}),
-      });
-    }
+    appendSetCookies(final, res);
+    applyAuthCookies(final, {
+      access: r.access,
+      expiresInSec: r.expiresInSec,
+      refresh: r.rt,
+    });
 
     return final;
   }

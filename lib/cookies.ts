@@ -12,15 +12,6 @@ export const accessTokenCookieOptions = {
   maxAge: 60 * 15, // 15m
 };
 
-/** RefreshToken 14 days */
-export const refreshTokenCookieOptions = {
-  httpOnly: true,
-  sameSite: 'lax' as const,
-  secure: isProd,
-  path: '/',
-  maxAge: 60 * 60 * 24 * 14, // 14days
-};
-
 /** Token Expired */
 export const expiredCookieOptions = {
   httpOnly: true,
