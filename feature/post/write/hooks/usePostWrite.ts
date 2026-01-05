@@ -5,8 +5,8 @@ import { useState } from 'react';
 import { createPost } from '@/feature/post/api';
 import {
   isEmptyErrors,
-  PostWriteDraft,
-  PostWriteErrors,
+  type PostWriteDraft,
+  type PostWriteErrors,
   toPostCreatePayload,
   validatePostWrite,
 } from '@/feature/post/write/validatePostWrite';
