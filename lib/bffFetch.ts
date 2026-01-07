@@ -22,6 +22,26 @@ function makeAbsolute(input: RequestInfo): RequestInfo {
   return origin + path;
 }
 
+// SSR에서 현재 요청의 Cookie 헤더를 읽어오는 헬퍼
+async function getServerCookieHeader(): Promise<string> {
+  if (typeof window !== 'undefined') return '';
+  const mod = await import('next/headers');
+  const h = mod.headers();
+  return h.get('cookie') ?? '';
+}
+
+function mergeHeaders(
+  initHeaders: RequestInit['headers'],
+  cookieHeader: string,
+): HeadersInit | undefined {
+  const base = new Headers(initHeaders);
+
+  if (!base.has('cookie') && cookieHeader) {
+    base.set('cookie', cookieHeader);
+  }
+  return base;
+}
+
 async function callRefresh() {
   if (!refreshPromise) {
     const refreshUrl = makeAbsolute(REFRESH_URL);
@@ -42,13 +62,15 @@ export async function bffFetch(input: RequestInfo, init: RequestInit = {}) {
   const url = typeof absInput === 'string' ? absInput : (absInput as Request).url;
   const isRefresh = url.includes('/api/auth/refresh');
 
-  const doFetch = () =>
-    fetch(absInput, {
+  const doFetch = async () => {
+    const cookieHeader = await getServerCookieHeader();
+    return fetch(absInput, {
       cache: init.cache ?? 'no-store',
       credentials: init.credentials ?? 'include',
       ...init,
+      headers: mergeHeaders(init.headers, cookieHeader),
     });
-
+  };
   const res = await doFetch();
   if (res.status !== 401 || isRefresh) return res;
 
