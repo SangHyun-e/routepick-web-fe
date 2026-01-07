@@ -3,9 +3,12 @@
 import { ArrowLeft, MapPin, Clock, Heart, Eye } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type { PostResponse } from '@/feature/post/types';
+import { Button } from '@/components/ui/button';
+import { usePostActions } from '@/feature/post/detail/usePostAction';
 
 interface PostDetailHeaderProps {
   post: PostResponse;
+  isOwner: boolean;
 }
 
 function formatDate(iso: string) {
@@ -18,20 +21,34 @@ function formatDate(iso: string) {
   return `${y}.${m}.${day} ${hh}:${mm}`;
 }
 
-export default function PostDetailHeader({ post }: PostDetailHeaderProps) {
+export default function PostDetailHeader({ post, isOwner }: PostDetailHeaderProps) {
   const router = useRouter();
+  const { goEdit, doDelete } = usePostActions({ postId: post.id });
 
   return (
     <div className="border-b border-slate-200 bg-white">
       <div className="mx-auto max-w-3xl px-4 py-8">
-        <button
-          onClick={() => router.back()}
-          className="mb-6 flex items-center gap-2 text-sm text-slate-600 transition-colors hover:text-slate-900"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          뒤로가기
-        </button>
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <button
+            onClick={() => router.back()}
+            className="mb-6 flex items-center gap-2 text-sm text-slate-600 transition-colors hover:text-slate-900"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            뒤로가기
+          </button>
 
+          {/* 작성자만 노출 */}
+          {isOwner && (
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={goEdit}>
+                수정
+              </Button>
+              <Button variant="destructive" onClick={doDelete}>
+                삭제
+              </Button>
+            </div>
+          )}
+        </div>
         <h1 className="mb-4 text-3xl font-bold text-balance text-slate-900">{post.title}</h1>
 
         <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600">

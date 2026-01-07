@@ -43,9 +43,18 @@ function passthroughHeaders(src: Response) {
   return h;
 }
 
+function isNoBodyStatus(status: number) {
+  return status === 204 || status === 205 || status === 304;
+}
+
+async function readBodySafely(res: Response): Promise<ArrayBuffer | null> {
+  if (isNoBodyStatus(res.status)) return null;
+  return res.arrayBuffer();
+}
+
 /** BE 응답 → 프록시 응답 생성 (Set-Cookie까지 append) */
 async function makeProxyResponse(beRes: Response) {
-  const final = new NextResponse(await beRes.arrayBuffer(), {
+  const final = new NextResponse(await readBodySafely(beRes), {
     status: beRes.status,
     headers: passthroughHeaders(beRes),
   });
@@ -148,7 +157,7 @@ async function handle(method: string, req: Request, params: { path?: string[] })
     res = await be(pathWithSearch, { ...init, headers: h2 });
 
     // 최종 응답 생성(재시도 응답의 쿠키/헤더 append)
-    const final = new NextResponse(await res.arrayBuffer(), {
+    const final = new NextResponse(await readBodySafely(res), {
       status: res.status,
       headers: passthroughHeaders(res),
     });
