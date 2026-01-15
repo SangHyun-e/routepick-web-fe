@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import BrandLogo from '@/components/shared/BrandLogo';
-import LogoutButton from '@/components/LogoutButton';
+import LogoutButton from '@/components/user/LogoutButton';
 
 export default function SiteHeader() {
   const cookieStore = cookies();

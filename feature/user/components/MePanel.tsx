@@ -7,7 +7,7 @@ import { AlertTriangle } from 'lucide-react';
 
 import { bffFetch } from '@/lib/bffFetch';
 import type { Me } from '@/types/user';
-import LogoutButton from '@/components/LogoutButton';
+import LogoutButton from '@/components/user/LogoutButton';
 import UserProfileCard from '@/components/user/UserProfileCard';
 import UserMetaGrid from '@/components/user/UserMetaGrid';
 import { Button } from '@/components/ui/button';

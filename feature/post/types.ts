@@ -1,6 +1,5 @@
 export type PostStatus = 'ACTIVE' | 'HIDDEN' | 'DELETED';
 
-// PostListItemResponse
 export type PostListItemResponse = {
   id: number;
   title: string;
@@ -25,7 +24,6 @@ export type PaginatedResponse<T> = {
   empty?: boolean;
 };
 
-// PostResponse
 export type PostResponse = {
   id: number;
   title: string;
@@ -45,7 +43,6 @@ export type PostResponse = {
   authorNickname: string | null;
 };
 
-// PostCreateRequest
 export type PostCreateRequest = {
   title: string;
   content: string;
@@ -55,7 +52,6 @@ export type PostCreateRequest = {
   tags?: string[];
 };
 
-// PostUpdateRequest
 export type PostUpdateRequest = {
   title?: string;
   content?: string;
@@ -63,4 +59,17 @@ export type PostUpdateRequest = {
   latitude?: number;
   longitude?: number;
   tags?: string[];
+};
+
+export type PostFormDraft = {
+  title: string;
+  content: string;
+  region: string;
+  latitude: string;
+  longitude: string;
+  tagsText: string;
+};
+
+export type PostFormErrors = Partial<Record<keyof PostFormDraft, string>> & {
+  form?: string;
 };

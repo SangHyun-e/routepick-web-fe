@@ -1,7 +1,7 @@
 import { fetchPostServer } from '@/feature/post/api.server';
-import PostDetailHeader from '@/feature/post/detail/PostDetailHeader';
-import PostDetailContent from '@/feature/post/detail/PostDetailContent';
-import PostDetailError from '@/feature/post/detail/PostDetailError';
+import PostDetailHeader from '@/feature/post/components/PostDetailHeader';
+import PostDetailContent from '@/feature/post/components/PostDetailContent';
+import PostDetailError from '@/feature/post/components/PostDetailError';
 import { fetchMeServer } from '@/feature/user/api.server';
 
 interface PageProps {
@@ -21,7 +21,6 @@ export default async function PostDetailPage({ params }: PageProps) {
 
   const res = await fetchPostServer(postId);
 
-  // 실패 케이스 분리
   if (!res.ok) {
     return (
       <div className="min-h-screen bg-slate-50">
@@ -30,7 +29,6 @@ export default async function PostDetailPage({ params }: PageProps) {
     );
   }
 
-  // 성공인데 data 없는 경우 (방어)
   if (!res.data) {
     return (
       <div className="min-h-screen bg-slate-50">
@@ -39,7 +37,6 @@ export default async function PostDetailPage({ params }: PageProps) {
     );
   }
 
-  // me는 실패해도 detail 렌더링에 영향 없음 -> isOwner만 false 처리
   const meRes = await fetchMeServer();
   const isOwner = meRes.ok && meRes.data.id === res.data.authorId;
 
