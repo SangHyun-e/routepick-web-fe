@@ -1,17 +1,4 @@
-import type { PostCreateRequest } from '@/feature/post/types';
-
-export type PostWriteDraft = {
-  title: string;
-  content: string;
-  region: string;
-  latitude: string;
-  longitude: string;
-  tagsText: string;
-};
-
-export type PostWriteErrors = Partial<Record<keyof PostWriteDraft, string>> & {
-  form?: string;
-};
+import type { PostCreateRequest, PostFormDraft, PostFormErrors } from '@/feature/post/types';
 
 function isNotOnlyWhitespace(value: string) {
   return value.trim().length > 0;
@@ -19,9 +6,7 @@ function isNotOnlyWhitespace(value: string) {
 
 function parseOptionalNumber(value: string): number | undefined {
   const trimmed = value.trim();
-  if (trimmed === '') {
-    return undefined;
-  }
+  if (trimmed === '') return undefined;
   const n = Number(trimmed);
   return Number.isFinite(n) ? n : undefined;
 }
@@ -31,11 +16,10 @@ export function parseTags(tagsText: string): string[] {
     .split(',')
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
-
   return Array.from(new Set(raw));
 }
 
-export function toPostCreatePayload(draft: PostWriteDraft): PostCreateRequest {
+export function toPostCreatePayload(draft: PostFormDraft): PostCreateRequest {
   const latitude = parseOptionalNumber(draft.latitude);
   const longitude = parseOptionalNumber(draft.longitude);
   const tags = parseTags(draft.tagsText);
@@ -50,8 +34,8 @@ export function toPostCreatePayload(draft: PostWriteDraft): PostCreateRequest {
   };
 }
 
-export function validatePostWrite(draft: PostWriteDraft): PostWriteErrors {
-  const errors: PostWriteErrors = {};
+export function validatePostForm(draft: PostFormDraft): PostFormErrors {
+  const errors: PostFormErrors = {};
 
   if (!isNotOnlyWhitespace(draft.title)) {
     errors.title = '제목은 필수입니다.';
@@ -107,6 +91,6 @@ export function validatePostWrite(draft: PostWriteDraft): PostWriteErrors {
   return errors;
 }
 
-export function isEmptyErrors(errors: PostWriteErrors) {
+export function isEmptyErrors(errors: PostFormErrors) {
   return Object.values(errors).every((v) => v == null || v === '');
 }

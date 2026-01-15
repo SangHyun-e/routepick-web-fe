@@ -1,14 +1,11 @@
-/** 게시글 상세 SSR에서 작성자인지 판단
- * 서버에서 /user/me 조회
- *
- * - 로그인 X: 401 -> ok: false 반환
- * - 로그인 O: 200 -> ok: true + Me 반환
- */
-
 import { bffFetch } from '@/lib/bffFetch';
-import { ApiResult } from '@/types/http';
-import { Me } from '@/types/user';
+import type { ApiResult } from '@/types/http';
+import type { Me } from '@/types/user';
 
+/**
+ * 서버에서 현재 로그인한 사용자 정보를 조회합니다
+ * @returns 사용자 정보 또는 에러
+ */
 export async function fetchMeServer(): Promise<ApiResult<Me>> {
   const res = await bffFetch('/api/proxy/users/me', { cache: 'no-store' });
 

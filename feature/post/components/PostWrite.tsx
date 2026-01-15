@@ -1,13 +1,13 @@
 'use client';
 
-import { usePostWrite } from '@/feature/post/write/hooks/usePostWrite';
-import PostWriteForm from '@/feature/post/write/components/PostWriteForm';
+import PostForm from '@/feature/post/components/PostForm';
+import { usePostWrite } from '@/feature/post/hooks/usePostWrite';
 
 export default function PostWrite() {
   const { draft, errors, submitting, update, submit } = usePostWrite();
 
   return (
-    <PostWriteForm
+    <PostForm
       draft={draft}
       errors={errors}
       submitting={submitting}

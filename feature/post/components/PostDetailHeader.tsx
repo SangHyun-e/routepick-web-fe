@@ -4,7 +4,7 @@ import { ArrowLeft, MapPin, Clock, Heart, Eye } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type { PostResponse } from '@/feature/post/types';
 import { Button } from '@/components/ui/button';
-import { usePostActions } from '@/feature/post/detail/usePostAction';
+import { usePostActions } from '@/feature/post/components/usePostAction';
 
 interface PostDetailHeaderProps {
   post: PostResponse;
@@ -30,14 +30,13 @@ export default function PostDetailHeader({ post, isOwner }: PostDetailHeaderProp
       <div className="mx-auto max-w-3xl px-4 py-8">
         <div className="mb-6 flex items-center justify-between gap-3">
           <button
-            onClick={() => router.back()}
+            onClick={() => router.push('/posts')}
             className="mb-6 flex items-center gap-2 text-sm text-slate-600 transition-colors hover:text-slate-900"
           >
             <ArrowLeft className="h-4 w-4" />
             뒤로가기
           </button>
 
-          {/* 작성자만 노출 */}
           {isOwner && (
             <div className="flex items-center gap-2">
               <Button variant="outline" onClick={goEdit}>

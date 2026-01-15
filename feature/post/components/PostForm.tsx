@@ -1,24 +1,36 @@
 'use client';
 
-import type { PostWriteDraft, PostWriteErrors } from '@/feature/post/write/validatePostWrite';
+import type { PostFormDraft, PostFormErrors } from '@/feature/post/types';
 import { FileText, MapPin, Navigation, Tag, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
 type Props = {
-  draft: PostWriteDraft;
-  errors: PostWriteErrors;
+  draft: PostFormDraft;
+  errors: PostFormErrors;
   submitting: boolean;
-  onChange: <K extends keyof PostWriteDraft>(key: K, value: string) => void;
+  onChange: <K extends keyof PostFormDraft>(key: K, value: string) => void;
   onSubmit: () => void;
+
+  heading?: string;
+  submitLabel?: string;
+  cancelHref?: string;
+  backHref?: string;
 };
 
-export default function PostWriteForm({ draft, errors, submitting, onChange, onSubmit }: Props) {
-  // 좌표 쌍 규칙 에러는 좌표 섹션에서만 보여주기
+export default function PostForm({
+  draft,
+  errors,
+  submitting,
+  onChange,
+  onSubmit,
+  heading = '새 글쓰기',
+  submitLabel = '등록하기',
+  cancelHref = '/posts',
+  backHref = '/posts',
+}: Props) {
   const coordinatePairError =
     errors.form === '위도와 경도는 함께 제공되어야 합니다.' ? errors.form : undefined;
-
-  // 좌표 에러가 아닌 form 에러만 하단 박스로 보여주기
   const formError = coordinatePairError ? undefined : errors.form;
 
   return (
@@ -27,13 +39,13 @@ export default function PostWriteForm({ draft, errors, submitting, onChange, onS
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link
-              href="/posts"
+              href={backHref}
               className="rounded-lg p-2 transition-colors hover:bg-white hover:shadow-sm"
               aria-label="목록으로"
             >
               <ArrowLeft className="h-5 w-5 text-slate-600" />
             </Link>
-            <h1 className="text-2xl font-bold text-slate-900">새 글 쓰기</h1>
+            <h1 className="text-2xl font-bold text-slate-900">{heading}</h1>
           </div>
         </div>
 
@@ -45,7 +57,6 @@ export default function PostWriteForm({ draft, errors, submitting, onChange, onS
             }}
           >
             <div className="space-y-6 p-6">
-              {/* Title field */}
               <div className="space-y-2">
                 <label
                   htmlFor="title"
@@ -68,7 +79,6 @@ export default function PostWriteForm({ draft, errors, submitting, onChange, onS
                 {errors.title && <p className="text-sm text-red-600">{errors.title}</p>}
               </div>
 
-              {/* Content field */}
               <div className="space-y-2">
                 <label
                   htmlFor="content"
@@ -97,7 +107,6 @@ export default function PostWriteForm({ draft, errors, submitting, onChange, onS
                 </div>
               </div>
 
-              {/* Region field */}
               <div className="space-y-2">
                 <label
                   htmlFor="region"
@@ -119,7 +128,6 @@ export default function PostWriteForm({ draft, errors, submitting, onChange, onS
                 {errors.region && <p className="text-sm text-red-600">{errors.region}</p>}
               </div>
 
-              {/* Latitude & Longitude fields */}
               <fieldset className="space-y-2">
                 <legend className="flex items-center gap-2 text-sm font-medium text-slate-700">
                   <Navigation className="h-4 w-4 text-slate-500" />
@@ -169,7 +177,6 @@ export default function PostWriteForm({ draft, errors, submitting, onChange, onS
                 )}
               </fieldset>
 
-              {/* Tags field */}
               <div className="space-y-2">
                 <label
                   htmlFor="tagsText"
@@ -196,7 +203,6 @@ export default function PostWriteForm({ draft, errors, submitting, onChange, onS
                 )}
               </div>
 
-              {/* Form error (좌표 에러 제외) */}
               {formError && (
                 <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                   {formError}
@@ -211,12 +217,12 @@ export default function PostWriteForm({ draft, errors, submitting, onChange, onS
                 </Button>
               ) : (
                 <Button variant="outline" asChild>
-                  <Link href="/posts">취소</Link>
+                  <Link href={cancelHref}>취소</Link>
                 </Button>
               )}
 
               <Button type="submit" disabled={submitting}>
-                {submitting ? '등록 중...' : '등록하기'}
+                {submitting ? '저장 중...' : submitLabel}
               </Button>
             </div>
           </form>
