@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 
 let refreshPromise: Promise<Response> | null = null;
 let isRefreshing = false;
+let hasShownErrorToast = false;
 
 /**
  * 클라이언트에서 리프레시 토큰으로 액세스 토큰 재발급
@@ -66,11 +67,13 @@ export async function fetchWithAuth(
       // 재시도
       res = await doFetch();
     } else {
-      // 리프레시 실패 시 로그인 페이지로 이동
-      toast.error('세션이 만료되었습니다. 다시 로그인해주세요.');
-      setTimeout(() => {
-        window.location.href = `/login?from=${encodeURIComponent(window.location.pathname)}`;
-      }, 1500);
+      if (!hasShownErrorToast) {
+        hasShownErrorToast = true;
+        toast.error('세션이 만료되었습니다. 다시 로그인해주세요.');
+        setTimeout(() => {
+          window.location.href = `/login?from=${encodeURIComponent(window.location.pathname)}`;
+        }, 1500);
+      }
     }
   }
 
@@ -87,6 +90,7 @@ export function startTokenRefreshTimer() {
     };
 
   const CHECK_INTERVAL = 3 * 60 * 1000;
+  let localHasShownToast = false;
 
   const checkToken = async () => {
     try {
@@ -104,25 +108,29 @@ export function startTokenRefreshTimer() {
         const refreshed = await refreshAccessToken();
 
         if (refreshed) {
-          console.log('Token refreshed successfully');
-          toast.success('세션이 자동으로 갱신되었습니다.');
+          console.log('[v0] Token refreshed successfully');
+          if (!localHasShownToast) {
+            toast.success('세션이 자동으로 갱신되었습니다.');
+          }
+          localHasShownToast = false; // 리셋
         } else {
           console.error('Token refresh failed');
-          toast.error('세션이 만료되었습니다. 다시 로그인해주세요.');
-          setTimeout(() => {
-            window.location.href = `/login?from=${encodeURIComponent(window.location.pathname)}`;
-          }, 1500);
+          if (!localHasShownToast) {
+            localHasShownToast = true;
+            toast.error('세션이 만료되었습니다. 다시 로그인해주세요.');
+            setTimeout(() => {
+              window.location.href = `/login?from=${encodeURIComponent(window.location.pathname)}`;
+            }, 1500);
+          }
         }
       } else if (res.ok) {
         console.log('Token is valid');
+        localHasShownToast = false; // 정상이면 플래그 리셋
       }
     } catch (error) {
       console.error('Token check failed:', error);
     }
   };
-
-  // 즉시 한번 체크
-  checkToken();
 
   // 주기적 체크
   const interval = setInterval(checkToken, CHECK_INTERVAL);
