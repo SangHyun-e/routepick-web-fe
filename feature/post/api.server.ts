@@ -2,13 +2,9 @@ import type { ApiResult } from '@/types/http';
 import type { PostResponse } from '@/feature/post/types';
 import { be } from '@/lib/be';
 
-/**
- * 에러 메시지를 파싱하는 헬퍼 함수
- */
 async function readErrorMessage(res: Response, fallback: string): Promise<string> {
   try {
     const json = await res.clone().json();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const msg = (json as any)?.message;
     if (typeof msg === 'string' && msg.trim().length > 0) return msg;
   } catch {
@@ -25,11 +21,6 @@ async function readErrorMessage(res: Response, fallback: string): Promise<string
   return fallback;
 }
 
-/**
- * 서버에서 단일 게시글을 조회합니다
- * @param id - 게시글 ID
- * @returns 게시글 데이터 또는 에러
- */
 export async function fetchPostServer(id: number): Promise<ApiResult<PostResponse>> {
   const res = await be(`/posts/${id}`, { method: 'GET' });
 
