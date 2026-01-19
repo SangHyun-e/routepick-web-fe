@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { fetchPosts } from '@/feature/post/api';
 import PostList from '@/feature/post/list/PostList';
 import Pagination from '@/feature/post/list/Pagination';
-import type { PostListItemResponse, PaginatedResponse } from '@/feature/post/types';
+import PostSortSelect from '@/feature/post/components/PostSortSelect';
+import type { PostListItemResponse, PaginatedResponse, PostSortOption } from '@/feature/post/types';
 import { ChevronRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -12,6 +13,7 @@ export default function Page() {
   const [data, setData] = useState<PaginatedResponse<PostListItemResponse> | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
+  const [sortOption, setSortOption] = useState<PostSortOption>('latest');
   const pageSize = 20;
 
   const router = useRouter();
@@ -20,7 +22,7 @@ export default function Page() {
     let mounted = true;
     (async () => {
       setLoading(true);
-      const res = await fetchPosts(currentPage, pageSize);
+      const res = await fetchPosts(currentPage, pageSize, sortOption);
       if (!mounted) return;
       if (res.ok && res.data) {
         setData(res.data);
@@ -33,11 +35,16 @@ export default function Page() {
     return () => {
       mounted = false;
     };
-  }, [currentPage]);
+  }, [currentPage, sortOption]);
 
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  const handleSortChange = useCallback((sort: PostSortOption) => {
+    setSortOption(sort);
+    setCurrentPage(0);
   }, []);
 
   const handleWriteClick = useCallback(() => {
@@ -84,7 +91,8 @@ export default function Page() {
         </div>
 
         {/* Action Bar */}
-        <div className="mb-8 flex justify-end">
+        <div className="mb-8 flex items-center justify-between">
+          <PostSortSelect value={sortOption} onChange={handleSortChange} />
           <button
             onClick={handleWriteClick}
             className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-slate-800 hover:shadow-md active:scale-95"

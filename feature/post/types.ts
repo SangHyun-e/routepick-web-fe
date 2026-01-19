@@ -10,6 +10,7 @@ export type PostListItemResponse = {
   createdAt: string;
   authorId: number | null;
   authorNickname: string | null;
+  isLikedByCurrentUser: boolean | null;
 };
 
 export type PaginatedResponse<T> = {
@@ -41,6 +42,7 @@ export type PostResponse = {
   updatedBy: string | null;
   authorId: number | null;
   authorNickname: string | null;
+  isLikedByCurrentUser: boolean | null;
 };
 
 export type PostCreateRequest = {
@@ -72,4 +74,12 @@ export type PostFormDraft = {
 
 export type PostFormErrors = Partial<Record<keyof PostFormDraft, string>> & {
   form?: string;
+};
+
+// 정렬 옵션 타입
+export type PostSortOption = 'latest' | 'popular' | 'views';
+
+// 좋아요 응답 타입
+export type LikeResponse = {
+  likeCount: number;
 };
