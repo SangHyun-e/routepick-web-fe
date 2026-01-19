@@ -8,6 +8,7 @@ import type { PostResponse } from '@/feature/post/types';
 import { Button } from '@/components/ui/button';
 import { usePostActions } from '@/feature/post/hooks/usePostActions';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { likePost } from '@/feature/post/api';
 
 interface PostDetailHeaderProps {
   post: PostResponse;
@@ -26,11 +27,41 @@ function formatDate(iso: string) {
 
 export default function PostDetailHeader({ post, isOwner }: PostDetailHeaderProps) {
   const router = useRouter();
+  const [likeCount, setLikeCount] = useState(post.likeCount ?? 0);
+  const [isLiked, setIsLiked] = useState(post.isLikedByCurrentUser ?? false);
+  const [isLiking, setIsLiking] = useState(false);
   const { goEdit, confirmDelete, doDelete, showDeleteDialog, setShowDeleteDialog } = usePostActions(
     {
       postId: post.id,
     },
   );
+
+  const handleLike = async () => {
+    if (isLiking) return;
+    setIsLiking(true);
+
+    try {
+      const res = await likePost(post.id);
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          toast.error('로그인이 필요합니다. 로그인 후 다시 시도해주세요.');
+          return;
+        }
+        toast.error(res.message ?? '좋아요 실패');
+        return;
+      }
+
+      const nextLiked: boolean = !isLiked;
+      setLikeCount(res.data.likeCount);
+      setIsLiked(nextLiked);
+      toast.success(nextLiked ? '좋아요!' : '좋아요 취소');
+    } catch {
+      toast.error('좋아요 중 오류가 발생했습니다.');
+    } finally {
+      setIsLiking(false);
+    }
+  };
 
   return (
     <>
@@ -77,14 +108,24 @@ export default function PostDetailHeader({ post, isOwner }: PostDetailHeaderProp
             )}
           </div>
 
-          <div className="mt-4 flex items-center gap-6 text-sm">
-            <div className="flex items-center gap-2">
-              <Heart className="h-4 w-4 text-red-500" />
-              <span className="font-medium text-slate-700">{post.likeCount ?? 0}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Eye className="h-4 w-4 text-blue-500" />
-              <span className="font-medium text-slate-700">{post.viewCount ?? 0}</span>
+          <div className="mt-4 flex items-center gap-4 text-sm">
+            <button
+              onClick={handleLike}
+              disabled={isLiking}
+              className={`flex items-center gap-2 rounded-full border px-4 py-2 transition-all hover:shadow-sm active:scale-95 disabled:opacity-50 ${
+                isLiked
+                  ? 'border-red-500 bg-red-500 text-white hover:bg-red-600'
+                  : 'border-red-200 bg-white text-red-600 hover:bg-red-50'
+              }`}
+            >
+              <Heart
+                className={`h-4 w-4 ${isLiking ? 'animate-pulse' : ''} ${isLiked ? 'fill-current' : ''}`}
+              />
+              <span className="font-medium">{likeCount}</span>
+            </button>
+            <div className="flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-blue-600">
+              <Eye className="h-4 w-4" />
+              <span className="font-medium">{post.viewCount ?? 0}</span>
             </div>
           </div>
         </div>
