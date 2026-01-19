@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { ArrowLeft, MapPin, Clock, Heart, Eye } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import type { PostResponse } from '@/feature/post/types';
 import { Button } from '@/components/ui/button';
 import { usePostActions } from '@/feature/post/hooks/usePostActions';

@@ -4,6 +4,8 @@ import type {
   PostResponse,
   PostUpdateRequest,
   PaginatedResponse,
+  PostSortOption,
+  LikeResponse,
 } from '@/feature/post/types';
 import type { ApiResult } from '@/types/http';
 import { bffFetch } from '@/lib/bffFetch';
@@ -53,12 +55,30 @@ async function readErrorMessage(res: Response, fallback: string): Promise<string
   return fallback;
 }
 
+/** 정렬 옵션을 Spring Pageable sort 파라미터로 변환 */
+function getSortParam(sort: PostSortOption): string {
+  switch (sort) {
+    case 'popular':
+      return 'likeCount,desc';
+    case 'views':
+      return 'viewCount,desc';
+    case 'latest':
+    default:
+      return 'createdAt,desc';
+  }
+}
+
 /** 게시물 목록 조회 */
 export async function fetchPosts(
   page = 0,
   size = 20,
+  sort: PostSortOption = 'latest',
 ): Promise<ApiResult<PaginatedResponse<PostListItemResponse>>> {
-  const query = buildQuery({ page, size });
+  console.log('[v0] fetchPosts called with sort:', sort);
+  const sortParam = getSortParam(sort);
+  console.log('[v0] sortParam converted to:', sortParam);
+  const query = buildQuery({ page, size, sort: sortParam });
+  console.log('[v0] Final query string:', query);
   const res = await bffFetch(`/api/proxy/posts?${query}`, { cache: 'no-store' });
 
   if (!res.ok) {
@@ -134,4 +154,17 @@ export async function deletePost(id: number): Promise<ApiResult<null>> {
   }
 
   return { ok: true, data: null };
+}
+
+/** 좋아요 +1 */
+export async function likePost(id: number): Promise<ApiResult<LikeResponse>> {
+  const res = await bffFetch(`/api/proxy/posts/${id}/like`, { method: 'POST' });
+
+  if (!res.ok) {
+    const message = await readErrorMessage(res, '좋아요 실패');
+    return { ok: false, status: res.status, message };
+  }
+
+  const data = (await res.json()) as LikeResponse;
+  return { ok: true, data };
 }
