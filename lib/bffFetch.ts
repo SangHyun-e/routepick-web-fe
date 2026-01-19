@@ -2,27 +2,17 @@
 let refreshPromise: Promise<Response> | null = null;
 const REFRESH_URL = '/api/auth/refresh';
 
-// 서버에서 상대경로를 절대 URL로 바꿔주는 헬퍼
-function makeAbsolute(input: RequestInfo): RequestInfo {
-  // Request 객체면 그대로
+function makeAbsolute(input: string | Request | URL): string | Request | URL {
   if (typeof input !== 'string') return input;
-
-  // 이미 http(s)면 그대로
   if (input.startsWith('http://') || input.startsWith('https://')) return input;
-
-  // 브라우저에서는 상대경로 그대로 써도 됨
   if (typeof window !== 'undefined') return input;
 
-  // 서버에서는 origin 기준으로 절대 URL로 변환
   const origin =
     process.env.NEXT_PUBLIC_SITE_URL ?? process.env.SITE_URL ?? 'http://localhost:3000';
-
-  // 앞에 / 없으면 붙여주기
   const path = input.startsWith('/') ? input : `/${input}`;
   return origin + path;
 }
 
-// SSR에서 현재 요청의 Cookie 헤더를 읽어오는 헬퍼
 async function getServerCookieHeader(): Promise<string> {
   if (typeof window !== 'undefined') return '';
   const mod = await import('next/headers');
@@ -49,7 +39,7 @@ async function callRefresh() {
       method: 'POST',
       credentials: 'include',
       cache: 'no-store',
-      headers: { 'x-bff-refresh': '1' }, // 로깅/디버깅용
+      headers: { 'x-bff-refresh': '1' },
     }).finally(() => {
       refreshPromise = null;
     });
@@ -57,7 +47,12 @@ async function callRefresh() {
   return refreshPromise;
 }
 
-export async function bffFetch(input: RequestInfo, init: RequestInit = {}) {
+/**
+ * BFF(Backend for Frontend) fetch wrapper
+ * - 401 에러 발생 시 자동으로 토큰 리프레시 시도
+ * - 서버/클라이언트 양쪽에서 동작
+ */
+export async function bffFetch(input: string | Request | URL, init: RequestInit = {}) {
   const absInput = makeAbsolute(input);
   const url = typeof absInput === 'string' ? absInput : (absInput as Request).url;
   const isRefresh = url.includes('/api/auth/refresh');
@@ -71,10 +66,13 @@ export async function bffFetch(input: RequestInfo, init: RequestInit = {}) {
       headers: mergeHeaders(init.headers, cookieHeader),
     });
   };
+
   const res = await doFetch();
+
   if (res.status !== 401 || isRefresh) return res;
 
   const r = await callRefresh();
   if (!r.ok) return res; // 리프레시 실패 → 원래 401 그대로
-  return doFetch(); // 성공 → 동일 요청 재시도
+
+  return doFetch();
 }

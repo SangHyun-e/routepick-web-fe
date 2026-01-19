@@ -10,6 +10,7 @@ import type {
 } from '@/feature/post/types';
 import { updatePost } from '@/feature/post/api';
 import { isEmptyErrors, parseTags, validatePostForm } from '@/feature/post/validation';
+import { toast } from 'sonner';
 
 type Options = {
   post: PostResponse;
@@ -68,37 +69,47 @@ export function usePostEdit({ post }: Options) {
 
     const nextErrors = validatePostForm(draft);
     setErrors(nextErrors);
-    if (!isEmptyErrors(nextErrors)) return;
+    if (!isEmptyErrors(nextErrors)) {
+      toast.error('입력 내용을 확인해주세요.');
+      return;
+    }
 
     const payload = toUpdatePayload(draft);
 
     setSubmitting(true);
+
     try {
       const res = await updatePost(post.id, payload);
 
       if (!res.ok) {
         if (res.status === 401) {
+          toast.error('로그인이 필요합니다. 로그인 후 다시 시도해주세요.');
           setErrors({ form: '로그인이 필요합니다. 로그인 후 다시 시도해주세요.' });
           router.push(`/login?from=/posts/${post.id}/edit`);
           return;
         }
         if (res.status === 403) {
+          toast.error('수정 권한이 없습니다.');
           setErrors({ form: '수정 권한이 없습니다.' });
           router.push(`/posts/${post.id}`);
           return;
         }
         if (res.status === 404) {
+          toast.error('게시글이 존재하지 않습니다.');
           setErrors({ form: '게시글이 존재하지 않습니다.' });
           router.push('/posts');
           return;
         }
+        toast.error(res.message ?? '수정 중 오류가 발생했습니다.');
         setErrors({ form: res.message ?? '수정 중 오류가 발생했습니다.' });
         return;
       }
 
+      toast.success('게시글이 수정되었습니다.');
       router.replace(`/posts/${post.id}`);
       router.refresh();
     } catch {
+      toast.error('수정 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
       setErrors({ form: '수정 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' });
     } finally {
       setSubmitting(false);

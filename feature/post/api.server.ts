@@ -5,7 +5,6 @@ import { be } from '@/lib/be';
 async function readErrorMessage(res: Response, fallback: string): Promise<string> {
   try {
     const json = await res.clone().json();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const msg = (json as any)?.message;
     if (typeof msg === 'string' && msg.trim().length > 0) return msg;
   } catch {

@@ -1,7 +1,8 @@
-import { fetchPostServer } from '@/feature/post/api.server';
 import PostDetailHeader from '@/feature/post/components/PostDetailHeader';
 import PostDetailContent from '@/feature/post/components/PostDetailContent';
 import PostDetailError from '@/feature/post/components/PostDetailError';
+
+import { fetchPostServer } from '@/feature/post/api.server';
 import { fetchMeServer } from '@/feature/user/api.server';
 
 interface PageProps {
