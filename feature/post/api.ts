@@ -74,11 +74,8 @@ export async function fetchPosts(
   size = 20,
   sort: PostSortOption = 'latest',
 ): Promise<ApiResult<PaginatedResponse<PostListItemResponse>>> {
-  console.log('[v0] fetchPosts called with sort:', sort);
   const sortParam = getSortParam(sort);
-  console.log('[v0] sortParam converted to:', sortParam);
   const query = buildQuery({ page, size, sort: sortParam });
-  console.log('[v0] Final query string:', query);
   const res = await bffFetch(`/api/proxy/posts?${query}`, { cache: 'no-store' });
 
   if (!res.ok) {
