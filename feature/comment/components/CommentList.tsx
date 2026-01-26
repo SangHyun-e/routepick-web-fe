@@ -13,7 +13,7 @@ export default function CommentList({ comments, loading }: Props) {
     return (
       <div className="space-y-3">
         {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-20 animate-pulse rounded-lg bg-slate-200" />
+          <div key={i} className="h-24 animate-pulse rounded-xl border bg-white" />
         ))}
       </div>
     );
@@ -21,11 +21,12 @@ export default function CommentList({ comments, loading }: Props) {
 
   if (comments.length === 0) {
     return (
-      <div className="rounded-lg border bg-white py-10 text-center text-sm text-slate-500">
-        아직 댓글이 없습니다.
+      <div className="rounded-xl border bg-white py-12 text-center text-sm text-slate-500">
+        아직 댓글이 없어요. 첫 댓글의 주인공이 되어보세요 !
       </div>
     );
   }
+
   return (
     <div className="space-y-3">
       {comments.map((comment) => (
