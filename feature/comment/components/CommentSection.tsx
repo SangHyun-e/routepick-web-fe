@@ -101,7 +101,12 @@ export default function CommentSection({ postId }: Props) {
         </div>
       </div>
       <div className="mt-8">
-        <CommentList comments={data?.content ?? []} loading={loading} />
+        <CommentList
+          postId={postId}
+          comments={data?.content ?? []}
+          loading={loading}
+          onRefresh={refresh}
+        />
       </div>
     </section>
   );

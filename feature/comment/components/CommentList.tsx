@@ -4,16 +4,18 @@ import CommentItem from '@/feature/comment/components/CommentItem';
 import type { CommentResponse } from '@/feature/comment/types';
 
 interface Props {
+  postId: number;
   comments: CommentResponse[];
   loading: boolean;
+  onRefresh: () => Promise<void>;
 }
 
-export default function CommentList({ comments, loading }: Props) {
+export default function CommentList({ postId, comments, loading, onRefresh }: Props) {
   if (loading) {
     return (
       <div className="space-y-3">
         {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-24 animate-pulse rounded-xl border bg-white" />
+          <div key={i} className="h-20 animate-pulse rounded-lg bg-slate-200" />
         ))}
       </div>
     );
@@ -21,8 +23,8 @@ export default function CommentList({ comments, loading }: Props) {
 
   if (comments.length === 0) {
     return (
-      <div className="rounded-xl border bg-white py-12 text-center text-sm text-slate-500">
-        아직 댓글이 없어요. 첫 댓글의 주인공이 되어보세요 !
+      <div className="rounded-lg border bg-white py-10 text-center text-sm text-slate-500">
+        아직 댓글이 없습니다.
       </div>
     );
   }
@@ -30,7 +32,7 @@ export default function CommentList({ comments, loading }: Props) {
   return (
     <div className="space-y-3">
       {comments.map((comment) => (
-        <CommentItem key={comment.id} comment={comment} />
+        <CommentItem key={comment.id} postId={postId} comment={comment} onRefresh={onRefresh} />
       ))}
     </div>
   );
