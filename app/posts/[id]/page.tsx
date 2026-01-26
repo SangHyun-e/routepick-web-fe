@@ -5,7 +5,6 @@ import PostDetailError from '@/feature/post/components/PostDetailError';
 import { fetchPostServer } from '@/feature/post/api.server';
 import { fetchMeServer } from '@/feature/user/api.server';
 import CommentSection from '@/feature/comment/components/CommentSection';
-
 interface PageProps {
   params: { id: string };
 }

@@ -2,11 +2,14 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
+
 import CommentList from '@/feature/comment/components/CommentList';
 import { useComments } from '@/feature/comment/hooks/useComments';
 import { createRootComment } from '@/feature/comment/api';
+
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import Pagination from '@/feature/post/list/Pagination'; // ✅ PostList에서 쓰는 Pagination 재사용(경로 맞춰)
 
 interface Props {
   postId: number;
@@ -15,7 +18,10 @@ interface Props {
 }
 
 export default function CommentSection({ postId, postAuthorId, postAuthorNickname }: Props) {
-  const { data, loading, refresh } = useComments(postId);
+  const { data, loading, page, setPage, totalPages, refresh } = useComments({
+    postId,
+    size: 20,
+  });
 
   const [content, setContent] = useState<string>('');
   const [submitting, setSubmitting] = useState<boolean>(false);
@@ -30,11 +36,11 @@ export default function CommentSection({ postId, postAuthorId, postAuthorNicknam
       return;
     }
     if (trimmed.length > 1000) {
-      toast.error('Attach: 1000자 제한');
+      toast.error('댓글은 최대 1000자까지 입력할 수 있습니다.');
       return;
     }
-
     if (submitting) return;
+
     setSubmitting(true);
 
     try {
@@ -61,6 +67,7 @@ export default function CommentSection({ postId, postAuthorId, postAuthorNicknam
 
   return (
     <section className="mt-10">
+      {/* 헤더 */}
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-slate-900">댓글</h2>
         <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700">
@@ -104,6 +111,7 @@ export default function CommentSection({ postId, postAuthorId, postAuthorNicknam
         </div>
       </div>
 
+      {/* 목록 */}
       <CommentList
         postId={postId}
         postAuthorId={postAuthorId}
@@ -111,6 +119,13 @@ export default function CommentSection({ postId, postAuthorId, postAuthorNicknam
         comments={data?.content ?? []}
         loading={loading}
         onRefresh={refresh}
+      />
+
+      {/* ✅ PostList와 동일한 Pagination UI */}
+      <Pagination
+        currentPage={page}
+        totalPages={totalPages}
+        onPageChange={(next: number) => setPage(next)}
       />
     </section>
   );

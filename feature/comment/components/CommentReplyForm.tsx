@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { createReplyComment } from '@/feature/comment/api';
@@ -9,43 +10,39 @@ import { createReplyComment } from '@/feature/comment/api';
 interface Props {
   postId: number;
   parentId: number;
-  mentionNickname: string | null;
-  onSuccess: () => Promise<void>;
+  prefill?: string; // "@nickname " 같은 기본 입력값
   onCancel: () => void;
+  onSubmitted: () => Promise<void>;
 }
 
 export default function CommentReplyForm({
   postId,
   parentId,
-  mentionNickname,
-  onSuccess,
+  prefill,
   onCancel,
+  onSubmitted,
 }: Props) {
-  const prefix: string = mentionNickname ? `@${mentionNickname} ` : '';
-  const [content, setContent] = useState<string>(prefix);
+  const [content, setContent] = useState<string>(prefill ?? '');
   const [submitting, setSubmitting] = useState<boolean>(false);
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
-    // 열리면 포커스 + 커서 맨 끝
-    const el = textareaRef.current;
-    if (!el) return;
-    el.focus();
-    el.setSelectionRange(el.value.length, el.value.length);
-  }, []);
+    // parent 바뀌거나 prefill 바뀌면 동기화
+    setContent(prefill ?? '');
+  }, [parentId, prefill]);
 
-  const submit = async () => {
+  const onSubmit = async () => {
     const trimmed: string = content.trim();
+
     if (trimmed.length === 0) {
-      toast.error('댓글 내용을 입력해주세요.');
+      toast.error('답글 내용을 입력해주세요.');
       return;
     }
     if (trimmed.length > 1000) {
-      toast.error('댓글은 최대 1000자까지 입력할 수 있습니다.');
+      toast.error('답글은 최대 1000자까지 입력할 수 있습니다.');
       return;
     }
-
     if (submitting) return;
+
     setSubmitting(true);
 
     try {
@@ -56,28 +53,26 @@ export default function CommentReplyForm({
           toast.error('로그인이 필요합니다.');
           return;
         }
-        toast.error(res.message ?? '대댓글 작성에 실패했습니다.');
+        toast.error(res.message ?? '답글 작성에 실패했습니다.');
         return;
       }
 
-      toast.success('대댓글이 등록되었습니다.');
-      await onSuccess();
-      onCancel();
+      toast.success('답글이 등록되었습니다.');
+      await onSubmitted();
     } catch {
-      toast.error('대댓글 작성 중 오류가 발생했습니다.');
+      toast.error('답글 작성 중 오류가 발생했습니다.');
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+    <div className="rounded-xl border border-slate-200 bg-white p-3">
       <Textarea
-        ref={textareaRef}
         value={content}
         onChange={(e) => setContent(e.target.value)}
         placeholder="답글을 입력하세요."
-        className="min-h-20 resize-none bg-white"
+        className="min-h-24 resize-none"
         maxLength={1000}
         disabled={submitting}
       />
@@ -90,7 +85,7 @@ export default function CommentReplyForm({
           </Button>
           <Button
             type="button"
-            onClick={submit}
+            onClick={onSubmit}
             disabled={submitting || content.trim().length === 0}
           >
             {submitting ? '등록 중…' : '등록'}
