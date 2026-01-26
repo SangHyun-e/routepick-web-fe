@@ -51,10 +51,10 @@ function normalizePage<T>(raw: unknown): PaginatedResponse<T> {
 }
 
 /** 댓글 목록(루트 + replies 포함) */
-export async function fetchComment(
+export async function fetchComments(
   postId: number,
-  page: 0,
-  size: 20,
+  page: number,
+  size: number,
 ): Promise<ApiResult<PaginatedResponse<CommentResponse>>> {
   const res = await bffFetch(`/api/proxy/posts/${postId}/comments?page=${page}&size=${size}`, {
     cache: 'no-store',
