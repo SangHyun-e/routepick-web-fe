@@ -10,9 +10,11 @@ import { Button } from '@/components/ui/button';
 
 interface Props {
   postId: number;
+  postAuthorId: number | null;
+  postAuthorNickname: string | null;
 }
 
-export default function CommentSection({ postId }: Props) {
+export default function CommentSection({ postId, postAuthorId, postAuthorNickname }: Props) {
   const { data, loading, refresh } = useComments(postId);
 
   const [content, setContent] = useState<string>('');
@@ -28,7 +30,7 @@ export default function CommentSection({ postId }: Props) {
       return;
     }
     if (trimmed.length > 1000) {
-      toast.error('댓글은 최대 1000자까지 입력할 수 있습니다.');
+      toast.error('Attach: 1000자 제한');
       return;
     }
 
@@ -58,7 +60,7 @@ export default function CommentSection({ postId }: Props) {
   };
 
   return (
-    <section className="mt-14 border-t border-slate-200 pt-10">
+    <section className="mt-10">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-slate-900">댓글</h2>
         <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700">
@@ -66,7 +68,8 @@ export default function CommentSection({ postId }: Props) {
         </span>
       </div>
 
-      <div className="mb-6 rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 shadow-sm">
+      {/* 작성 폼 */}
+      <div className="mb-6 rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-100 px-6 py-4">
           <p className="text-sm font-medium text-slate-900">댓글 작성</p>
           <p className="mt-1 text-xs text-slate-500">Shift+Enter로 줄바꿈, Enter로 등록</p>
@@ -100,14 +103,15 @@ export default function CommentSection({ postId }: Props) {
           </div>
         </div>
       </div>
-      <div className="mt-8">
-        <CommentList
-          postId={postId}
-          comments={data?.content ?? []}
-          loading={loading}
-          onRefresh={refresh}
-        />
-      </div>
+
+      <CommentList
+        postId={postId}
+        postAuthorId={postAuthorId}
+        postAuthorNickname={postAuthorNickname}
+        comments={data?.content ?? []}
+        loading={loading}
+        onRefresh={refresh}
+      />
     </section>
   );
 }

@@ -48,7 +48,11 @@ export default async function PostDetailPage({ params }: PageProps) {
 
       <div className="mx-auto w-full max-w-3xl px-4 pb-16">
         <PostDetailContent post={res.data} />
-        <CommentSection postId={postId} />
+        <CommentSection
+          postId={postId}
+          postAuthorId={res.data.authorId}
+          postAuthorNickname={res.data.authorNickname}
+        />
       </div>
     </div>
   );

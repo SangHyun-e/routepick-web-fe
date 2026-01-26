@@ -5,12 +5,21 @@ import type { CommentResponse } from '@/feature/comment/types';
 
 interface Props {
   postId: number;
+  postAuthorId: number | null;
+  postAuthorNickname: string | null;
   comments: CommentResponse[];
   loading: boolean;
   onRefresh: () => Promise<void>;
 }
 
-export default function CommentList({ postId, comments, loading, onRefresh }: Props) {
+export default function CommentList({
+  postId,
+  postAuthorId,
+  postAuthorNickname,
+  comments,
+  loading,
+  onRefresh,
+}: Props) {
   if (loading) {
     return (
       <div className="space-y-3">
@@ -32,7 +41,14 @@ export default function CommentList({ postId, comments, loading, onRefresh }: Pr
   return (
     <div className="space-y-3">
       {comments.map((comment) => (
-        <CommentItem key={comment.id} postId={postId} comment={comment} onRefresh={onRefresh} />
+        <CommentItem
+          key={comment.id}
+          postId={postId}
+          postAuthorId={postAuthorId}
+          postAuthorNickname={postAuthorNickname}
+          comment={comment}
+          onRefresh={onRefresh}
+        />
       ))}
     </div>
   );
