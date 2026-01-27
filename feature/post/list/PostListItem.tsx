@@ -94,7 +94,7 @@ export default function PostListItem({ item }: { item: PostListItemResponse }) {
 
             {/* 댓글 수 */}
             <div className="mt-1 flex items-center justify-end gap-1.5 font-medium">
-              <MessageCircle className="h-4 w-4 text-green-500" />
+              <MessageCircle className="h-4 w-4 text-emerald-500" />
               <span>{item.commentCount ?? 0}</span>
             </div>
           </div>
