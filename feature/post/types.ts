@@ -11,6 +11,7 @@ export type PostListItemResponse = {
   authorId: number | null;
   authorNickname: string | null;
   isLikedByCurrentUser: boolean | null;
+  commentCount: number;
 };
 
 export type PaginatedResponse<T> = {

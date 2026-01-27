@@ -1,5 +1,5 @@
 import type { PostListItemResponse } from '@/feature/post/types';
-import { Heart, Eye, MapPin, Clock, EyeOff } from 'lucide-react';
+import { Heart, Eye, MapPin, Clock, EyeOff, MessageCircle } from 'lucide-react';
 
 function formatDate(iso: string) {
   const d = new Date(iso);
@@ -90,6 +90,12 @@ export default function PostListItem({ item }: { item: PostListItemResponse }) {
             <div className="flex items-center justify-end gap-1.5 font-medium">
               <Eye className="h-4 w-4 text-blue-500" />
               <span>{item.viewCount ?? 0}</span>
+            </div>
+
+            {/* 댓글 수 */}
+            <div className="mt-1 flex items-center justify-end gap-1.5 font-medium">
+              <MessageCircle className="h-4 w-4 text-green-500" />
+              <span>{item.commentCount ?? 0}</span>
             </div>
           </div>
         </div>
