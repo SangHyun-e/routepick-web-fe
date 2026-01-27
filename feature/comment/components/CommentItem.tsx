@@ -1,11 +1,14 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { MessageSquare, Pencil } from 'lucide-react';
+import { Check, MessageSquare, Pencil, Trash2, X } from 'lucide-react';
 
 import type { CommentResponse } from '@/feature/comment/types';
 import { Button } from '@/components/ui/button';
 import CommentReplyForm from '@/feature/comment/components/CommentReplyForm';
+import { useCommentActions } from '@/feature/comment/hooks/useCommentAction';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { Textarea } from '@/components/ui/textarea';
 
 function renderWithMentions(text: string) {
   const regex = /@[\w가-힣]+/g;
@@ -92,6 +95,35 @@ export default function CommentItem({
 
   const hiddenCount: number = Math.max(0, replyCount - visibleReplies.length);
 
+  // 수정 / 삭제 actions hook
+  const { deleting, updating, doDelete, doUpdate } = useCommentActions({ postId, onRefresh });
+
+  // 수정 UI 상태
+  const [editing, setEditing] = useState<boolean>(false);
+  const [editValue, setEditValue] = useState<string>(comment.content);
+
+  // 삭제 확인 다이얼로그
+  const [showDeleteDialog, setShowDeleteDialog] = useState<boolean>(false);
+
+  const onStartEdit = () => {
+    setEditing(true);
+    setEditValue(comment.content);
+  };
+
+  const onCancelEdit = () => {
+    setEditing(false);
+    setEditValue(comment.content);
+  };
+
+  const onSubmitEdit = async () => {
+    const res: CommentResponse | null = await doUpdate({
+      commentId: comment.id,
+      payload: { content: editValue },
+    });
+    if (res) {
+      setEditing(false);
+    }
+  };
   return (
     <div className={isReply ? 'ml-6' : ''}>
       <div
@@ -102,22 +134,91 @@ export default function CommentItem({
         ].join(' ')}
       >
         {/* header */}
-        <div className="mb-1 flex items-center gap-2">
-          <span className="text-sm font-semibold text-slate-900">{author}</span>
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-slate-900">{author}</span>
 
-          {isPostAuthor && (
-            <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
-              작성자
-            </span>
+            {isPostAuthor && (
+              <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
+                작성자
+              </span>
+            )}
+
+            <span className="text-xs text-slate-400">{created}</span>
+          </div>
+
+          {/* 내 댓글이면 수정/삭제 버튼 노출 */}
+          {isMine && (
+            <div className="flex items-center gap-1">
+              {!editing && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-8 px-2 text-slate-600"
+                  onClick={onStartEdit}
+                  disabled={deleting || updating}
+                >
+                  <Pencil className="h-4 w-4" />
+                  수정
+                </Button>
+              )}
+
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-8 px-2 text-red-600 hover:text-red-700"
+                onClick={() => setShowDeleteDialog(true)}
+                disabled={deleting || updating}
+              >
+                <Trash2 className="h-4 w-4" />
+                삭제
+              </Button>
+            </div>
           )}
-
-          <span className="text-xs text-slate-400">{created}</span>
         </div>
 
-        {/* content (멘션 하이라이트) */}
-        <p className="text-sm leading-6 whitespace-pre-wrap text-slate-700">
-          {renderWithMentions(comment.content)}
-        </p>
+        {/* content / edit */}
+        {!editing ? (
+          <p className="text-sm leading-6 whitespace-pre-wrap text-slate-700">
+            {renderWithMentions(comment.content)}
+          </p>
+        ) : (
+          <div className="mt-2">
+            <Textarea
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              className="min-h-24 resize-none"
+              maxLength={1000}
+              disabled={updating || deleting}
+            />
+
+            <div className="mt-3 flex items-center justify-between">
+              <span className="text-xs text-slate-500">{editValue.length}/1000</span>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-9"
+                  onClick={onCancelEdit}
+                  disabled={updating || deleting}
+                >
+                  <X className="h-4 w-4" />
+                  취소
+                </Button>
+                <Button
+                  type="button"
+                  className="h-9"
+                  onClick={onSubmitEdit}
+                  disabled={updating || deleting || editValue.trim().length === 0}
+                >
+                  <Check className="h-4 w-4" />
+                  저장
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* actions */}
         <div className="mt-2 flex items-center gap-2">
@@ -126,25 +227,12 @@ export default function CommentItem({
             variant="ghost"
             className="h-8 px-2 text-sm text-slate-600"
             onClick={() => setReplyOpen((v) => !v)}
+            disabled={editing} // 수정 중이면 답글 폼 토글 막아서 UX 단순화
           >
             <MessageSquare className="mr-1.5 h-4 w-4" />
             답글
           </Button>
-          {isMine && (
-            <>
-              <Button
-                type="button"
-                variant="ghost"
-                className="h-8 px-2 text-sm text-slate-600"
-                onClick={() => setEditOpen(true)}
-              >
-                수정
-              </Button>
-              <Button type="button" variant="ghost" className="h-8 px-2 text-sm text-red-600">
-                삭제
-              </Button>
-            </>
-          )}
+
           {replyCount > 0 && (
             <span className="text-xs text-slate-400">
               답글 {replyCount}
@@ -212,6 +300,21 @@ export default function CommentItem({
           </div>
         )}
       </div>
+
+      {/* 삭제 확인 다이얼로그 */}
+      <ConfirmDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        title="댓글 삭제"
+        description="정말 삭제할까요? 삭제한 댓글은 복구할 수 없습니다."
+        confirmText="삭제"
+        cancelText="취소"
+        onConfirm={async () => {
+          setShowDeleteDialog(false);
+          await doDelete(comment.id);
+        }}
+        variant="destructive"
+      />
     </div>
   );
 }

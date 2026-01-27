@@ -52,7 +52,7 @@ export default async function PostDetailPage({ params }: PageProps) {
           postId={postId}
           postAuthorId={res.data.authorId}
           postAuthorNickname={res.data.authorNickname}
-          currenetUserId={currentUserId}
+          currentUserId={currentUserId}
         />
       </div>
     </div>
