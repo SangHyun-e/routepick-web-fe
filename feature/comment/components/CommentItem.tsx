@@ -130,25 +130,26 @@ export default function CommentItem({
             <MessageSquare className="mr-1.5 h-4 w-4" />
             답글
           </Button>
-
+          {isMine && (
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-8 px-2 text-sm text-slate-600"
+                onClick={() => setEditOpen(true)}
+              >
+                수정
+              </Button>
+              <Button type="button" variant="ghost" className="h-8 px-2 text-sm text-red-600">
+                삭제
+              </Button>
+            </>
+          )}
           {replyCount > 0 && (
             <span className="text-xs text-slate-400">
               답글 {replyCount}
               {hiddenCount > 0 && !showAllReplies ? ` · +${hiddenCount}` : ''}
             </span>
-          )}
-          {isMine && (
-            <Button
-              type="button"
-              variant="ghost"
-              className="h-8 px-2 text-sm text-slate-600"
-              onClick={() => {
-                // TODO
-              }}
-            >
-              <Pencil className="mr-1.5 h-4 w-4" />
-              수정
-            </Button>
           )}
         </div>
 
@@ -177,6 +178,7 @@ export default function CommentItem({
                 postId={postId}
                 postAuthorId={postAuthorId}
                 postAuthorNickname={postAuthorNickname}
+                currentUserId={currentUserId}
                 comment={reply}
                 onRefresh={onRefresh}
               />
