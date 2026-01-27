@@ -9,15 +9,21 @@ import { createRootComment } from '@/feature/comment/api';
 
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import Pagination from '@/feature/post/list/Pagination'; // ✅ PostList에서 쓰는 Pagination 재사용(경로 맞춰)
+import Pagination from '@/feature/post/list/Pagination'; // PostList에서 쓰는 Pagination 재사용
 
 interface Props {
   postId: number;
   postAuthorId: number | null;
   postAuthorNickname: string | null;
+  currentUserId: number | null;
 }
 
-export default function CommentSection({ postId, postAuthorId, postAuthorNickname }: Props) {
+export default function CommentSection({
+  postId,
+  postAuthorId,
+  postAuthorNickname,
+  currentUserId,
+}: Props) {
   const { data, loading, page, setPage, totalPages, refresh } = useComments({
     postId,
     size: 20,
@@ -116,12 +122,13 @@ export default function CommentSection({ postId, postAuthorId, postAuthorNicknam
         postId={postId}
         postAuthorId={postAuthorId}
         postAuthorNickname={postAuthorNickname}
+        currentUserId={currentUserId}
         comments={data?.content ?? []}
         loading={loading}
         onRefresh={refresh}
       />
 
-      {/* ✅ PostList와 동일한 Pagination UI */}
+      {/* PostList와 동일한 Pagination UI */}
       <Pagination
         currentPage={page}
         totalPages={totalPages}

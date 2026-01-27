@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, Pencil } from 'lucide-react';
 
 import type { CommentResponse } from '@/feature/comment/types';
 import { Button } from '@/components/ui/button';
@@ -44,6 +44,7 @@ interface Props {
   postId: number;
   postAuthorId: number | null;
   postAuthorNickname: string | null;
+  currentUserId: number | null;
   comment: CommentResponse;
   onRefresh: () => Promise<void>;
 }
@@ -52,12 +53,16 @@ export default function CommentItem({
   postId,
   postAuthorId,
   postAuthorNickname,
+  currentUserId,
   comment,
   onRefresh,
 }: Props) {
   const isReply: boolean = comment.depth > 0;
   const author: string = comment.authorNickname ?? '익명';
   const created: string = new Date(comment.createdAt).toLocaleDateString();
+  const isMine: boolean = Boolean(
+    currentUserId != null && comment.authorId != null && currentUserId === comment.authorId,
+  );
 
   // 게시글 작성자 댓글 표시(배지)
   const isPostAuthor: boolean = Boolean(
@@ -131,6 +136,19 @@ export default function CommentItem({
               답글 {replyCount}
               {hiddenCount > 0 && !showAllReplies ? ` · +${hiddenCount}` : ''}
             </span>
+          )}
+          {isMine && (
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-8 px-2 text-sm text-slate-600"
+              onClick={() => {
+                // TODO
+              }}
+            >
+              <Pencil className="mr-1.5 h-4 w-4" />
+              수정
+            </Button>
           )}
         </div>
 
