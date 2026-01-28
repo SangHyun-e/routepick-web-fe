@@ -1,6 +1,7 @@
+// feature/comment/components/CommentSection.tsx
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import CommentList from '@/feature/comment/components/CommentList';
@@ -9,13 +10,14 @@ import { createRootComment } from '@/feature/comment/api';
 
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import Pagination from '@/feature/post/list/Pagination'; // PostList에서 쓰는 Pagination 재사용
+import Pagination from '@/feature/post/list/Pagination';
 
 interface Props {
   postId: number;
   postAuthorId: number | null;
   postAuthorNickname: string | null;
   currentUserId: number | null;
+  commentCount: number; //  서버에서 내려온 초기값
 }
 
 export default function CommentSection({
@@ -23,16 +25,28 @@ export default function CommentSection({
   postAuthorId,
   postAuthorNickname,
   currentUserId,
+  commentCount,
 }: Props) {
   const { data, loading, page, setPage, totalPages, refresh } = useComments({
     postId,
     size: 20,
   });
 
+  //  1) 화면에 보여줄 댓글 수 (루트+대댓글, ACTIVE만)
+  const [count, setCount] = useState<number>(commentCount);
+
+  //  2) 라우트 이동/새 fetch로 commentCount가 바뀌면 state도 동기화
+  useEffect(() => {
+    setCount(commentCount);
+  }, [commentCount]);
+
+  // 3) 생성/삭제/대댓글 등에 의한 증감만 여기서 처리
+  const onCountDelta = (delta: number) => {
+    setCount((prev: number) => Math.max(0, prev + delta));
+  };
+
   const [content, setContent] = useState<string>('');
   const [submitting, setSubmitting] = useState<boolean>(false);
-
-  const count: number = data?.totalElements ?? 0;
 
   const onSubmit = async () => {
     const trimmed: string = content.trim();
@@ -61,8 +75,13 @@ export default function CommentSection({
         return;
       }
 
+      // 새로고침 없이 즉시 반영
+      onCountDelta(+1);
+
       toast.success('댓글이 등록되었습니다.');
       setContent('');
+
+      // 목록만 최신화(카운트는 이미 반영했으니 refresh는 목록용)
       await refresh();
     } catch {
       toast.error('댓글 작성 중 오류가 발생했습니다.');
@@ -126,9 +145,9 @@ export default function CommentSection({
         comments={data?.content ?? []}
         loading={loading}
         onRefresh={refresh}
+        onCountDelta={onCountDelta} //
       />
 
-      {/* PostList와 동일한 Pagination UI */}
       <Pagination
         currentPage={page}
         totalPages={totalPages}

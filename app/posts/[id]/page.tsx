@@ -53,6 +53,7 @@ export default async function PostDetailPage({ params }: PageProps) {
           postAuthorId={res.data.authorId}
           postAuthorNickname={res.data.authorNickname}
           currentUserId={currentUserId}
+          commentCount={res.data.commentCount}
         />
       </div>
     </div>
