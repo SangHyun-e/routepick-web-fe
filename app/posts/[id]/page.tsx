@@ -40,6 +40,7 @@ export default async function PostDetailPage({ params }: PageProps) {
 
   const meRes = await fetchMeServer();
   const isOwner: boolean = meRes.ok && meRes.data.id === res.data.authorId;
+  const currentUserId: number | null = meRes.ok ? meRes.data.id : null;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -51,6 +52,8 @@ export default async function PostDetailPage({ params }: PageProps) {
           postId={postId}
           postAuthorId={res.data.authorId}
           postAuthorNickname={res.data.authorNickname}
+          currentUserId={currentUserId}
+          commentCount={res.data.commentCount}
         />
       </div>
     </div>

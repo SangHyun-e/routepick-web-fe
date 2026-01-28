@@ -1,3 +1,4 @@
+// feature/comment/components/CommentList.tsx
 'use client';
 
 import CommentItem from '@/feature/comment/components/CommentItem';
@@ -7,18 +8,22 @@ interface Props {
   postId: number;
   postAuthorId: number | null;
   postAuthorNickname: string | null;
+  currentUserId: number | null;
   comments: CommentResponse[];
   loading: boolean;
   onRefresh: () => Promise<void>;
+  onCountDelta: (delta: number) => void;
 }
 
 export default function CommentList({
   postId,
   postAuthorId,
   postAuthorNickname,
+  currentUserId,
   comments,
   loading,
   onRefresh,
+  onCountDelta,
 }: Props) {
   if (loading) {
     return (
@@ -46,8 +51,10 @@ export default function CommentList({
           postId={postId}
           postAuthorId={postAuthorId}
           postAuthorNickname={postAuthorNickname}
+          currentUserId={currentUserId}
           comment={comment}
           onRefresh={onRefresh}
+          onCountDelta={onCountDelta}
         />
       ))}
     </div>
