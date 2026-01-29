@@ -1,10 +1,10 @@
 'use client';
 
-import { deleteComment, toggleCommentLike, updateComment } from '@/feature/comment/api';
+import { deleteComment, updateComment, toggleCommentLike } from '@/feature/comment/api';
 import {
-  CommentLikeToggleResponse,
   CommentResponse,
   CommentUpdateRequest,
+  CommentLikeToggleResponse,
 } from '@/feature/comment/types';
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
@@ -20,18 +20,13 @@ type UpdateParams = {
 };
 
 export function useCommentActions({ postId, onRefresh }: useCommentActionsOptions) {
-  // 삭제/수정 중복 클릭 방지용 로딩 상태
   const [deleting, setDeleting] = useState<boolean>(false);
   const [updating, setUpdating] = useState<boolean>(false);
   const [liking, setLiking] = useState<boolean>(false);
 
-  /** 댓글 삭제
-   * 백엔드 권한 검증(작성자/관리자)은 서버가 책임
-   * - 프론트는 UX용 (버튼 disable, 토스트, refresh)만 처리
-   */
   const doDelete = useCallback(
-    async (commentId: number) => {
-      if (deleting) return;
+    async (commentId: number): Promise<boolean> => {
+      if (deleting) return false;
 
       setDeleting(true);
 
@@ -41,27 +36,24 @@ export function useCommentActions({ postId, onRefresh }: useCommentActionsOption
         if (!res.ok) {
           if (res.status === 401) {
             toast.error('로그인이 필요합니다.');
-            return;
+            return false;
           }
           toast.error(res.message ?? '댓글 삭제에 실패했습니다.');
-          return;
+          return false;
         }
 
         toast.success('댓글이 삭제되었습니다.');
         await onRefresh();
+        return true;
       } catch {
         toast.error('댓글 삭제 중 오류가 발생했습니다.');
+        return false;
       } finally {
         setDeleting(false);
       }
     },
     [deleting, postId, onRefresh],
   );
-
-  /**
-   * 댓글 수정 실행
-   * -payload.content만 받는 구조
-   */
 
   const doUpdate = useCallback(
     async ({ commentId, payload }: UpdateParams): Promise<CommentResponse | null> => {
@@ -104,11 +96,6 @@ export function useCommentActions({ postId, onRefresh }: useCommentActionsOption
     [onRefresh, postId, updating],
   );
 
-  /** 댓글 좋아요 토글
-   *  - UI에서 optimistic update
-   *  - 여기선 서버 결과만 반환
-   */
-
   const doToggleLike = useCallback(
     async (commentId: number): Promise<CommentLikeToggleResponse | null> => {
       if (liking) return null;
@@ -123,12 +110,13 @@ export function useCommentActions({ postId, onRefresh }: useCommentActionsOption
             toast.error('로그인이 필요합니다.');
             return null;
           }
-          toast.error(res.message ?? '댓글 좋아요에 실패했습니다.');
+          toast.error(res.message ?? '좋아요 실패');
           return null;
         }
+
         return res.data ?? null;
       } catch {
-        toast.error('댓글 좋아요 처리 중 오류가 발생했습니다.');
+        toast.error('좋아요 중 오류가 발생했습니다.');
         return null;
       } finally {
         setLiking(false);
@@ -138,11 +126,9 @@ export function useCommentActions({ postId, onRefresh }: useCommentActionsOption
   );
 
   return {
-    // states
     deleting,
     updating,
     liking,
-    // actions
     doDelete,
     doUpdate,
     doToggleLike,
