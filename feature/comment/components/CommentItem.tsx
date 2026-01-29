@@ -2,7 +2,8 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { Check, MessageSquare, Pencil, Trash2, X } from 'lucide-react';
+import { Check, Heart, MessageSquare, Pencil, Trash2, X } from 'lucide-react';
+import { toast } from 'sonner';
 
 import type { CommentResponse } from '@/feature/comment/types';
 import { Button } from '@/components/ui/button';
@@ -13,15 +14,14 @@ import CommentReplyForm from '@/feature/comment/components/CommentReplyForm';
 import { useCommentActions } from '@/feature/comment/hooks/useCommentAction';
 
 /**
- * @멘션 하이라이트 렌더링
- * - "@닉네임" 패턴을 찾아서 span으로 감싸 강조
+ * "@닉네임" 멘션 하이라이트 렌더링
+ * - 정규식으로 멘션 패턴을 찾아 span으로 감싸 강조
  */
 function renderWithMentions(text: string) {
   const regex: RegExp = /@[\w가-힣]+/g;
-
   const nodes: React.ReactNode[] = [];
-  let lastIndex: number = 0;
 
+  let lastIndex: number = 0;
   let match: RegExpExecArray | null = regex.exec(text);
 
   while (match !== null) {
@@ -50,7 +50,7 @@ function renderWithMentions(text: string) {
 }
 
 /**
- * 얇은 디바이더(“대화 계속됨”)
+ * “대화 계속됨” 디바이더
  * - 삭제된 부모 댓글 아래에서 replies 시작 전에 보여주기
  */
 function ConversationDivider() {
@@ -70,7 +70,11 @@ interface Props {
   currentUserId: number | null;
   comment: CommentResponse;
   onRefresh: () => Promise<void>;
-  onCountDelta: (delta: number) => void;
+  /**
+   * 댓글 수(루트+대댓글) 즉시 반영용
+   * - 베스트댓글 섹션처럼 카운트 반영이 필요 없으면 생략 가능
+   */
+  onCountDelta?: (delta: number) => void;
 }
 
 export default function CommentItem({
@@ -80,11 +84,12 @@ export default function CommentItem({
   currentUserId,
   comment,
   onRefresh,
-  onCountDelta,
+  onCountDelta = () => {
+    /* ignore */
+  },
 }: Props) {
   // 1) 기본 파생값
   const isReply: boolean = comment.depth > 0;
-
   const isDeleted: boolean = comment.status === 'DELETED';
 
   const author: string = isDeleted ? '알 수 없음' : (comment.authorNickname ?? '익명');
@@ -112,29 +117,58 @@ export default function CommentItem({
     return `@${comment.authorNickname} `;
   }, [comment.authorNickname]);
 
+  /**
+   * replies 원본(렌더링용): DELETED 포함 유지
+   * - 삭제된 답글도 화면에는 보일 수 있게(마스킹/표시 유지)
+   */
   const replies: CommentResponse[] = useMemo(() => {
     const raw = comment.replies;
     return Array.isArray(raw) ? raw : [];
   }, [comment.replies]);
 
-  const replyCount: number = replies.length;
+  /**
+   * 카운트/표시용 정책:
+   * - 답글 수는 ACTIVE만 카운트
+   * - 목록 렌더링은 기존대로 replies(=DELETED 포함)를 사용
+   */
+  const activeReplies: CommentResponse[] = useMemo(() => {
+    return replies.filter((r: CommentResponse) => r.status !== 'DELETED');
+  }, [replies]);
+
+  const replyCount: number = activeReplies.length;
+
   const [showAllReplies, setShowAllReplies] = useState<boolean>(false);
 
+  /**
+   * 렌더링에 사용할 visibleReplies
+   * - 기존 UX 유지: 상위 3개(삭제 포함) 또는 전체
+   */
   const visibleReplies: CommentResponse[] = useMemo(() => {
     if (showAllReplies) return replies;
     return replies.slice(0, 3);
   }, [replies, showAllReplies]);
 
-  const hiddenCount: number = Math.max(0, replyCount - visibleReplies.length);
+  /**
+   * hiddenCount 계산은 "ACTIVE 기준"으로 해야
+   * - '답글 10 · +7' 같은 숫자에서 DELETED가 포함되지 않음
+   */
+  const visibleActiveCount: number = useMemo(() => {
+    return visibleReplies.filter((r: CommentResponse) => r.status !== 'DELETED').length;
+  }, [visibleReplies]);
 
-  // 3) 수정/삭제 hook
-  const { deleting, updating, doDelete, doUpdate } = useCommentActions({ postId, onRefresh });
+  const hiddenCount: number = Math.max(0, replyCount - visibleActiveCount);
 
-  // 수정 UI 상태
+  // 3) 수정/삭제/좋아요 hook
+  const { deleting, updating, liking, doDelete, doUpdate, doToggleLike } = useCommentActions({
+    postId,
+    onRefresh,
+  });
+
+  // 4) 수정 UI 상태
   const [editing, setEditing] = useState<boolean>(false);
   const [editValue, setEditValue] = useState<string>(comment.content);
 
-  // 삭제 확인 다이얼로그
+  // 5) 삭제 확인 다이얼로그
   const [showDeleteDialog, setShowDeleteDialog] = useState<boolean>(false);
 
   const onStartEdit = () => {
@@ -158,7 +192,39 @@ export default function CommentItem({
     }
   };
 
-  // 4) UI
+  // 6) 좋아요 optimistic state
+  const [liked, setLiked] = useState<boolean>(comment.isLikedByCurrentUser ?? false);
+  const [likeCount, setLikeCount] = useState<number>(comment.likeCount);
+
+  const onClickLike = async () => {
+    if (isDeleted) return;
+
+    const prevLiked: boolean = liked;
+    const prevCount: number = likeCount;
+
+    // optimistic 적용
+    const nextLiked: boolean = !prevLiked;
+    const nextCount: number = Math.max(0, prevCount + (nextLiked ? 1 : -1));
+
+    setLiked(nextLiked);
+    setLikeCount(nextCount);
+
+    const data = await doToggleLike(comment.id);
+
+    if (!data) {
+      // 실패 → 롤백
+      setLiked(prevLiked);
+      setLikeCount(prevCount);
+      return;
+    }
+
+    // 서버값 확정 반영
+    setLiked(data.liked);
+    setLikeCount(data.likeCount);
+
+    toast.success(data.liked ? '좋아요!' : '좋아요 취소');
+  };
+
   return (
     <div className={isReply ? 'ml-6' : ''}>
       <div
@@ -168,8 +234,8 @@ export default function CommentItem({
           isPostAuthor ? 'border-blue-200' : 'border-slate-200',
         ].join(' ')}
       >
-        {/* header */}
-        <div className="mb-1 flex items-center justify-between gap-2">
+        {/* Header */}
+        <div className="mb-2 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-slate-900">{author}</span>
 
@@ -182,9 +248,7 @@ export default function CommentItem({
             <span className="text-xs text-slate-400">{created}</span>
           </div>
 
-          {/* 1) 삭제된 댓글일 때도 오른쪽 “폭”은 유지해서 정렬 깨짐 방지 */}
           <div className="flex min-w-[132px] justify-end">
-            {/* 내 댓글이면 수정/삭제 버튼 노출 (삭제된 댓글이면 숨김) */}
             {isMine ? (
               <div className="flex items-center gap-1">
                 {!editing && (
@@ -196,7 +260,7 @@ export default function CommentItem({
                     disabled={deleting || updating}
                   >
                     <Pencil className="h-4 w-4" />
-                    <span>수정</span>
+                    <span className="text-xs">수정</span>
                   </Button>
                 )}
 
@@ -208,7 +272,7 @@ export default function CommentItem({
                   disabled={deleting || updating}
                 >
                   <Trash2 className="h-4 w-4" />
-                  <span>삭제</span>
+                  <span className="text-xs">삭제</span>
                 </Button>
               </div>
             ) : (
@@ -217,7 +281,7 @@ export default function CommentItem({
           </div>
         </div>
 
-        {/* content / edit */}
+        {/* Content / Edit */}
         {isDeleted ? (
           <p className="text-sm leading-6 whitespace-pre-wrap text-slate-400 italic">
             삭제된 댓글입니다.
@@ -227,7 +291,7 @@ export default function CommentItem({
             {renderWithMentions(comment.content)}
           </p>
         ) : (
-          <div className="mt-2">
+          <div className="mt-2 space-y-3">
             <Textarea
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
@@ -236,19 +300,19 @@ export default function CommentItem({
               disabled={updating || deleting}
             />
 
-            <div className="mt-3 flex items-center justify-between">
+            <div className="flex items-center justify-between">
               <span className="text-xs text-slate-500">{editValue.length}/1000</span>
 
               <div className="flex items-center gap-2">
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-9 gap-1.5"
+                  className="h-9 gap-1.5 bg-transparent"
                   onClick={onCancelEdit}
                   disabled={updating || deleting}
                 >
                   <X className="h-4 w-4" />
-                  <span>취소</span>
+                  <span className="text-xs">취소</span>
                 </Button>
                 <Button
                   type="button"
@@ -257,15 +321,31 @@ export default function CommentItem({
                   disabled={updating || deleting || editValue.trim().length === 0}
                 >
                   <Check className="h-4 w-4" />
-                  <span>저장</span>
+                  <span className="text-xs">저장</span>
                 </Button>
               </div>
             </div>
           </div>
         )}
 
-        {/* actions */}
-        <div className="mt-2 flex items-center gap-2">
+        {/* Actions */}
+        <div className="mt-3 flex items-center gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-8 gap-1.5 px-2 text-sm"
+            onClick={onClickLike}
+            disabled={isDeleted || liking || editing}
+          >
+            <Heart
+              className={['h-4 w-4', liked ? 'fill-rose-500 text-rose-500' : 'text-slate-500'].join(
+                ' ',
+              )}
+            />
+            <span className={liked ? 'text-rose-600' : 'text-slate-600'}>좋아요</span>
+            <span className="text-slate-400">{likeCount}</span>
+          </Button>
+
           <Button
             type="button"
             variant="ghost"
@@ -277,6 +357,7 @@ export default function CommentItem({
             <span>답글</span>
           </Button>
 
+          {/* ✅ 답글 수는 ACTIVE만 카운트 */}
           {replyCount > 0 && (
             <span className="text-xs text-slate-400">
               답글 {replyCount}
@@ -285,7 +366,7 @@ export default function CommentItem({
           )}
         </div>
 
-        {/* reply form */}
+        {/* Reply Form */}
         {replyOpen && !isDeleted && (
           <div className="mt-3">
             <CommentReplyForm
@@ -295,20 +376,20 @@ export default function CommentItem({
               onCancel={() => setReplyOpen(false)}
               onSubmitted={async () => {
                 setReplyOpen(false);
-                onCountDelta(1); //
-                await onRefresh();
+                onCountDelta(1); // 대댓글 생성 시 즉시 카운트 반영
+                await onRefresh(); // 목록 최신화
               }}
             />
           </div>
         )}
 
-        {/* 2) 삭제된 부모 + replies가 있으면 replies 시작 전에 “대화 계속됨” 디바이더 */}
-        {isDeleted && replyCount > 0 && <ConversationDivider />}
+        {/* Conversation Divider */}
+        {isDeleted && replies.length > 0 && <ConversationDivider />}
 
-        {/* replies list + 더보기 */}
-        {replyCount > 0 && (
+        {/* Replies List (렌더링은 기존처럼 DELETED 포함) */}
+        {replies.length > 0 && (
           <div className="mt-4 space-y-2">
-            {visibleReplies.map((reply) => (
+            {visibleReplies.map((reply: CommentResponse) => (
               <CommentItem
                 key={reply.id}
                 postId={postId}
@@ -334,7 +415,7 @@ export default function CommentItem({
               </div>
             )}
 
-            {showAllReplies && replyCount > 3 && (
+            {showAllReplies && replies.length > 3 && (
               <div className="pt-1">
                 <Button
                   type="button"
@@ -350,7 +431,7 @@ export default function CommentItem({
         )}
       </div>
 
-      {/* 삭제 확인 다이얼로그 */}
+      {/* Delete Confirm Dialog */}
       <ConfirmDialog
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
@@ -361,9 +442,10 @@ export default function CommentItem({
         variant="destructive"
         onConfirm={async () => {
           setShowDeleteDialog(false);
-
-          await doDelete(comment.id); // 한 번만 호출
-          onCountDelta(-1); // ✅ 즉시 반영
+          const ok: boolean = await doDelete(comment.id);
+          if (ok) {
+            onCountDelta(-1); // 댓글 삭제 시 즉시 카운트 반영
+          }
         }}
       />
     </div>
