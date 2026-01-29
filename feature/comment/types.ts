@@ -11,6 +11,7 @@ export type CommentResponse = {
   authorId: number | null;
   authorNickname: string | null;
   replies: CommentResponse[];
+  isLikedByCurrentUser?: boolean;
 };
 
 export type CommentCreateRequest = {

@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { Check, MessageSquare, Pencil, Trash2, X } from 'lucide-react';
+import { Check, Heart, MessageSquare, Pencil, Trash2, X } from 'lucide-react';
 
 import type { CommentResponse } from '@/feature/comment/types';
 import { Button } from '@/components/ui/button';
@@ -127,14 +127,17 @@ export default function CommentItem({
 
   const hiddenCount: number = Math.max(0, replyCount - visibleReplies.length);
 
-  // 3) 수정/삭제 hook
-  const { deleting, updating, doDelete, doUpdate } = useCommentActions({ postId, onRefresh });
+  // 3) 수정/삭제/+좋아요 hook
+  const { deleting, updating, liking, doDelete, doUpdate, doToggleLike } = useCommentActions({
+    postId,
+    onRefresh,
+  });
 
-  // 수정 UI 상태
+  // 4) 수정 UI 상태
   const [editing, setEditing] = useState<boolean>(false);
   const [editValue, setEditValue] = useState<string>(comment.content);
 
-  // 삭제 확인 다이얼로그
+  // 5) 삭제 확인 다이얼로그
   const [showDeleteDialog, setShowDeleteDialog] = useState<boolean>(false);
 
   const onStartEdit = () => {
@@ -158,7 +161,35 @@ export default function CommentItem({
     }
   };
 
-  // 4) UI
+  // 6) 좋아요 optimistic state
+  const [liked, setLiked] = useState<boolean>(comment.isLikedByCurrentUser ?? false);
+  const [likeCount, setLikeCount] = useState<number>(comment.likeCount);
+
+  const onClickLike = async () => {
+    if (isDeleted) return;
+
+    const prevLiked: boolean = liked;
+    const prevCount: number = likeCount;
+
+    // optimistic 적용
+    const nextLiked: boolean = !prevLiked;
+    const nextCount: number = Math.max(0, prevCount + (nextLiked ? 1 : -1));
+
+    setLiked(nextLiked);
+    setLikeCount(nextCount);
+
+    const data = await doToggleLike(comment.id);
+
+    if (!data) {
+      setLiked(prevLiked);
+      setLikeCount(prevCount);
+      return;
+    }
+
+    setLiked(data.liked);
+    setLikeCount(data.likeCount);
+  };
+
   return (
     <div className={isReply ? 'ml-6' : ''}>
       <div
@@ -266,6 +297,22 @@ export default function CommentItem({
 
         {/* actions */}
         <div className="mt-2 flex items-center gap-2">
+          {/* 좋아요 버튼 */}
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-8 gap-1.5 px-2 text-sm"
+            onClick={onClickLike}
+            disabled={isDeleted || liking || editing}
+          >
+            <Heart
+              className={['h-4 w-4', liked ? 'fill-rose-500 text-rose-500' : 'text-slate-500'].join(
+                ' ',
+              )}
+            />
+            <span className={liked ? 'text-rose-600' : 'text-slate-600'}>좋아요</span>
+            <span className="text-slate-400">{likeCount}</span>
+          </Button>
           <Button
             type="button"
             variant="ghost"
@@ -363,7 +410,7 @@ export default function CommentItem({
           setShowDeleteDialog(false);
 
           await doDelete(comment.id); // 한 번만 호출
-          onCountDelta(-1); // ✅ 즉시 반영
+          onCountDelta(-1); //  즉시 반영
         }}
       />
     </div>
