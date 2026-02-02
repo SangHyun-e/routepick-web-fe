@@ -1,3 +1,5 @@
+import { CommentResponse } from '@/feature/comment/types';
+
 export type PostStatus = 'ACTIVE' | 'HIDDEN' | 'DELETED';
 
 export type PostListItemResponse = {
