@@ -1,0 +1,238 @@
+'use client';
+
+import { useState, useMemo, useEffect } from 'react';
+import { toast } from 'sonner';
+import { MessageCircle, Star } from 'lucide-react';
+
+import CommentList from '@/feature/comment/components/CommentList';
+import { useComments } from '@/feature/comment/hooks/useComments';
+import { createRootComment } from '@/feature/comment/api';
+
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import Pagination from '@/feature/post/list/Pagination';
+import { CommentResponse } from '@/feature/comment/types';
+import CommentItem from '@/feature/comment/components/CommentItem';
+
+interface Props {
+  postId: number;
+  postAuthorId: number | null;
+  postAuthorNickname: string | null;
+  currentUserId: number | null;
+  commentCount: number;
+  bestComments?: CommentResponse[];
+}
+
+export default function CommentSection({
+  postId,
+  postAuthorId,
+  postAuthorNickname,
+  currentUserId,
+  commentCount,
+  bestComments = [],
+}: Props) {
+  const { data, loading, page, setPage, totalPages, refresh } = useComments({
+    postId,
+    size: 20,
+  });
+
+  const [count, setCount] = useState<number>(commentCount);
+
+  useEffect(() => {
+    setCount(commentCount);
+  }, [commentCount]);
+
+  const onCountDelta = (delta: number) => {
+    setCount((prev: number) => Math.max(0, prev + delta));
+  };
+
+  const safeBest: CommentResponse[] = useMemo(() => {
+    return Array.isArray(bestComments) ? bestComments : [];
+  }, [bestComments]);
+
+  const [content, setContent] = useState<string>('');
+  const [submitting, setSubmitting] = useState<boolean>(false);
+
+  const onSubmit = async () => {
+    const trimmed: string = content.trim();
+
+    if (trimmed.length === 0) {
+      toast.error('댓글 내용을 입력해주세요.');
+      return;
+    }
+    if (trimmed.length > 1000) {
+      toast.error('댓글은 최대 1000자까지 입력할 수 있습니다.');
+      return;
+    }
+    if (submitting) return;
+
+    setSubmitting(true);
+
+    try {
+      const res = await createRootComment(postId, { content: trimmed });
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          toast.error('로그인이 필요합니다.');
+          return;
+        }
+        toast.error(res.message ?? '댓글 작성에 실패했습니다.');
+        return;
+      }
+
+      onCountDelta(+1);
+      toast.success('댓글이 등록되었습니다.');
+      setContent('');
+      await refresh();
+    } catch {
+      toast.error('댓글 작성 중 오류가 발생했습니다.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <section className="mt-12 space-y-6">
+      {/* 섹션 헤더 */}
+      <div className="flex items-center gap-3">
+        <MessageCircle className="h-6 w-6 text-slate-900" strokeWidth={2} />
+        <h2 className="text-xl font-bold text-slate-900">댓글</h2>
+        <span className="inline-flex items-center justify-center rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
+          {count}
+        </span>
+      </div>
+
+      {/* 베스트 댓글 섹션 */}
+      {safeBest.length > 0 && (
+        <div className="overflow-hidden rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 via-amber-50/70 to-white">
+          <div className="border-b border-amber-100 bg-gradient-to-r from-amber-50/50 to-transparent px-5 py-4">
+            <div className="flex items-center gap-2">
+              <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
+              <p className="text-sm font-bold text-slate-900">베스트 댓글</p>
+              <p className="text-xs text-slate-500">좋아요 순 상위 노출</p>
+            </div>
+          </div>
+
+          <div className="space-y-3 p-5">
+            {safeBest.map((c: CommentResponse) => (
+              <div
+                key={c.id}
+                className="rounded-xl border border-amber-100/50 bg-white/60 p-4 backdrop-blur-sm transition-all hover:bg-white/80"
+              >
+                <CommentItem
+                  postId={postId}
+                  postAuthorId={postAuthorId}
+                  postAuthorNickname={postAuthorNickname}
+                  currentUserId={currentUserId}
+                  comment={c}
+                  onRefresh={refresh}
+                  onCountDelta={() => {
+                    /* ignore */
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 댓글 작성 폼 */}
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md">
+        <div className="border-b border-slate-100 bg-gradient-to-r from-slate-50 to-transparent px-6 py-4">
+          <p className="text-sm font-semibold text-slate-900">댓글 작성</p>
+          <p className="mt-1 text-xs text-slate-500">다른 사용자와 의견을 나눠보세요</p>
+        </div>
+
+        <div className="space-y-4 px-6 py-4">
+          {!currentUserId && (
+            <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-2">
+              <p className="text-sm text-blue-800">
+                💡 댓글을 작성하려면{' '}
+                <a href="/login" className="font-semibold underline hover:no-underline">
+                  로그인
+                </a>
+                이 필요합니다.
+              </p>
+            </div>
+          )}
+
+          <Textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder={
+              currentUserId
+                ? '댓글을 입력하세요. (Shift+Enter: 줄바꿈)'
+                : '로그인 후 댓글을 작성할 수 있습니다.'
+            }
+            className="min-h-28 resize-none border-slate-200 focus:border-slate-400"
+            maxLength={1000}
+            disabled={submitting || !currentUserId}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                void onSubmit();
+              }
+            }}
+          />
+
+          <div className="flex items-center justify-between">
+            <span
+              className={`text-xs font-medium ${
+                content.length > 900 ? 'text-amber-600' : 'text-slate-400'
+              }`}
+            >
+              {content.length}/1000
+            </span>
+            <Button
+              onClick={onSubmit}
+              disabled={submitting || content.trim().length === 0 || !currentUserId}
+              className="min-w-28"
+            >
+              {submitting ? (
+                <>
+                  <span className="mr-2 inline-block animate-spin">⏳</span>
+                  등록 중…
+                </>
+              ) : (
+                '댓글 등록'
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* 댓글 목록 */}
+      {loading ? (
+        <div className="space-y-3">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-20 animate-pulse rounded-xl bg-slate-100" />
+          ))}
+        </div>
+      ) : (
+        <>
+          <CommentList
+            postId={postId}
+            postAuthorId={postAuthorId}
+            postAuthorNickname={postAuthorNickname}
+            currentUserId={currentUserId}
+            comments={data?.content ?? []}
+            loading={loading}
+            onRefresh={refresh}
+            onCountDelta={onCountDelta}
+          />
+
+          {/* 페이지네이션 */}
+          {totalPages > 1 && (
+            <div className="flex justify-center pt-2">
+              <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={(next: number) => setPage(next)}
+              />
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
+}

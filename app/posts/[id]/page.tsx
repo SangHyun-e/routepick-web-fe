@@ -4,13 +4,13 @@ import PostDetailError from '@/feature/post/components/PostDetailError';
 
 import { fetchPostServer } from '@/feature/post/api.server';
 import { fetchMeServer } from '@/feature/user/api.server';
-
+import CommentSection from '@/feature/comment/components/CommentSection';
 interface PageProps {
   params: { id: string };
 }
 
 export default async function PostDetailPage({ params }: PageProps) {
-  const postId = Number(params.id);
+  const postId: number = Number(params.id);
 
   if (!Number.isFinite(postId)) {
     return (
@@ -39,12 +39,24 @@ export default async function PostDetailPage({ params }: PageProps) {
   }
 
   const meRes = await fetchMeServer();
-  const isOwner = meRes.ok && meRes.data.id === res.data.authorId;
+  const isOwner: boolean = meRes.ok && meRes.data.id === res.data.authorId;
+  const currentUserId: number | null = meRes.ok ? meRes.data.id : null;
 
   return (
     <div className="min-h-screen bg-slate-50">
       <PostDetailHeader post={res.data} isOwner={isOwner} />
-      <PostDetailContent post={res.data} />
+
+      <div className="mx-auto w-full max-w-3xl px-4 pb-16">
+        <PostDetailContent post={res.data} />
+        <CommentSection
+          postId={postId}
+          postAuthorId={res.data.authorId}
+          postAuthorNickname={res.data.authorNickname}
+          currentUserId={currentUserId}
+          commentCount={res.data.commentCount}
+          bestComments={res.data.bestComments ?? []}
+        />
+      </div>
     </div>
   );
 }

@@ -6,11 +6,11 @@ interface PostDetailContentProps {
 }
 
 export default function PostDetailContent({ post }: PostDetailContentProps) {
-  const hasCoordinates = post.latitude != null && post.longitude != null;
-  const hasTags = Array.isArray(post.tags) && post.tags.length > 0;
+  const hasCoordinates: boolean = post.latitude != null && post.longitude != null;
+  const hasTags: boolean = Array.isArray(post.tags) && post.tags.length > 0;
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className="py-8">
       <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="prose prose-slate max-w-none">
           <p className="leading-relaxed whitespace-pre-wrap text-slate-700">{post.content}</p>
@@ -34,7 +34,7 @@ export default function PostDetailContent({ post }: PostDetailContentProps) {
               <div className="flex items-start gap-3">
                 <TagIcon className="mt-0.5 h-5 w-5 flex-shrink-0 text-slate-400" />
                 <div className="flex flex-wrap gap-2">
-                  {post.tags.map((tag) => (
+                  {post.tags.map((tag: string) => (
                     <span
                       key={tag}
                       className="rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700"

@@ -1,3 +1,5 @@
+import { CommentResponse } from '@/feature/comment/types';
+
 export type PostStatus = 'ACTIVE' | 'HIDDEN' | 'DELETED';
 
 export type PostListItemResponse = {
@@ -44,6 +46,9 @@ export type PostResponse = {
   authorId: number | null;
   authorNickname: string | null;
   isLikedByCurrentUser: boolean | null;
+  commentCount: number;
+
+  bestComments: CommentResponse[];
 };
 
 export type PostCreateRequest = {
