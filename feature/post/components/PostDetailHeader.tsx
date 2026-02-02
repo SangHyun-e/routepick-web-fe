@@ -63,6 +63,9 @@ export default function PostDetailHeader({ post, isOwner }: PostDetailHeaderProp
     }
   };
 
+  const isEdited: boolean = Boolean(post.updatedAt && post.updatedAt !== post.createdAt);
+  const editedAtText: string = isEdited ? formatDate(post.updatedAt!) : '';
+
   return (
     <>
       <div className="border-b border-slate-200 bg-white">
@@ -98,7 +101,19 @@ export default function PostDetailHeader({ post, isOwner }: PostDetailHeaderProp
             )}
             <div className="flex items-center gap-1.5">
               <Clock className="h-4 w-4 text-slate-400" />
-              <span>{formatDate(post.createdAt)}</span>
+
+              <span title={isEdited ? `수정: ${editedAtText}` : undefined}>
+                {formatDate(post.createdAt)}
+              </span>
+
+              {isEdited && (
+                <span
+                  title={`수정: ${editedAtText}`}
+                  className="ml-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600"
+                >
+                  수정됨
+                </span>
+              )}
             </div>
             {post.authorNickname && (
               <>
