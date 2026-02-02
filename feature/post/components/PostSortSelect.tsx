@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { PostSortOption } from '@/feature/post/types';
-import { Clock, Heart, Eye, ChevronDown, Check } from 'lucide-react';
+import { Clock, Heart, Eye, ChevronDown, Check, MessageSquare } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +20,7 @@ const sortOptions: { value: PostSortOption; label: string; icon: React.ElementTy
   { value: 'latest', label: '최신순', icon: Clock },
   { value: 'popular', label: '인기순', icon: Heart },
   { value: 'views', label: '조회순', icon: Eye },
+  { value: 'comments', label: '댓글순', icon: MessageSquare },
 ];
 
 export default function PostSortSelect({ value, onChange }: PostSortSelectProps) {

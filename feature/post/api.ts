@@ -10,11 +10,11 @@ import type {
 import type { ApiResult } from '@/types/http';
 import { bffFetch } from '@/lib/bffFetch';
 
-function buildQuery(params: Record<string, string | number | undefined>) {
-  const entries = Object.entries(params).filter(([, value]) => value !== undefined);
-  const converted = entries.map(([key, value]) => [key, String(value)] as [string, string]);
-  return new URLSearchParams(converted).toString();
-}
+// function buildQuery(params: Record<string, string | number | undefined>) {
+//   const entries = Object.entries(params).filter(([, value]) => value !== undefined);
+//   const converted = entries.map(([key, value]) => [key, String(value)] as [string, string]);
+//   return new URLSearchParams(converted).toString();
+// }
 
 function normalizePage<T>(raw: unknown): PaginatedResponse<T> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -56,15 +56,17 @@ async function readErrorMessage(res: Response, fallback: string): Promise<string
 }
 
 /** 정렬 옵션을 Spring Pageable sort 파라미터로 변환 */
-function getSortParam(sort: PostSortOption): string {
+function getSortParam(sort: PostSortOption): string[] {
   switch (sort) {
     case 'popular':
-      return 'likeCount,desc';
+      return ['likeCount,desc', 'createdAt,desc'];
     case 'views':
-      return 'viewCount,desc';
+      return ['viewCount,desc', 'createdAt,desc'];
+    case 'comments':
+      return ['commentCount,desc', 'createdAt,desc'];
     case 'latest':
     default:
-      return 'createdAt,desc';
+      return ['createdAt,desc'];
   }
 }
 
@@ -74,9 +76,14 @@ export async function fetchPosts(
   size = 20,
   sort: PostSortOption = 'latest',
 ): Promise<ApiResult<PaginatedResponse<PostListItemResponse>>> {
-  const sortParam = getSortParam(sort);
-  const query = buildQuery({ page, size, sort: sortParam });
-  const res = await bffFetch(`/api/proxy/posts?${query}`, { cache: 'no-store' });
+  const params = new URLSearchParams();
+  params.set('page', String(page));
+  params.set('size', String(size));
+
+  const sortParams = getSortParam(sort);
+  sortParams.forEach((s: string) => params.append('sort', s));
+
+  const res = await bffFetch(`/api/proxy/posts?${params.toString()}`, { cache: 'no-store' });
 
   if (!res.ok) {
     const message = await readErrorMessage(
