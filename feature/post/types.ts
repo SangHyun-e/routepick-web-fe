@@ -1,5 +1,3 @@
-import { CommentResponse } from '@/feature/comment/types';
-
 export type PostStatus = 'ACTIVE' | 'HIDDEN' | 'DELETED';
 
 export type PostListItemResponse = {
@@ -46,9 +44,6 @@ export type PostResponse = {
   authorId: number | null;
   authorNickname: string | null;
   isLikedByCurrentUser: boolean | null;
-  commentCount: number;
-
-  bestComments: CommentResponse[];
 };
 
 export type PostCreateRequest = {
@@ -83,7 +78,7 @@ export type PostFormErrors = Partial<Record<keyof PostFormDraft, string>> & {
 };
 
 // 정렬 옵션 타입
-export type PostSortOption = 'latest' | 'popular' | 'views';
+export type PostSortOption = 'latest' | 'popular' | 'views' | 'comments';
 
 // 좋아요 응답 타입
 export type LikeResponse = {

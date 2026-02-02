@@ -225,6 +225,13 @@ export default function CommentItem({
     toast.success(data.liked ? '좋아요!' : '좋아요 취소');
   };
 
+  const isEdited: boolean = Boolean(
+    !isDeleted && comment.updatedAt && comment.updatedAt !== comment.createdAt,
+  );
+  const editedTitle: string = isEdited
+    ? `수정: ${new Date(comment.updatedAt as string).toLocaleString()}`
+    : '';
+
   return (
     <div className={isReply ? 'ml-6' : ''}>
       <div
@@ -245,7 +252,18 @@ export default function CommentItem({
               </span>
             )}
 
-            <span className="text-xs text-slate-400">{created}</span>
+            <span className="text-xs text-slate-400" title={editedTitle}>
+              {created}
+            </span>
+
+            {isEdited && (
+              <span
+                className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600"
+                title={editedTitle}
+              >
+                수정됨
+              </span>
+            )}
           </div>
 
           <div className="flex min-w-[132px] justify-end">

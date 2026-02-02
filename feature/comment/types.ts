@@ -8,6 +8,7 @@ export type CommentResponse = {
   likeCount: number;
   status: CommentStatus;
   createdAt: string;
+  updatedAt: string | null;
   authorId: number | null;
   authorNickname: string | null;
   replies: CommentResponse[];
