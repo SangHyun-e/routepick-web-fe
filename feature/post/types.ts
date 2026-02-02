@@ -44,6 +44,8 @@ export type PostResponse = {
   authorId: number | null;
   authorNickname: string | null;
   isLikedByCurrentUser: boolean | null;
+  commentCount: number;
+  bestComments?: CommentResponse[];
 };
 
 export type PostCreateRequest = {
