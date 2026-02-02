@@ -5,6 +5,8 @@ import PostDetailError from '@/feature/post/components/PostDetailError';
 import { fetchPostServer } from '@/feature/post/api.server';
 import { fetchMeServer } from '@/feature/user/api.server';
 import CommentSection from '@/feature/comment/components/CommentSection';
+import PostViewCookiePing from '@/app/posts/[id]/PostViewCookiePing';
+
 interface PageProps {
   params: { id: string };
 }
@@ -56,6 +58,7 @@ export default async function PostDetailPage({ params }: PageProps) {
           commentCount={res.data.commentCount}
           bestComments={res.data.bestComments ?? []}
         />
+        <PostViewCookiePing postId={postId} />
       </div>
     </div>
   );

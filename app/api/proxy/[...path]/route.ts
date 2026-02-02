@@ -7,8 +7,10 @@ import {
 } from '@/lib/authTokens';
 import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from '@/lib/cookies';
 import { SERVER_BASE_URL } from '@/lib/env';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { headers as nextHeaders } from 'next/headers';
+
+const VIEW_TTL_SECONDS = 60 * 60; // 1시간
 
 /** /a//b/ → /a/b 정규화 */
 function joinPath(segments: string[]) {
@@ -17,7 +19,7 @@ function joinPath(segments: string[]) {
 }
 
 /** 원요청의 ?query=… 그대로 붙이기 */
-function withSearch(path: string, req: Request) {
+function withSearch(path: string, req: NextRequest) {
   const search = new URL(req.url).search;
   return `${path}${search || ''}`;
 }
@@ -52,6 +54,17 @@ async function readBodySafely(res: Response): Promise<ArrayBuffer | null> {
   return res.arrayBuffer();
 }
 
+/** 조회수 중복 방지 적용 대상: GET /posts/:id */
+function shouldApplyViewTracking(pathOnly: string, method: string): boolean {
+  return method === 'GET' && /^\/posts\/\d+$/.test(pathOnly);
+}
+
+/** /posts/:id 에서 id 추출 */
+function extractPostId(pathOnly: string): string | null {
+  const match = pathOnly.match(/^\/posts\/(\d+)$/);
+  return match ? match[1] : null;
+}
+
 /** BE 응답 → 프록시 응답 생성 (Set-Cookie까지 append) */
 async function makeProxyResponse(beRes: Response) {
   const final = new NextResponse(await readBodySafely(beRes), {
@@ -62,12 +75,6 @@ async function makeProxyResponse(beRes: Response) {
   return final;
 }
 
-/** (로그 확인용 마스킹) */
-// function mask(s?: string) {
-//   if (!s) return '';
-//   return s.slice(0, 16) + '…';
-// }
-
 /** 401 때 1회 refresh (절대 URL + 쿠키 전달) */
 async function refreshOnce(): Promise<{
   ok: boolean;
@@ -75,8 +82,8 @@ async function refreshOnce(): Promise<{
   expiresInSec?: number;
   rt?: { value: string; maxAge?: number };
 }> {
-  const headers = nextHeaders();
-  const reqCookie = headers.get('cookie') ?? '';
+  const h = nextHeaders();
+  const reqCookie = h.get('cookie') ?? '';
 
   const r = await fetch(`${SERVER_BASE_URL}/auth/refresh`, {
     method: 'POST',
@@ -95,9 +102,28 @@ async function refreshOnce(): Promise<{
 }
 
 /** 공통 핸들러 */
-async function handle(method: string, req: Request, params: { path?: string[] }) {
-  const pathOnly = joinPath(params.path ?? []); // 쿼리 제외 경로 (특수처리 용)
-  const pathWithSearch = withSearch(pathOnly, req); // 쿼리 포함 경로 (일반 프록시 요청)
+async function handle(method: string, req: NextRequest, params: { path?: string[] }) {
+  const pathOnly = joinPath(params.path ?? []);
+  let pathWithSearch = withSearch(pathOnly, req);
+
+  // ✅ 조회수 중복 방지 플래그
+  let shouldSetViewCookie = false;
+  let viewCookieName: string | null = null;
+
+  // ✅ 조회수 중복 방지: /posts/:id GET에서만 incView 주입
+  if (shouldApplyViewTracking(pathOnly, method)) {
+    const postId = extractPostId(pathOnly);
+    if (postId) {
+      viewCookieName = `rp_view_${postId}`;
+      const hasViewed = req.cookies.has(viewCookieName);
+
+      const url = new URL(pathWithSearch, 'http://localhost');
+      url.searchParams.set('incView', hasViewed ? 'false' : 'true');
+      pathWithSearch = url.pathname + url.search;
+
+      shouldSetViewCookie = !hasViewed;
+    }
+  }
 
   const hasBody = !(method === 'GET' || method === 'DELETE');
   const body = hasBody ? await req.arrayBuffer() : undefined;
@@ -127,11 +153,13 @@ async function handle(method: string, req: Request, params: { path?: string[] })
   // 1차 호출
   let res = await be(pathWithSearch, init);
 
+  // 로그인 성공 처리
   if (pathOnly === '/auth/login' && res.ok) {
     const text = await res.text();
 
     const { access, expiresInSec } = parseAccessTokenPayload(text);
     const refresh = readRefreshCookie(res);
+
     const final = new NextResponse(text, {
       status: res.status,
       headers: passthroughHeaders(res),
@@ -139,30 +167,24 @@ async function handle(method: string, req: Request, params: { path?: string[] })
 
     applyAuthCookies(final, { access, expiresInSec, refresh: refresh ?? undefined });
     appendSetCookies(final, res, new Set([ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE]));
-
     return final;
   }
 
-  // 401 → refresh 1회 시도
+  // 401 → refresh 1회
   if (res.status === 401) {
     const r = await refreshOnce();
-    if (!r.ok) {
-      // 실패면 기존 401을 그대로 전달(쿠키도 그대로 append)
-      return makeProxyResponse(res);
-    }
+    if (!r.ok) return makeProxyResponse(res);
 
-    // refresh 성공 → access를 Authorization으로 붙여 안정적으로 재시도
     const h2 = new Headers(init.headers || {});
     if (r.access) h2.set('Authorization', `Bearer ${r.access}`);
+
     res = await be(pathWithSearch, { ...init, headers: h2 });
 
-    // 최종 응답 생성(재시도 응답의 쿠키/헤더 append)
     const final = new NextResponse(await readBodySafely(res), {
       status: res.status,
       headers: passthroughHeaders(res),
     });
 
-    // 재시도 응답의 Set-Cookie 전파
     appendSetCookies(final, res);
     applyAuthCookies(final, {
       access: r.access,
@@ -170,25 +192,53 @@ async function handle(method: string, req: Request, params: { path?: string[] })
       refresh: r.rt,
     });
 
+    // ✅ refresh 재시도 케이스에서도 view cookie는 동일하게 처리
+    if (shouldSetViewCookie && res.ok && final.ok && viewCookieName) {
+      final.cookies.set({
+        name: viewCookieName,
+        value: '1',
+        path: '/',
+        maxAge: VIEW_TTL_SECONDS,
+        sameSite: 'lax',
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production',
+      });
+    }
+
     return final;
   }
 
-  // 정상 케이스: BE의 Set-Cookie/헤더 전부 전달
-  return makeProxyResponse(res);
+  // 정상 케이스
+  const finalRes = await makeProxyResponse(res);
+
+  // ✅ 여기서 “Set-Cookie”로 확실히 박아준다 (핵심)
+  if (shouldSetViewCookie && res.ok && finalRes.ok && viewCookieName) {
+    finalRes.cookies.set({
+      name: viewCookieName,
+      value: '1',
+      path: '/',
+      maxAge: VIEW_TTL_SECONDS,
+      sameSite: 'lax',
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+    });
+  }
+
+  return finalRes;
 }
 
-export async function GET(req: Request, ctx: { params: { path?: string[] } }) {
+export async function GET(req: NextRequest, ctx: { params: { path?: string[] } }) {
   return handle('GET', req, ctx.params);
 }
-export async function DELETE(req: Request, ctx: { params: { path?: string[] } }) {
+export async function DELETE(req: NextRequest, ctx: { params: { path?: string[] } }) {
   return handle('DELETE', req, ctx.params);
 }
-export async function POST(req: Request, ctx: { params: { path?: string[] } }) {
+export async function POST(req: NextRequest, ctx: { params: { path?: string[] } }) {
   return handle('POST', req, ctx.params);
 }
-export async function PUT(req: Request, ctx: { params: { path?: string[] } }) {
+export async function PUT(req: NextRequest, ctx: { params: { path?: string[] } }) {
   return handle('PUT', req, ctx.params);
 }
-export async function PATCH(req: Request, ctx: { params: { path?: string[] } }) {
+export async function PATCH(req: NextRequest, ctx: { params: { path?: string[] } }) {
   return handle('PATCH', req, ctx.params);
 }
