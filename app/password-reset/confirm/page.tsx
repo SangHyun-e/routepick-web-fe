@@ -32,10 +32,7 @@ export default function PasswordResetConfirmPage({ searchParams }: Props) {
       footer={footer}
       bottomNote="코드는 일정 시간 후 만료됩니다."
     >
-      <PasswordResetConfirmForm
-        initialEmail={email}
-        showRequestedMessage={showRequestedMessage}
-      />
+      <PasswordResetConfirmForm initialEmail={email} showRequestedMessage={showRequestedMessage} />
     </AuthShell>
   );
 }

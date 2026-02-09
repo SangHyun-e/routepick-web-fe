@@ -1,9 +1,16 @@
 'use client';
 
+import { useCallback, useMemo, useState } from 'react';
+import type { Editor } from '@tiptap/react';
+import type { KakaoPlaceDocument } from '@/feature/place/types';
 import type { PostFormDraft, PostFormErrors } from '@/feature/post/types';
+import { parseTags } from '@/feature/post/validation';
 import { FileText, MapPin, Navigation, Tag, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import PostEditor from '@/feature/post/components/PostEditor';
+import PostImageUploader from '@/feature/post/components/PostImageUploader';
+import PlaceSearchPanel from '@/feature/post/components/PlaceSearchPanel';
 
 type Props = {
   draft: PostFormDraft;
@@ -16,6 +23,7 @@ type Props = {
   submitLabel?: string;
   cancelHref?: string;
   backHref?: string;
+  postId?: number;
 };
 
 export default function PostForm({
@@ -28,10 +36,68 @@ export default function PostForm({
   submitLabel = '등록하기',
   cancelHref = '/posts',
   backHref = '/posts',
+  postId,
 }: Props) {
+  const [editor, setEditor] = useState<Editor | null>(null);
+  const parseOptionalNumber = useCallback((value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const numeric = Number(trimmed);
+    return Number.isFinite(numeric) ? numeric : null;
+  }, []);
+  const previewTags = useMemo(() => parseTags(draft.tagsText), [draft.tagsText]);
+  const previewLatitude = useMemo(
+    () => parseOptionalNumber(draft.latitude),
+    [draft.latitude, parseOptionalNumber],
+  );
+  const previewLongitude = useMemo(
+    () => parseOptionalNumber(draft.longitude),
+    [draft.longitude, parseOptionalNumber],
+  );
+  const contentLength = draft.content
+    ? draft.content.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim().length
+    : 0;
   const coordinatePairError =
     errors.form === '위도와 경도는 함께 제공되어야 합니다.' ? errors.form : undefined;
   const formError = coordinatePairError ? undefined : errors.form;
+
+  const handleInsertImage = useCallback(
+    (url: string) => {
+      editor?.chain().focus().setImage({ src: url }).run();
+    },
+    [editor],
+  );
+
+  const handleInsertPlace = useCallback(
+    (place: KakaoPlaceDocument) => {
+      const address = place.roadAddressName || place.addressName || '';
+      const link = place.placeUrl ?? '';
+      const html = `
+<div>
+  <p><strong>${place.placeName}</strong></p>
+  ${address ? `<p>${address}</p>` : ''}
+  ${link ? `<p><a href="${link}" target="_blank" rel="noreferrer">카카오맵에서 보기</a></p>` : ''}
+</div>
+`;
+      editor?.chain().focus().insertContent(html).run();
+    },
+    [editor],
+  );
+
+  const handleApplyLocation = useCallback(
+    (place: KakaoPlaceDocument) => {
+      if (place.roadAddressName || place.addressName) {
+        onChange('region', (place.roadAddressName || place.addressName) ?? '');
+      }
+      if (place.y) {
+        onChange('latitude', place.y);
+      }
+      if (place.x) {
+        onChange('longitude', place.x);
+      }
+    },
+    [onChange],
+  );
 
   return (
     <div className="min-h-screen bg-slate-50 py-8">
@@ -88,24 +154,32 @@ export default function PostForm({
                   내용
                   <span className="text-red-500">*</span>
                 </label>
-                <textarea
-                  id="content"
-                  className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500"
-                  rows={12}
-                  placeholder="내용을 입력하세요"
+                <PostEditor
                   value={draft.content}
-                  onChange={(e) => onChange('content', e.target.value)}
-                  disabled={submitting}
-                  maxLength={4000}
+                  onChange={(value) => onChange('content', value)}
+                  onReady={setEditor}
+                  placeholder="내용을 입력하세요"
+                  previewMeta={{
+                    tags: previewTags,
+                    latitude: previewLatitude,
+                    longitude: previewLongitude,
+                  }}
                 />
                 <div className="flex items-center justify-between">
                   {errors.content ? (
                     <p className="text-sm text-red-600">{errors.content}</p>
                   ) : (
-                    <p className="text-xs text-slate-500">{draft.content.length} / 4000자</p>
+                    <p className="text-xs text-slate-500">{contentLength} / 4000자</p>
                   )}
                 </div>
               </div>
+
+              <PostImageUploader postId={postId} onInsert={handleInsertImage} />
+
+              <PlaceSearchPanel
+                onInsert={handleInsertPlace}
+                onApplyLocation={handleApplyLocation}
+              />
 
               <div className="space-y-2">
                 <label

@@ -8,13 +8,17 @@ interface PostDetailContentProps {
 export default function PostDetailContent({ post }: PostDetailContentProps) {
   const hasCoordinates: boolean = post.latitude != null && post.longitude != null;
   const hasTags: boolean = Array.isArray(post.tags) && post.tags.length > 0;
+  const htmlContent = post.content?.includes('<')
+    ? post.content
+    : post.content?.replace(/\n/g, '<br />');
 
   return (
     <div className="py-8">
       <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="prose prose-slate max-w-none">
-          <p className="leading-relaxed whitespace-pre-wrap text-slate-700">{post.content}</p>
-        </div>
+        <div
+          className="prose prose-slate max-w-none"
+          dangerouslySetInnerHTML={{ __html: htmlContent ?? '' }}
+        />
 
         {(hasCoordinates || hasTags) && (
           <div className="mt-8 space-y-4 border-t border-slate-100 pt-6">

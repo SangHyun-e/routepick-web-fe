@@ -75,6 +75,7 @@ export async function fetchPosts(
   page = 0,
   size = 20,
   sort: PostSortOption = 'latest',
+  filters: { keyword?: string; region?: string } = {},
 ): Promise<ApiResult<PaginatedResponse<PostListItemResponse>>> {
   const params = new URLSearchParams();
   params.set('page', String(page));
@@ -83,7 +84,15 @@ export async function fetchPosts(
   const sortParams = getSortParam(sort);
   sortParams.forEach((s: string) => params.append('sort', s));
 
-  const res = await bffFetch(`/api/proxy/posts?${params.toString()}`, { cache: 'no-store' });
+  if (filters.region) {
+    params.set('region', filters.region);
+  }
+  if (filters.keyword) {
+    params.set('keyword', filters.keyword);
+  }
+
+  const basePath = filters.keyword ? '/api/proxy/posts/search' : '/api/proxy/posts';
+  const res = await bffFetch(`${basePath}?${params.toString()}`, { cache: 'no-store' });
 
   if (!res.ok) {
     const message = await readErrorMessage(
@@ -171,4 +180,26 @@ export async function likePost(id: number): Promise<ApiResult<LikeResponse>> {
 
   const data = (await res.json()) as LikeResponse;
   return { ok: true, data };
+}
+
+export async function activatePost(id: number): Promise<ApiResult<void>> {
+  const res = await bffFetch(`/api/proxy/posts/${id}/activate`, { method: 'PATCH' });
+
+  if (!res.ok) {
+    const message = await readErrorMessage(res, '게시글 활성화 실패');
+    return { ok: false, status: res.status, message };
+  }
+
+  return { ok: true, data: undefined };
+}
+
+export async function hidePost(id: number): Promise<ApiResult<void>> {
+  const res = await bffFetch(`/api/proxy/posts/${id}/hide`, { method: 'PATCH' });
+
+  if (!res.ok) {
+    const message = await readErrorMessage(res, '게시글 숨김 실패');
+    return { ok: false, status: res.status, message };
+  }
+
+  return { ok: true, data: undefined };
 }
