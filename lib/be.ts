@@ -11,13 +11,17 @@ function isJwt(token?: string | null) {
 
 export async function be(path: string, init: RequestInit = {}) {
   const h = new Headers(init.headers || {});
+
+  const cookieStore = await cookies();
+  const headersList = await nextHeaders();
+
   // 1) AT 자동 부착
   if (!h.has('Authorization')) {
-    const at = cookies().get(ACCESS_TOKEN_COOKIE)?.value;
+    const at = cookieStore.get(ACCESS_TOKEN_COOKIE)?.value;
     if (isJwt(at)) h.set('Authorization', `Bearer ${at}`);
   }
   // 2) 클라에서 온 Cookie(= RT 포함) 전달
-  const reqCookie = nextHeaders().get('cookie');
+  const reqCookie = headersList.get('cookie');
   if (reqCookie) h.set('Cookie', reqCookie);
 
   return fetch(`${SERVER_BASE_URL}${path}`, {
