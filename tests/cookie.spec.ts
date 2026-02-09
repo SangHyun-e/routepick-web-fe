@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseSetCookie, splitSetCookies } from '@/lib/httpCookies';
+import { parseSetCookie, splitSetCookies } from '../lib/httpCookies';
 
 describe('splitSetCookies()', () => {
   it('단일 쿠키 1개만 있을 때는 그대로 반환', () => {
