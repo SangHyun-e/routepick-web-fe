@@ -4,12 +4,15 @@ import {
   EmailVerifyConfirmPayload,
   EmailVerifySendPayload,
   LoginPayload,
+  PasswordResetConfirmPayload,
+  PasswordResetRequestPayload,
   SignUpPayload,
   SignUpResponse,
 } from '@/feature/auth/types';
 import { ApiResult } from '@/types/http';
 
-type ApiErrorBody = { code?: string; message?: string };
+type ApiFieldError = { field?: string; reason?: string };
+type ApiErrorBody = { code?: string; message?: string; errors?: ApiFieldError[] };
 
 const EMAIL_VERIFY_ERROR_MESSAGES: Record<string, string> = {
   'AUTH-410': '인증코드가 올바르지 않습니다. 다시 확인해주세요.',
@@ -20,6 +23,12 @@ const EMAIL_VERIFY_ERROR_MESSAGES: Record<string, string> = {
 const SIGNUP_ERROR_MESSAGES: Record<string, string> = {
   'USER-409': '이미 사용 중인 이메일입니다.',
   'USER-410': '이미 사용 중인 닉네임입니다.',
+};
+
+const PASSWORD_RESET_ERROR_MESSAGES: Record<string, string> = {
+  'AUTH-420': '코드가 올바르지 않습니다.',
+  'AUTH-421': '코드가 만료되었습니다. 다시 요청해주세요.',
+  'AUTH-430': '시도 횟수를 초과했습니다. 잠시 후 다시 시도해주세요.',
 };
 
 function resolveEmailVerifyMessage(
@@ -52,6 +61,18 @@ function resolveSignUpMessage(res: Response, body: ApiErrorBody | null): string 
     return body?.message ?? '입력 정보를 확인해주세요.';
   }
   return body?.message ?? '회원가입 중 오류가 발생했습니다.';
+}
+
+function resolvePasswordResetMessage(res: Response, body: ApiErrorBody | null): string {
+  const code = body?.code;
+  if (code && PASSWORD_RESET_ERROR_MESSAGES[code]) {
+    return PASSWORD_RESET_ERROR_MESSAGES[code];
+  }
+  const firstError = body?.errors?.[0]?.reason;
+  if (res.status === 400 && firstError) {
+    return firstError;
+  }
+  return body?.message ?? '비밀번호 재설정 중 오류가 발생했습니다.';
 }
 
 export async function login(payload: LoginPayload): Promise<ApiResult<void>> {
@@ -146,5 +167,43 @@ export async function confirmEmailVerifyCode(
     ok: false,
     status: res.status,
     message: resolveEmailVerifyMessage(res, err, '인증 코드 확인 중 오류가 발생했습니다.'),
+  };
+}
+
+export async function requestPasswordReset(
+  payload: PasswordResetRequestPayload,
+): Promise<ApiResult<void>> {
+  const res = await bffFetch('/api/proxy/auth/password/reset/request', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    cache: 'no-store',
+    body: JSON.stringify(payload),
+  });
+
+  if (res.ok) return { ok: true, data: undefined };
+  const err = (await res.json().catch(() => null)) as ApiErrorBody | null;
+  return {
+    ok: false,
+    status: res.status,
+    message: resolvePasswordResetMessage(res, err),
+  };
+}
+
+export async function confirmPasswordReset(
+  payload: PasswordResetConfirmPayload,
+): Promise<ApiResult<void>> {
+  const res = await bffFetch('/api/proxy/auth/password/reset/confirm', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    cache: 'no-store',
+    body: JSON.stringify(payload),
+  });
+
+  if (res.ok) return { ok: true, data: undefined };
+  const err = (await res.json().catch(() => null)) as ApiErrorBody | null;
+  return {
+    ok: false,
+    status: res.status,
+    message: resolvePasswordResetMessage(res, err),
   };
 }

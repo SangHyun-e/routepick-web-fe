@@ -25,12 +25,19 @@ export default function LoginPage({ searchParams }: Props) {
   const from = safeFrom(fromRaw);
   const verified = pickFirst(searchParams?.verified);
   const showVerified = verified === '1' || verified === 'true';
+  const reset = pickFirst(searchParams?.reset);
+  const showReset = reset === '1' || reset === 'true';
 
   return (
     <AuthShell>
       {showVerified && (
         <div className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
           이메일 인증이 완료되었습니다. 로그인해주세요.
+        </div>
+      )}
+      {showReset && (
+        <div className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
+          비밀번호가 변경되었습니다. 로그인해주세요.
         </div>
       )}
       <LoginForm redirectTo={from ?? '/'} />

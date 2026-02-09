@@ -6,12 +6,17 @@ import { startTokenRefreshTimer } from '@/lib/auth-client';
 import { useEffect } from 'react';
 
 const PUBLIC_PATHS = ['/login', '/signup', '/verify-email', '/'];
+const PUBLIC_PREFIXES = ['/password-reset'];
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (PUBLIC_PATHS.includes(pathname)) {
+    const isPublic =
+      PUBLIC_PATHS.includes(pathname) ||
+      PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+
+    if (isPublic) {
       console.log('Skipping token check on public page:', pathname);
       return;
     }

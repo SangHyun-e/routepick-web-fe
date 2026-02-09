@@ -33,3 +33,22 @@ export const signUpSchema = z.object({
 });
 
 export type SignUpValues = z.infer<typeof signUpSchema>;
+
+export const passwordResetRequestSchema = z.object({
+  email: z.string().email('유효한 이메일을 입력하세요'),
+});
+
+export const passwordResetConfirmSchema = z
+  .object({
+    email: z.string().email('유효한 이메일을 입력하세요'),
+    code: z.string().regex(/^[0-9]{6}$/, '6자리 인증코드를 입력하세요'),
+    newPassword: z.string().regex(PASSWORD_POLICY_REGEX, PASSWORD_POLICY_MESSAGE),
+    confirmPassword: z.string().min(1, '비밀번호를 다시 입력하세요'),
+  })
+  .refine((values) => values.newPassword === values.confirmPassword, {
+    message: '비밀번호가 일치하지 않습니다.',
+    path: ['confirmPassword'],
+  });
+
+export type PasswordResetRequestValues = z.infer<typeof passwordResetRequestSchema>;
+export type PasswordResetConfirmValues = z.infer<typeof passwordResetConfirmSchema>;
