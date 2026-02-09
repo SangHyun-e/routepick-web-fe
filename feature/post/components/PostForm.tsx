@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { Editor } from '@tiptap/react';
 import type { KakaoPlaceDocument } from '@/feature/place/types';
 import type { PostFormDraft, PostFormErrors } from '@/feature/post/types';
+import { parseTags } from '@/feature/post/validation';
 import { FileText, MapPin, Navigation, Tag, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -38,6 +39,21 @@ export default function PostForm({
   postId,
 }: Props) {
   const [editor, setEditor] = useState<Editor | null>(null);
+  const parseOptionalNumber = useCallback((value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const numeric = Number(trimmed);
+    return Number.isFinite(numeric) ? numeric : null;
+  }, []);
+  const previewTags = useMemo(() => parseTags(draft.tagsText), [draft.tagsText]);
+  const previewLatitude = useMemo(
+    () => parseOptionalNumber(draft.latitude),
+    [draft.latitude, parseOptionalNumber],
+  );
+  const previewLongitude = useMemo(
+    () => parseOptionalNumber(draft.longitude),
+    [draft.longitude, parseOptionalNumber],
+  );
   const contentLength = draft.content
     ? draft.content.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim().length
     : 0;
@@ -143,6 +159,11 @@ export default function PostForm({
                   onChange={(value) => onChange('content', value)}
                   onReady={setEditor}
                   placeholder="내용을 입력하세요"
+                  previewMeta={{
+                    tags: previewTags,
+                    latitude: previewLatitude,
+                    longitude: previewLongitude,
+                  }}
                 />
                 <div className="flex items-center justify-between">
                   {errors.content ? (
