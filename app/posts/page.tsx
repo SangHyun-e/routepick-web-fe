@@ -159,7 +159,7 @@ export default function Page() {
 
         {keywordParam && (
           <div className="mb-6 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">
-            "{keywordParam}" 검색 결과입니다.
+            &quot;{keywordParam}&quot; 검색 결과입니다.
           </div>
         )}
 
