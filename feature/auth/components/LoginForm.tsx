@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -114,12 +115,12 @@ export default function LoginForm({ redirectTo = '/' }: { redirectTo?: string })
 
         {/* Forgot password link */}
         <div className="flex justify-end">
-          <button
-            type="button"
+          <Link
+            href="/password-reset"
             className="text-xs text-slate-600 transition-colors hover:text-slate-900"
           >
             비밀번호를 잊으셨나요?
-          </button>
+          </Link>
         </div>
 
         {/* Server error */}
