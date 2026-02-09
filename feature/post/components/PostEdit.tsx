@@ -18,6 +18,7 @@ export default function PostEdit({ post }: Props) {
       submitting={submitting}
       onChange={onChange}
       onSubmit={onSubmit}
+      postId={post.id}
       heading="게시글 수정"
       submitLabel="저장하기"
       cancelHref={`/posts/${post.id}`}

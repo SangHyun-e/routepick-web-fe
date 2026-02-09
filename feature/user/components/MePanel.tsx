@@ -96,6 +96,23 @@ export default function MePanel() {
       <UserProfileCard me={data} />
       <UserMetaGrid me={data} />
 
+      {data.role === 'ADMIN' && (
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 className="text-lg font-semibold text-slate-900">관리자 도구</h3>
+          <p className="mt-2 text-sm text-slate-600">
+            게시글 상태 관리 페이지로 이동할 수 있습니다.
+          </p>
+          <div className="mt-4">
+            <Button
+              onClick={() => router.push('/admin/posts')}
+              className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white"
+            >
+              게시글 관리로 이동
+            </Button>
+          </div>
+        </section>
+      )}
+
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h3 className="text-lg font-semibold text-slate-900">활동</h3>
         <p className="mt-3 text-sm text-slate-600">곧 추가될 예정입니다.</p>

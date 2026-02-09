@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const LOGIN_PATH = '/login';
 const HOME_PATH = '/';
-const PROTECTED_PREFIXED = ['/posts/write']; // 필요한 보호 경로만 관리
+const PROTECTED_PREFIXED = ['/posts/write', '/admin']; // 필요한 보호 경로만 관리
 
 function isProtected(pathname: string) {
   return PROTECTED_PREFIXED.some((p) => pathname.startsWith(p));
@@ -45,5 +45,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/posts/write/:path*', '/login', '/me', '/auth/refresh-redirect'],
+  matcher: ['/posts/write/:path*', '/admin/:path*', '/login', '/me', '/auth/refresh-redirect'],
 };

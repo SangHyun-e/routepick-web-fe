@@ -2,7 +2,7 @@ export type Me = {
   id: number;
   email: string;
   nickname?: string;
-  role?: string;
+  role?: 'USER' | 'ADMIN';
   status?: string;
   avatarUrl?: string;
   bio?: string;

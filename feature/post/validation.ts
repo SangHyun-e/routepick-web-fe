@@ -4,6 +4,10 @@ function isNotOnlyWhitespace(value: string) {
   return value.trim().length > 0;
 }
 
+function stripHtml(value: string) {
+  return value.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+}
+
 function parseOptionalNumber(value: string): number | undefined {
   const trimmed = value.trim();
   if (trimmed === '') return undefined;
@@ -36,6 +40,7 @@ export function toPostCreatePayload(draft: PostFormDraft): PostCreateRequest {
 
 export function validatePostForm(draft: PostFormDraft): PostFormErrors {
   const errors: PostFormErrors = {};
+  const contentText = stripHtml(draft.content);
 
   if (!isNotOnlyWhitespace(draft.title)) {
     errors.title = '제목을 입력해주세요.';
@@ -43,9 +48,9 @@ export function validatePostForm(draft: PostFormDraft): PostFormErrors {
     errors.title = '제목은 최대 120자까지 입력할 수 있습니다.';
   }
 
-  if (!isNotOnlyWhitespace(draft.content)) {
+  if (!isNotOnlyWhitespace(contentText)) {
     errors.content = '내용을 입력해주세요.';
-  } else if (draft.content.trim().length > 4000) {
+  } else if (contentText.length > 4000) {
     errors.content = '내용은 최대 4000자까지 입력할 수 있습니다.';
   }
 
