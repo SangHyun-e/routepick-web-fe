@@ -173,6 +173,18 @@
     line-height: 1.75rem;
   }
 
+  .prose a,
+  .ProseMirror a {
+    color: #2563eb;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .prose a:hover,
+  .ProseMirror a:hover {
+    color: #1d4ed8;
+  }
+
   .ProseMirror ul {
     list-style: disc;
     padding-left: 1.5rem;
