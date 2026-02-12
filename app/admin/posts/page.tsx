@@ -4,10 +4,16 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
-import { fetchAdminPosts } from '@/feature/admin/api';
-import { activatePost, deletePost, hidePost } from '@/feature/post/api';
+import {
+  activateAdminPost,
+  fetchAdminPosts,
+  hardDeleteAdminPost,
+  hideAdminPost,
+} from '@/feature/admin/api';
+import { deletePost } from '@/feature/post/api';
 import type { PaginatedResponse, PostListItemResponse } from '@/feature/post/types';
 import Pagination from '@/feature/post/list/Pagination';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 const STATUS_OPTIONS = [
   { value: 'ALL', label: '전체' },
@@ -24,6 +30,7 @@ export default function AdminPostsPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [actionId, setActionId] = useState<number | null>(null);
+  const [hardDeleteTarget, setHardDeleteTarget] = useState<PostListItemResponse | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -45,22 +52,31 @@ export default function AdminPostsPage() {
   }, [load]);
 
   const handleAction = useCallback(
-    async (postId: number, action: 'activate' | 'hide' | 'delete') => {
+    async (postId: number, action: 'activate' | 'hide' | 'delete' | 'hard-delete') => {
       setActionId(postId);
       let res;
-      if (action === 'activate') res = await activatePost(postId);
-      else if (action === 'hide') res = await hidePost(postId);
+
+      if (action === 'activate') res = await activateAdminPost(postId);
+      else if (action === 'hide') res = await hideAdminPost(postId);
+      else if (action === 'hard-delete') res = await hardDeleteAdminPost(postId);
       else res = await deletePost(postId);
 
       setActionId(null);
       if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          toast.error('관리자 권한이 필요합니다.');
+          router.push('/login');
+          return;
+        }
         toast.error(res.message ?? '요청에 실패했습니다.');
         return;
       }
-      toast.success('상태가 업데이트되었습니다.');
+      toast.success(
+        action === 'hard-delete' ? '게시글이 삭제되었습니다.' : '상태가 업데이트되었습니다.',
+      );
       load();
     },
-    [load],
+    [load, router],
   );
 
   return (
@@ -149,6 +165,13 @@ export default function AdminPostsPage() {
                       >
                         삭제
                       </button>
+                      <button
+                        onClick={() => setHardDeleteTarget(post)}
+                        disabled={actionId === post.id}
+                        className="rounded-md border border-red-300 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 hover:bg-red-100"
+                      >
+                        물리삭제
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -165,6 +188,32 @@ export default function AdminPostsPage() {
           </>
         )}
       </div>
+      <ConfirmDialog
+        open={Boolean(hardDeleteTarget)}
+        onOpenChange={(open) => {
+          if (!open) setHardDeleteTarget(null);
+        }}
+        title="게시글 물리 삭제"
+        description={
+          <>
+            정말 물리 삭제하시겠습니까? 삭제된 게시글과 댓글은 복구할 수 없습니다.
+            {hardDeleteTarget && (
+              <span className="mt-2 block text-xs text-slate-500">
+                대상: {hardDeleteTarget.title}
+              </span>
+            )}
+          </>
+        }
+        confirmText="삭제"
+        cancelText="취소"
+        variant="destructive"
+        onConfirm={() => {
+          if (!hardDeleteTarget) return;
+          const targetId = hardDeleteTarget.id;
+          setHardDeleteTarget(null);
+          void handleAction(targetId, 'hard-delete');
+        }}
+      />
     </div>
   );
 }
