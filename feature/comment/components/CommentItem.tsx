@@ -2,13 +2,19 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { Check, Heart, MessageSquare, Pencil, Trash2, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Check, Eye, EyeOff, Heart, MessageSquare, Pencil, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 import type { CommentResponse } from '@/feature/comment/types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import {
+  activateAdminComment,
+  hardDeleteAdminComment,
+  hideAdminComment,
+} from '@/feature/admin/api';
 
 import CommentReplyForm from '@/feature/comment/components/CommentReplyForm';
 import { useCommentActions } from '@/feature/comment/hooks/useCommentAction';
@@ -68,6 +74,7 @@ interface Props {
   postAuthorId: number | null;
   postAuthorNickname: string | null;
   currentUserId: number | null;
+  isAdmin: boolean;
   comment: CommentResponse;
   onRefresh: () => Promise<void>;
   /**
@@ -82,12 +89,14 @@ export default function CommentItem({
   postAuthorId,
   postAuthorNickname,
   currentUserId,
+  isAdmin,
   comment,
   onRefresh,
   onCountDelta = () => {
     /* ignore */
   },
 }: Props) {
+  const router = useRouter();
   // 1) 기본 파생값
   const isReply: boolean = comment.depth > 0;
   const isDeleted: boolean = comment.status === 'DELETED';
@@ -164,12 +173,53 @@ export default function CommentItem({
     onRefresh,
   });
 
+  const [adminUpdating, setAdminUpdating] = useState<boolean>(false);
+  const [showAdminDeleteDialog, setShowAdminDeleteDialog] = useState<boolean>(false);
+
   // 4) 수정 UI 상태
   const [editing, setEditing] = useState<boolean>(false);
   const [editValue, setEditValue] = useState<string>(comment.content);
 
   // 5) 삭제 확인 다이얼로그
   const [showDeleteDialog, setShowDeleteDialog] = useState<boolean>(false);
+
+  const handleAdminAction = async (action: 'hide' | 'activate' | 'hard-delete') => {
+    if (adminUpdating) return;
+
+    setAdminUpdating(true);
+    try {
+      const res =
+        action === 'hide'
+          ? await hideAdminComment(comment.id)
+          : action === 'activate'
+            ? await activateAdminComment(comment.id)
+            : await hardDeleteAdminComment(comment.id);
+
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          toast.error('관리자 권한이 필요합니다.');
+          router.push('/login');
+          return;
+        }
+        toast.error(res.message ?? '요청에 실패했습니다.');
+        return;
+      }
+
+      if (action === 'activate') {
+        toast.success('댓글이 복구되었습니다.');
+        if (comment.status === 'DELETED') onCountDelta(1);
+      } else {
+        toast.success('댓글이 삭제되었습니다.');
+        if (comment.status === 'ACTIVE') onCountDelta(-1);
+      }
+
+      await onRefresh();
+    } catch {
+      toast.error('요청 처리 중 오류가 발생했습니다.');
+    } finally {
+      setAdminUpdating(false);
+    }
+  };
 
   const onStartEdit = () => {
     setEditing(true);
@@ -267,31 +317,73 @@ export default function CommentItem({
           </div>
 
           <div className="flex min-w-[132px] justify-end">
-            {isMine ? (
-              <div className="flex items-center gap-1">
-                {!editing && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="h-8 gap-1.5 px-2 text-slate-600"
-                    onClick={onStartEdit}
-                    disabled={deleting || updating}
-                  >
-                    <Pencil className="h-4 w-4" />
-                    <span className="text-xs">수정</span>
-                  </Button>
+            {isMine || isAdmin ? (
+              <div className="flex flex-wrap items-center justify-end gap-1">
+                {isMine && (
+                  <div className="flex items-center gap-1">
+                    {!editing && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="h-8 gap-1.5 px-2 text-slate-600"
+                        onClick={onStartEdit}
+                        disabled={deleting || updating || adminUpdating}
+                      >
+                        <Pencil className="h-4 w-4" />
+                        <span className="text-xs">수정</span>
+                      </Button>
+                    )}
+
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="h-8 gap-1.5 px-2 text-red-600 hover:text-red-700"
+                      onClick={() => setShowDeleteDialog(true)}
+                      disabled={deleting || updating || adminUpdating}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span className="text-xs">삭제</span>
+                    </Button>
+                  </div>
                 )}
 
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="h-8 gap-1.5 px-2 text-red-600 hover:text-red-700"
-                  onClick={() => setShowDeleteDialog(true)}
-                  disabled={deleting || updating}
-                >
-                  <Trash2 className="h-4 w-4" />
-                  <span className="text-xs">삭제</span>
-                </Button>
+                {isAdmin && (
+                  <div className="flex items-center gap-1">
+                    {comment.status === 'ACTIVE' ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="h-8 gap-1.5 px-2 text-amber-700 hover:text-amber-800"
+                        onClick={() => handleAdminAction('hide')}
+                        disabled={adminUpdating || deleting || updating}
+                      >
+                        <EyeOff className="h-4 w-4" />
+                        <span className="text-xs">삭제</span>
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="h-8 gap-1.5 px-2 text-emerald-700 hover:text-emerald-800"
+                        onClick={() => handleAdminAction('activate')}
+                        disabled={adminUpdating || deleting || updating}
+                      >
+                        <Eye className="h-4 w-4" />
+                        <span className="text-xs">복구</span>
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="h-8 gap-1.5 px-2 text-red-600 hover:text-red-700"
+                      onClick={() => setShowAdminDeleteDialog(true)}
+                      disabled={adminUpdating || deleting || updating}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span className="text-xs">물리삭제</span>
+                    </Button>
+                  </div>
+                )}
               </div>
             ) : (
               <div aria-hidden="true" className="h-8 w-[132px]" />
@@ -302,7 +394,7 @@ export default function CommentItem({
         {/* Content / Edit */}
         {isDeleted ? (
           <p className="text-sm leading-6 whitespace-pre-wrap text-slate-400 italic">
-            삭제된 댓글입니다.
+            {comment.content}
           </p>
         ) : !editing ? (
           <p className="text-sm leading-6 whitespace-pre-wrap text-slate-700">
@@ -414,6 +506,7 @@ export default function CommentItem({
                 postAuthorId={postAuthorId}
                 postAuthorNickname={postAuthorNickname}
                 currentUserId={currentUserId}
+                isAdmin={isAdmin}
                 comment={reply}
                 onRefresh={onRefresh}
                 onCountDelta={onCountDelta}
@@ -464,6 +557,20 @@ export default function CommentItem({
           if (ok) {
             onCountDelta(-1); // 댓글 삭제 시 즉시 카운트 반영
           }
+        }}
+      />
+
+      <ConfirmDialog
+        open={showAdminDeleteDialog}
+        onOpenChange={setShowAdminDeleteDialog}
+        title="댓글 물리 삭제"
+        description="정말 물리 삭제할까요? 삭제한 댓글은 복구할 수 없습니다."
+        confirmText="삭제"
+        cancelText="취소"
+        variant="destructive"
+        onConfirm={async () => {
+          setShowAdminDeleteDialog(false);
+          await handleAdminAction('hard-delete');
         }}
       />
     </div>

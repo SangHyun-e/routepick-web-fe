@@ -1,4 +1,5 @@
 export type CommentStatus = 'ACTIVE' | 'DELETED';
+export type CommentDeletedBy = 'USER' | 'ADMIN';
 
 export type CommentResponse = {
   id: number;
@@ -23,6 +24,21 @@ export type MyCommentListItem = {
   status: CommentStatus;
   createdAt: string;
   updatedAt: string | null;
+};
+
+export type AdminCommentListItem = {
+  id: number;
+  postId: number;
+  postTitle: string;
+  parentId: number | null;
+  depth: number;
+  content: string;
+  status: CommentStatus;
+  deletedBy: CommentDeletedBy;
+  createdAt: string;
+  updatedAt: string | null;
+  authorId: number | null;
+  authorNickname: string | null;
 };
 
 export type CommentCreateRequest = {

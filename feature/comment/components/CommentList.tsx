@@ -9,6 +9,7 @@ interface Props {
   postAuthorId: number | null;
   postAuthorNickname: string | null;
   currentUserId: number | null;
+  isAdmin: boolean;
   comments: CommentResponse[];
   loading: boolean;
   onRefresh: () => Promise<void>;
@@ -20,6 +21,7 @@ export default function CommentList({
   postAuthorId,
   postAuthorNickname,
   currentUserId,
+  isAdmin,
   comments,
   loading,
   onRefresh,
@@ -52,6 +54,7 @@ export default function CommentList({
           postAuthorId={postAuthorId}
           postAuthorNickname={postAuthorNickname}
           currentUserId={currentUserId}
+          isAdmin={isAdmin}
           comment={comment}
           onRefresh={onRefresh}
           onCountDelta={onCountDelta}

@@ -47,6 +47,33 @@ export default function PostDetailHeader({ post, isOwner, isAdmin }: PostDetailH
     postId: post.id,
   });
 
+  const handleLike = async () => {
+    if (isLiking) return;
+    setIsLiking(true);
+
+    try {
+      const res = await likePost(post.id);
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          toast.error('로그인이 필요합니다. 로그인 후 다시 시도해주세요.');
+          return;
+        }
+        toast.error(res.message ?? '좋아요 실패');
+        return;
+      }
+
+      const nextLiked: boolean = !isLiked;
+      setLikeCount(res.data.likeCount);
+      setIsLiked(nextLiked);
+      toast.success(nextLiked ? '좋아요!' : '좋아요 취소');
+    } catch {
+      toast.error('좋아요 중 오류가 발생했습니다.');
+    } finally {
+      setIsLiking(false);
+    }
+  };
+
   const showOwnerActions = isOwner;
   const showAdminSoftDelete = isAdmin && !isOwner;
   const showAdminHardDelete = isAdmin;
@@ -85,33 +112,6 @@ export default function PostDetailHeader({ post, isOwner, isAdmin }: PostDetailH
     toast.success('게시글이 물리 삭제되었습니다.');
     router.push('/posts');
     router.refresh();
-  };
-
-  const handleLike = async () => {
-    if (isLiking) return;
-    setIsLiking(true);
-
-    try {
-      const res = await likePost(post.id);
-
-      if (!res.ok) {
-        if (res.status === 401) {
-          toast.error('로그인이 필요합니다. 로그인 후 다시 시도해주세요.');
-          return;
-        }
-        toast.error(res.message ?? '좋아요 실패');
-        return;
-      }
-
-      const nextLiked: boolean = !isLiked;
-      setLikeCount(res.data.likeCount);
-      setIsLiked(nextLiked);
-      toast.success(nextLiked ? '좋아요!' : '좋아요 취소');
-    } catch {
-      toast.error('좋아요 중 오류가 발생했습니다.');
-    } finally {
-      setIsLiking(false);
-    }
   };
 
   const isEdited: boolean = Boolean(post.updatedAt && post.updatedAt !== post.createdAt);
@@ -264,6 +264,7 @@ export default function PostDetailHeader({ post, isOwner, isAdmin }: PostDetailH
         onConfirm={doDelete}
         variant="destructive"
       />
+
       <ConfirmDialog
         open={showHardDeleteDialog}
         onOpenChange={setShowHardDeleteDialog}

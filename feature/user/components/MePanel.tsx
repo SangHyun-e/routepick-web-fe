@@ -421,12 +421,19 @@ export default function MePanel() {
           <p className="mt-2 text-sm text-slate-600">
             게시글 상태 관리 페이지로 이동할 수 있습니다.
           </p>
-          <div className="mt-4">
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
             <Button
               onClick={() => router.push('/admin/posts')}
               className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white"
             >
               게시글 관리로 이동
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => router.push('/admin/comments')}
+              className="rounded-xl border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+            >
+              댓글 관리로 이동
             </Button>
           </div>
         </section>
