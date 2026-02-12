@@ -18,6 +18,16 @@ const MAX_TOTAL_SIZE = 100 * 1024 * 1024;
 const MAX_IMAGE_DIMENSION = 1600;
 const IMAGE_QUALITY = 0.85;
 const RESIZE_EXCLUDED_TYPES = new Set(['image/gif', 'image/svg+xml']);
+const SUPPORTED_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+]);
+const SUPPORTED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+const SUPPORTED_FORMAT_LABEL = 'JPG, PNG, WEBP, GIF';
+const ACCEPTED_FILE_TYPES = 'image/jpeg,image/png,image/webp,image/gif';
 
 const formatBytes = (bytes: number) => {
   if (!Number.isFinite(bytes) || bytes <= 0) return '0B';
@@ -48,6 +58,15 @@ const replaceExtension = (name: string, extension: string) => {
   if (!trimmed) return `upload${extension}`;
   const base = trimmed.replace(/\.[^/.]+$/, '');
   return `${base}${extension}`;
+};
+
+const isSupportedFile = (file: File) => {
+  const type = file.type?.toLowerCase();
+  if (type && SUPPORTED_MIME_TYPES.has(type)) {
+    return true;
+  }
+  const name = file.name?.toLowerCase() ?? '';
+  return SUPPORTED_EXTENSIONS.some((ext) => name.endsWith(ext));
 };
 
 const resizeImageFile = async (file: File): Promise<File> => {
@@ -122,6 +141,10 @@ export default function PostImageUploader({ postId, onInsert }: Props) {
         const resizedFiles: File[] = [];
         let nextTotal = totalSize;
         for (const file of fileArray) {
+          if (!isSupportedFile(file)) {
+            setError(`지원하지 않는 이미지 형식입니다. (${SUPPORTED_FORMAT_LABEL})`);
+            return;
+          }
           const resized = await resizeImageFile(file);
           if (resized.size > MAX_FILE_SIZE) {
             setError('파일 크기는 최대 15MB까지 업로드할 수 있습니다.');
@@ -183,6 +206,7 @@ export default function PostImageUploader({ postId, onInsert }: Props) {
           <p className="text-xs text-slate-500">
             최대 {MAX_FILES}장, 장당 {formatBytes(MAX_FILE_SIZE)} / 전체 {formatBytes(MAX_TOTAL_SIZE)}
           </p>
+          <p className="mt-1 text-xs text-slate-500">지원 형식: {SUPPORTED_FORMAT_LABEL}</p>
           <p className="mt-1 text-xs text-slate-500">
             {images.length}장 · {formatBytes(totalSize)} / {formatBytes(MAX_TOTAL_SIZE)}
           </p>
@@ -201,7 +225,7 @@ export default function PostImageUploader({ postId, onInsert }: Props) {
         <input
           ref={inputRef}
           type="file"
-          accept="image/*"
+          accept={ACCEPTED_FILE_TYPES}
           multiple
           className="hidden"
           onChange={(event) => handleFiles(event.target.files)}
