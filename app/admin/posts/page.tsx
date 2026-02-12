@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
@@ -138,7 +139,12 @@ export default function AdminPostsPage() {
                 <div key={post.id} className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <p className="text-sm font-semibold text-slate-900">{post.title}</p>
+                      <Link
+                        href={`/posts/${post.id}`}
+                        className="text-sm font-semibold text-slate-900 transition hover:text-blue-600"
+                      >
+                        {post.title}
+                      </Link>
                       <p className="mt-1 text-xs text-slate-500">
                         작성자: {post.authorNickname ?? '익명'} · 상태: {post.status}
                       </p>

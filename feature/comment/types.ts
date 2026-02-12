@@ -15,6 +15,16 @@ export type CommentResponse = {
   isLikedByCurrentUser?: boolean;
 };
 
+export type MyCommentListItem = {
+  id: number;
+  postId: number;
+  postTitle: string;
+  content: string;
+  status: CommentStatus;
+  createdAt: string;
+  updatedAt: string | null;
+};
+
 export type CommentCreateRequest = {
   content: string;
 };
