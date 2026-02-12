@@ -1,10 +1,11 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { ImagePlus, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { uploadPostImages, type UploadedImage } from '@/feature/upload/api';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { deletePostImage, uploadPostImages, type UploadedImage } from '@/feature/upload/api';
 
 type Props = {
   postId?: number;
@@ -13,9 +14,19 @@ type Props = {
 
 const MAX_FILES = 30;
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
+const MAX_TOTAL_SIZE = 100 * 1024 * 1024;
 const MAX_IMAGE_DIMENSION = 1600;
 const IMAGE_QUALITY = 0.85;
 const RESIZE_EXCLUDED_TYPES = new Set(['image/gif', 'image/svg+xml']);
+
+const formatBytes = (bytes: number) => {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const value = bytes / 1024 ** index;
+  const fixed = value >= 100 || index === 0 ? 0 : value >= 10 ? 1 : 2;
+  return `${value.toFixed(fixed)}${units[index]}`;
+};
 
 const loadImage = (file: File): Promise<HTMLImageElement> =>
   new Promise((resolve, reject) => {
@@ -87,6 +98,13 @@ export default function PostImageUploader({ postId, onInsert }: Props) {
   const [images, setImages] = useState<UploadedImage[]>([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<UploadedImage | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const totalSize = useMemo(
+    () => images.reduce((sum, image) => sum + (image.size ?? 0), 0),
+    [images],
+  );
 
   const handleFiles = useCallback(
     async (files: FileList | null) => {
@@ -102,10 +120,16 @@ export default function PostImageUploader({ postId, onInsert }: Props) {
 
       try {
         const resizedFiles: File[] = [];
+        let nextTotal = totalSize;
         for (const file of fileArray) {
           const resized = await resizeImageFile(file);
           if (resized.size > MAX_FILE_SIZE) {
             setError('파일 크기는 최대 15MB까지 업로드할 수 있습니다.');
+            return;
+          }
+          nextTotal += resized.size;
+          if (nextTotal > MAX_TOTAL_SIZE) {
+            setError(`전체 이미지는 최대 ${formatBytes(MAX_TOTAL_SIZE)}까지 업로드할 수 있습니다.`);
             return;
           }
           resizedFiles.push(resized);
@@ -133,12 +157,35 @@ export default function PostImageUploader({ postId, onInsert }: Props) {
     setImages((prev) => prev.filter((image) => image.key !== key));
   }, []);
 
+  const confirmDelete = useCallback((image: UploadedImage) => {
+    setDeleteTarget(image);
+  }, []);
+
+  const handleDelete = useCallback(async () => {
+    if (!deleteTarget || deleting) return;
+    setDeleting(true);
+    setError(null);
+    const res = await deletePostImage(deleteTarget.key);
+    setDeleting(false);
+    setDeleteTarget(null);
+    if (!res.ok) {
+      setError(res.message ?? '이미지 삭제에 실패했습니다.');
+      return;
+    }
+    handleRemove(deleteTarget.key);
+  }, [deleteTarget, deleting, handleRemove]);
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-slate-700">이미지 업로드</p>
-          <p className="text-xs text-slate-500">최대 30장, 장당 15MB까지 업로드 가능</p>
+          <p className="text-xs text-slate-500">
+            최대 {MAX_FILES}장, 장당 {formatBytes(MAX_FILE_SIZE)} / 전체 {formatBytes(MAX_TOTAL_SIZE)}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            {images.length}장 · {formatBytes(totalSize)} / {formatBytes(MAX_TOTAL_SIZE)}
+          </p>
         </div>
         <Button
           type="button"
@@ -173,7 +220,7 @@ export default function PostImageUploader({ postId, onInsert }: Props) {
             <div key={image.key} className="relative rounded-xl border border-slate-200 bg-white p-3">
               <button
                 type="button"
-                onClick={() => handleRemove(image.key)}
+                onClick={() => confirmDelete(image)}
                 className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-slate-600 shadow hover:bg-white"
                 aria-label="업로드 이미지 제거"
               >
@@ -191,10 +238,25 @@ export default function PostImageUploader({ postId, onInsert }: Props) {
               >
                 본문에 삽입
               </Button>
+              <p className="mt-2 text-xs text-slate-500">{formatBytes(image.size)}</p>
             </div>
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        title="업로드 이미지 삭제"
+        description="이 이미지를 삭제할까요? 본문에 삽입한 이미지는 직접 제거해야 합니다."
+        confirmText="삭제"
+        cancelText="취소"
+        confirmDisabled={deleting}
+        variant="destructive"
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }
