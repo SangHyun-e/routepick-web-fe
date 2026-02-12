@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowLeft, MapPin, Clock, Heart, Eye } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Heart, Eye, EyeOff, Pencil, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import type { PostResponse } from '@/feature/post/types';
@@ -30,11 +30,18 @@ export default function PostDetailHeader({ post, isOwner }: PostDetailHeaderProp
   const [likeCount, setLikeCount] = useState(post.likeCount ?? 0);
   const [isLiked, setIsLiked] = useState(post.isLikedByCurrentUser ?? false);
   const [isLiking, setIsLiking] = useState(false);
-  const { goEdit, confirmDelete, doDelete, showDeleteDialog, setShowDeleteDialog } = usePostActions(
-    {
-      postId: post.id,
-    },
-  );
+  const {
+    goEdit,
+    confirmDelete,
+    doDelete,
+    showDeleteDialog,
+    setShowDeleteDialog,
+    hide,
+    activate,
+    isUpdating,
+  } = usePostActions({
+    postId: post.id,
+  });
 
   const handleLike = async () => {
     if (isLiking) return;
@@ -80,11 +87,43 @@ export default function PostDetailHeader({ post, isOwner }: PostDetailHeaderProp
             </button>
 
             {isOwner && (
-              <div className="flex items-center gap-2">
-                <Button variant="outline" onClick={goEdit}>
+              <div className="flex flex-wrap items-center gap-2">
+                {post.status === 'ACTIVE' && (
+                  <Button
+                    variant="outline"
+                    onClick={hide}
+                    disabled={isUpdating}
+                    className="border-amber-200 text-amber-700 hover:bg-amber-50"
+                  >
+                    <EyeOff className="mr-1 h-4 w-4" />
+                    숨김
+                  </Button>
+                )}
+                {post.status === 'HIDDEN' && (
+                  <Button
+                    variant="outline"
+                    onClick={activate}
+                    disabled={isUpdating}
+                    className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                  >
+                    <Eye className="mr-1 h-4 w-4" />
+                    활성화
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  onClick={goEdit}
+                  className="border-slate-200 text-slate-700 hover:bg-slate-50"
+                >
+                  <Pencil className="mr-1 h-4 w-4" />
                   수정
                 </Button>
-                <Button variant="destructive" onClick={confirmDelete}>
+                <Button
+                  variant="destructive"
+                  onClick={confirmDelete}
+                  className="bg-red-500 hover:bg-red-600"
+                >
+                  <Trash2 className="mr-1 h-4 w-4" />
                   삭제
                 </Button>
               </div>
