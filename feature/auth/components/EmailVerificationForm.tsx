@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { confirmEmailVerifyCode, sendEmailVerifyCode } from '@/feature/auth/api';
+import { confirmEmailVerifyCode, login, sendEmailVerifyCode } from '@/feature/auth/api';
 import {
   emailVerifyConfirmSchema,
   emailVerifySendSchema,
@@ -29,10 +29,40 @@ type Props = {
   initialEmail?: string;
 };
 
-function withVerifiedParam(path: string) {
-  if (!path.startsWith('/login')) return path;
-  const separator = path.includes('?') ? '&' : '?';
-  return `${path}${separator}verified=1`;
+type StoredSignUp = {
+  email: string;
+  password: string;
+};
+
+const SIGNUP_SESSION_KEY = 'routepick:signup';
+
+function buildLoginRedirect(redirectTo?: string) {
+  const params = new URLSearchParams();
+  params.set('verified', '1');
+  if (redirectTo) {
+    params.set('from', redirectTo);
+  }
+  return `/login?${params.toString()}`;
+}
+
+function readStoredSignup(): StoredSignUp | null {
+  try {
+    const raw = sessionStorage.getItem(SIGNUP_SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as StoredSignUp;
+    if (!parsed?.email || !parsed?.password) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function clearStoredSignup() {
+  try {
+    sessionStorage.removeItem(SIGNUP_SESSION_KEY);
+  } catch {
+    // ignore
+  }
 }
 
 export default function EmailVerificationForm({
@@ -94,7 +124,22 @@ export default function EmailVerificationForm({
 
       const res = await confirmEmailVerifyCode({ email: targetEmail, code: values.code });
       if (res.ok) {
-        router.replace(withVerifiedParam(redirectTo));
+        const shouldLogin = window.confirm(
+          '회원가입이 완료되었습니다. 로그인하시겠습니까?',
+        );
+        const stored = readStoredSignup();
+        clearStoredSignup();
+
+        if (shouldLogin && stored && stored.email === targetEmail) {
+          const loginRes = await login({ email: stored.email, password: stored.password });
+          if (loginRes.ok) {
+            router.replace(redirectTo ?? '/');
+            router.refresh();
+            return;
+          }
+        }
+
+        router.replace(buildLoginRedirect(redirectTo));
         router.refresh();
         return;
       }

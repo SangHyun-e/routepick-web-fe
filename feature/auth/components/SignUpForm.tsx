@@ -23,6 +23,8 @@ type Props = {
   redirectTo?: string;
 };
 
+const SIGNUP_SESSION_KEY = 'routepick:signup';
+
 function buildVerifyUrl(email: string, redirectTo?: string) {
   const params = new URLSearchParams();
   params.set('email', email);
@@ -46,6 +48,14 @@ export default function SignUpForm({ redirectTo }: Props) {
       setServerError(null);
       const res = await signUp(values);
       if (res.ok) {
+        try {
+          sessionStorage.setItem(
+            SIGNUP_SESSION_KEY,
+            JSON.stringify({ email: values.email, password: values.password }),
+          );
+        } catch {
+          // ignore storage errors
+        }
         router.replace(buildVerifyUrl(values.email, redirectTo));
         return;
       }
