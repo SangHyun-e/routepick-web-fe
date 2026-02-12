@@ -42,11 +42,12 @@ export default async function PostDetailPage({ params }: PageProps) {
 
   const meRes = await fetchMeServer();
   const isOwner: boolean = meRes.ok && meRes.data.id === res.data.authorId;
+  const isAdmin: boolean = meRes.ok && meRes.data.role === 'ADMIN';
   const currentUserId: number | null = meRes.ok ? meRes.data.id : null;
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <PostDetailHeader post={res.data} isOwner={isOwner} />
+      <PostDetailHeader post={res.data} isOwner={isOwner} isAdmin={isAdmin} />
 
       <div className="mx-auto w-full max-w-3xl px-4 pb-16">
         <PostDetailContent post={res.data} />
