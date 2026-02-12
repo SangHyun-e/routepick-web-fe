@@ -9,10 +9,12 @@ import { Button } from '@/components/ui/button';
 import { usePostActions } from '@/feature/post/hooks/usePostActions';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { likePost } from '@/feature/post/api';
+import { hardDeleteAdminPost } from '@/feature/admin/api';
 
 interface PostDetailHeaderProps {
   post: PostResponse;
   isOwner: boolean;
+  isAdmin: boolean;
 }
 
 function formatDate(iso: string) {
@@ -25,11 +27,13 @@ function formatDate(iso: string) {
   return `${y}.${m}.${day} ${hh}:${mm}`;
 }
 
-export default function PostDetailHeader({ post, isOwner }: PostDetailHeaderProps) {
+export default function PostDetailHeader({ post, isOwner, isAdmin }: PostDetailHeaderProps) {
   const router = useRouter();
   const [likeCount, setLikeCount] = useState(post.likeCount ?? 0);
   const [isLiked, setIsLiked] = useState(post.isLikedByCurrentUser ?? false);
   const [isLiking, setIsLiking] = useState(false);
+  const [showHardDeleteDialog, setShowHardDeleteDialog] = useState(false);
+  const [isHardDeleting, setIsHardDeleting] = useState(false);
   const {
     goEdit,
     confirmDelete,
@@ -42,6 +46,46 @@ export default function PostDetailHeader({ post, isOwner }: PostDetailHeaderProp
   } = usePostActions({
     postId: post.id,
   });
+
+  const showOwnerActions = isOwner;
+  const showAdminSoftDelete = isAdmin && !isOwner;
+  const showAdminHardDelete = isAdmin;
+
+  const confirmHardDelete = () => {
+    setShowHardDeleteDialog(true);
+  };
+
+  const doHardDelete = async () => {
+    if (isHardDeleting) return;
+    setShowHardDeleteDialog(false);
+    setIsHardDeleting(true);
+
+    const res = await hardDeleteAdminPost(post.id);
+    setIsHardDeleting(false);
+
+    if (!res.ok) {
+      if (res.status === 401) {
+        toast.error('로그인이 필요합니다. 다시 로그인해주세요.');
+        router.push(`/login?from=/posts/${post.id}`);
+        return;
+      }
+      if (res.status === 403) {
+        toast.error('관리자 권한이 필요합니다.');
+        return;
+      }
+      if (res.status === 404) {
+        toast.error('이미 삭제되었거나 존재하지 않는 게시글입니다.');
+        router.push('/posts');
+        return;
+      }
+      toast.error(res.message ?? '물리 삭제에 실패했습니다.');
+      return;
+    }
+
+    toast.success('게시글이 물리 삭제되었습니다.');
+    router.push('/posts');
+    router.refresh();
+  };
 
   const handleLike = async () => {
     if (isLiking) return;
@@ -86,46 +130,71 @@ export default function PostDetailHeader({ post, isOwner }: PostDetailHeaderProp
               뒤로가기
             </button>
 
-            {isOwner && (
+            {(showOwnerActions || showAdminSoftDelete || showAdminHardDelete) && (
               <div className="flex flex-wrap items-center gap-2">
-                {post.status === 'ACTIVE' && (
+                {showOwnerActions && (
+                  <>
+                    {post.status === 'ACTIVE' && (
+                      <Button
+                        variant="outline"
+                        onClick={hide}
+                        disabled={isUpdating}
+                        className="border-amber-200 text-amber-700 hover:bg-amber-50"
+                      >
+                        <EyeOff className="mr-1 h-4 w-4" />
+                        숨김
+                      </Button>
+                    )}
+                    {post.status === 'HIDDEN' && (
+                      <Button
+                        variant="outline"
+                        onClick={activate}
+                        disabled={isUpdating}
+                        className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                      >
+                        <Eye className="mr-1 h-4 w-4" />
+                        활성화
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      onClick={goEdit}
+                      className="border-slate-200 text-slate-700 hover:bg-slate-50"
+                    >
+                      <Pencil className="mr-1 h-4 w-4" />
+                      수정
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={confirmDelete}
+                      className="bg-red-500 hover:bg-red-600"
+                    >
+                      <Trash2 className="mr-1 h-4 w-4" />
+                      삭제
+                    </Button>
+                  </>
+                )}
+                {showAdminSoftDelete && (
                   <Button
-                    variant="outline"
-                    onClick={hide}
-                    disabled={isUpdating}
-                    className="border-amber-200 text-amber-700 hover:bg-amber-50"
+                    variant="destructive"
+                    onClick={confirmDelete}
+                    className="bg-red-500 hover:bg-red-600"
                   >
-                    <EyeOff className="mr-1 h-4 w-4" />
-                    숨김
+                    <Trash2 className="mr-1 h-4 w-4" />
+                    소프트삭제
                   </Button>
                 )}
-                {post.status === 'HIDDEN' && (
+                {showAdminHardDelete && (
                   <Button
-                    variant="outline"
-                    onClick={activate}
-                    disabled={isUpdating}
-                    className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                    variant="destructive"
+                    onClick={confirmHardDelete}
+                    disabled={isHardDeleting}
+                    className="bg-red-600 hover:bg-red-700"
                   >
-                    <Eye className="mr-1 h-4 w-4" />
-                    활성화
+                    <Trash2 className="mr-1 h-4 w-4" />
+                    물리삭제
                   </Button>
                 )}
-                <Button
-                  variant="outline"
-                  onClick={goEdit}
-                  className="border-slate-200 text-slate-700 hover:bg-slate-50"
-                >
-                  <Pencil className="mr-1 h-4 w-4" />
-                  수정
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={confirmDelete}
-                  className="bg-red-500 hover:bg-red-600"
-                >
-                  <Trash2 className="mr-1 h-4 w-4" />
-                  삭제
-                </Button>
               </div>
             )}
           </div>
@@ -193,6 +262,16 @@ export default function PostDetailHeader({ post, isOwner }: PostDetailHeaderProp
         confirmText="삭제"
         cancelText="취소"
         onConfirm={doDelete}
+        variant="destructive"
+      />
+      <ConfirmDialog
+        open={showHardDeleteDialog}
+        onOpenChange={setShowHardDeleteDialog}
+        title="게시글 물리 삭제"
+        description="정말 물리 삭제할까요? 삭제한 글은 복구할 수 없습니다."
+        confirmText="삭제"
+        cancelText="취소"
+        onConfirm={doHardDelete}
         variant="destructive"
       />
     </>
