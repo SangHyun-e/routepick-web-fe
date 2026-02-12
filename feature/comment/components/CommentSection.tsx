@@ -19,6 +19,7 @@ interface Props {
   postAuthorId: number | null;
   postAuthorNickname: string | null;
   currentUserId: number | null;
+  isAdmin: boolean;
   commentCount: number;
   bestComments?: CommentResponse[];
 }
@@ -28,6 +29,7 @@ export default function CommentSection({
   postAuthorId,
   postAuthorNickname,
   currentUserId,
+  isAdmin,
   commentCount,
   bestComments = [],
 }: Props) {
@@ -124,6 +126,7 @@ export default function CommentSection({
                   postAuthorId={postAuthorId}
                   postAuthorNickname={postAuthorNickname}
                   currentUserId={currentUserId}
+                  isAdmin={isAdmin}
                   comment={c}
                   onRefresh={refresh}
                   onCountDelta={() => {
@@ -215,6 +218,7 @@ export default function CommentSection({
             postAuthorId={postAuthorId}
             postAuthorNickname={postAuthorNickname}
             currentUserId={currentUserId}
+            isAdmin={isAdmin}
             comments={data?.content ?? []}
             loading={loading}
             onRefresh={refresh}
