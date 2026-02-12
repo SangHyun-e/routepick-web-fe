@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/react';
 import type { KakaoPlaceDocument } from '@/feature/place/types';
 import type { PostFormDraft, PostFormErrors } from '@/feature/post/types';
@@ -39,6 +39,7 @@ export default function PostForm({
   postId,
 }: Props) {
   const [editor, setEditor] = useState<Editor | null>(null);
+  const lastImageInsertPosRef = useRef<number | null>(null);
   const parseOptionalNumber = useCallback((value: string) => {
     const trimmed = value.trim();
     if (!trimmed) return null;
@@ -61,9 +62,28 @@ export default function PostForm({
     errors.form === '위도와 경도는 함께 제공되어야 합니다.' ? errors.form : undefined;
   const formError = coordinatePairError ? undefined : errors.form;
 
+  useEffect(() => {
+    if (!editor) return;
+    const updateSelection = () => {
+      lastImageInsertPosRef.current = editor.state.selection.to;
+    };
+    updateSelection();
+    editor.on('selectionUpdate', updateSelection);
+    return () => {
+      editor.off('selectionUpdate', updateSelection);
+    };
+  }, [editor]);
+
   const handleInsertImage = useCallback(
     (url: string) => {
-      editor?.chain().focus().setImage({ src: url }).run();
+      if (!editor) return;
+      const insertAt = lastImageInsertPosRef.current ?? editor.state.selection.to;
+      editor
+        .chain()
+        .focus()
+        .insertContentAt(insertAt, { type: 'image', attrs: { src: url } })
+        .run();
+      lastImageInsertPosRef.current = editor.state.selection.to;
     },
     [editor],
   );
