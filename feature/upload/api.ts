@@ -34,3 +34,23 @@ export async function uploadPostImages(
   const data = (await res.json()) as UploadResponse;
   return { ok: true, data: data.images ?? [] };
 }
+
+export async function deletePostImage(key: string): Promise<ApiResult<void>> {
+  const res = await bffFetch(
+    `/api/proxy/uploads/images?key=${encodeURIComponent(key)}`,
+    {
+      method: 'DELETE',
+    },
+  );
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    return {
+      ok: false,
+      status: res.status,
+      message: err?.message ?? '이미지 삭제에 실패했습니다.',
+    };
+  }
+
+  return { ok: true, data: undefined };
+}
