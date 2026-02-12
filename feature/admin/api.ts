@@ -2,6 +2,25 @@ import { bffFetch } from '@/lib/bffFetch';
 import type { ApiResult } from '@/types/http';
 import type { PaginatedResponse, PostListItemResponse } from '@/feature/post/types';
 
+async function readErrorMessage(res: Response, fallback: string): Promise<string> {
+  try {
+    const json = await res.clone().json();
+    const msg = (json as { message?: string })?.message;
+    if (msg) return msg;
+  } catch {
+    // ignore
+  }
+
+  try {
+    const text = await res.clone().text();
+    if (text) return text;
+  } catch {
+    // ignore
+  }
+
+  return fallback;
+}
+
 export async function fetchAdminPosts(
   page = 0,
   size = 20,
@@ -33,4 +52,43 @@ export async function fetchAdminPosts(
 
   const data = (await res.json()) as PaginatedResponse<PostListItemResponse>;
   return { ok: true, data };
+}
+
+export async function activateAdminPost(postId: number): Promise<ApiResult<void>> {
+  const res = await bffFetch(`/api/proxy/admin/posts/${postId}/activate`, {
+    method: 'PATCH',
+  });
+
+  if (!res.ok) {
+    const message = await readErrorMessage(res, '게시글 활성화에 실패했습니다.');
+    return { ok: false, status: res.status, message };
+  }
+
+  return { ok: true, data: undefined };
+}
+
+export async function hideAdminPost(postId: number): Promise<ApiResult<void>> {
+  const res = await bffFetch(`/api/proxy/admin/posts/${postId}/hide`, {
+    method: 'PATCH',
+  });
+
+  if (!res.ok) {
+    const message = await readErrorMessage(res, '게시글 비활성화에 실패했습니다.');
+    return { ok: false, status: res.status, message };
+  }
+
+  return { ok: true, data: undefined };
+}
+
+export async function hardDeleteAdminPost(postId: number): Promise<ApiResult<void>> {
+  const res = await bffFetch(`/api/proxy/admin/posts/${postId}`, {
+    method: 'DELETE',
+  });
+
+  if (!res.ok) {
+    const message = await readErrorMessage(res, '게시글 물리 삭제에 실패했습니다.');
+    return { ok: false, status: res.status, message };
+  }
+
+  return { ok: true, data: undefined };
 }
