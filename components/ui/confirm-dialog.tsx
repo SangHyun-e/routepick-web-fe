@@ -1,4 +1,5 @@
 'use client';
+import type React from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,11 +14,13 @@ import {
 type ConfirmDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  title: string;
-  description: string;
+  title: React.ReactNode;
+  description: React.ReactNode;
   confirmText?: string;
   cancelText?: string;
-  onConfirm: () => void;
+  onConfirm: (event?: React.MouseEvent<HTMLButtonElement>) => void;
+  onCancel?: () => void;
+  confirmDisabled?: boolean;
   variant?: 'default' | 'destructive';
 };
 
@@ -29,6 +32,8 @@ export function ConfirmDialog({
   confirmText = '확인',
   cancelText = '취소',
   onConfirm,
+  onCancel,
+  confirmDisabled = false,
   variant = 'default',
 }: ConfirmDialogProps) {
   return (
@@ -39,9 +44,10 @@ export function ConfirmDialog({
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>{cancelText}</AlertDialogCancel>
+          <AlertDialogCancel onClick={onCancel}>{cancelText}</AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
+            disabled={confirmDisabled}
             className={variant === 'destructive' ? 'bg-red-600 hover:bg-red-700' : ''}
           >
             {confirmText}

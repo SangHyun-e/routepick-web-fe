@@ -8,10 +8,16 @@ import Pagination from '@/feature/post/list/Pagination';
 import PostSortSelect from '@/feature/post/components/PostSortSelect';
 import type { PostListItemResponse, PaginatedResponse, PostSortOption } from '@/feature/post/types';
 import { ChevronRight } from 'lucide-react';
+import { toast } from 'sonner';
+
+import { bffFetch } from '@/lib/bffFetch';
+import type { Me } from '@/types/user';
 
 export default function Page() {
   const [data, setData] = useState<PaginatedResponse<PostListItemResponse> | null>(null);
   const [loading, setLoading] = useState(true);
+  const [meStatus, setMeStatus] = useState<Me['status'] | null>(null);
+  const [meReady, setMeReady] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [sortOption, setSortOption] = useState<PostSortOption>('latest');
   const searchParams = useSearchParams();
@@ -25,6 +31,28 @@ export default function Page() {
     setSearchInput(keywordParam);
     setCurrentPage(0);
   }, [keywordParam]);
+
+  const fetchMeStatus = useCallback(async () => {
+    const res = await bffFetch('/api/proxy/users/me');
+    if (!res.ok) {
+      return null;
+    }
+    const json = (await res.json().catch(() => null)) as Me | null;
+    return json?.status ?? 'ACTIVE';
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const status = await fetchMeStatus();
+      if (!mounted) return;
+      setMeStatus(status);
+      setMeReady(true);
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [fetchMeStatus]);
 
   useEffect(() => {
     let mounted = true;
@@ -58,9 +86,27 @@ export default function Page() {
     setCurrentPage(0);
   }, []);
 
-  const handleWriteClick = useCallback(() => {
+  const handleWriteClick = useCallback(async () => {
+    let status = meStatus;
+    if (!meReady) {
+      status = await fetchMeStatus();
+      setMeStatus(status);
+      setMeReady(true);
+    }
+
+    if (status === 'PENDING') {
+      toast.error('이메일 인증이 필요합니다. 마이페이지에서 인증을 완료해주세요.');
+      return;
+    }
+
+    if (!status) {
+      toast.error('로그인이 필요합니다. 로그인 후 다시 시도해주세요.');
+      router.push(`/login?from=${encodeURIComponent('/posts/write')}`);
+      return;
+    }
+
     router.push('/posts/write');
-  }, [router]);
+  }, [fetchMeStatus, meReady, meStatus, router]);
 
   const handleSearch = useCallback(() => {
     const keyword = searchInput.trim();

@@ -2,6 +2,7 @@ import { be } from '@/lib/be';
 import {
   appendSetCookies,
   applyAuthCookies,
+  clearAuthCookies,
   parseAccessTokenPayload,
   readRefreshCookie,
 } from '@/lib/authTokens';
@@ -192,6 +193,10 @@ async function handle(method: string, req: NextRequest, params: { path?: string[
       refresh: r.rt,
     });
 
+    if (method === 'DELETE' && pathOnly === '/users/me' && final.ok) {
+      clearAuthCookies(final);
+    }
+
     // ✅ refresh 재시도 케이스에서도 view cookie는 동일하게 처리
     if (shouldSetViewCookie && res.ok && final.ok && viewCookieName) {
       final.cookies.set({
@@ -210,6 +215,10 @@ async function handle(method: string, req: NextRequest, params: { path?: string[
 
   // 정상 케이스
   const finalRes = await makeProxyResponse(res);
+
+  if (method === 'DELETE' && pathOnly === '/users/me' && finalRes.ok) {
+    clearAuthCookies(finalRes);
+  }
 
   // ✅ 여기서 “Set-Cookie”로 확실히 박아준다 (핵심)
   if (shouldSetViewCookie && res.ok && finalRes.ok && viewCookieName) {
