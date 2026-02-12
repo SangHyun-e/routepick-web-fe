@@ -29,7 +29,11 @@ export type EmailVerifyConfirmValues = z.infer<typeof emailVerifyConfirmSchema>;
 export const signUpSchema = z.object({
   email: z.string().email('유효한 이메일을 입력하세요'),
   password: z.string().regex(PASSWORD_POLICY_REGEX, PASSWORD_POLICY_MESSAGE),
+  confirmPassword: z.string().min(1, '비밀번호를 다시 입력하세요'),
   nickname: z.string().min(1, '닉네임을 입력하세요').max(40, '닉네임은 40자 이하입니다'),
+}).refine((values) => values.password === values.confirmPassword, {
+  message: '비밀번호가 일치하지 않습니다.',
+  path: ['confirmPassword'],
 });
 
 export type SignUpValues = z.infer<typeof signUpSchema>;

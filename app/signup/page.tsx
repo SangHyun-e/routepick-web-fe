@@ -34,9 +34,9 @@ export default function SignUpPage({ searchParams }: Props) {
   return (
     <AuthShell
       title="회원가입"
-      description="이메일과 닉네임을 입력하고 시작하세요"
+      description="이메일 인증을 완료하면 활동 제한이 해제됩니다"
       footer={footer}
-      bottomNote="가입 후 이메일 인증을 완료해야 로그인할 수 있습니다."
+      bottomNote="인증 전에는 글쓰기·댓글 작성이 제한되며, 마이페이지에서 나중에 인증할 수 있어요."
     >
       <SignUpForm redirectTo={from ?? '/'} />
     </AuthShell>
