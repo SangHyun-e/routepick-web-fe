@@ -145,28 +145,33 @@ export default function LoginForm({ redirectTo = '/' }: { redirectTo?: string })
           </div>
         )}
 
-        {/* Submit button */}
-        <Button type="submit" disabled={isSubmitting} className="h-11 w-full font-medium">
-          {isSubmitting ? '로그인 중...' : '로그인'}
-        </Button>
+        <div className="mx-auto w-full max-w-[300px] space-y-3">
+          {/* Submit button */}
+          <Button type="submit" disabled={isSubmitting} className="h-[45px] w-full font-medium">
+            {isSubmitting ? '로그인 중...' : '로그인'}
+          </Button>
 
-        <button
-          type="button"
-          onClick={onKakaoLogin}
-          disabled={isSubmitting || isKakaoLoading}
-          aria-label={kakaoButtonLabel}
-          aria-busy={isKakaoLoading}
-          className={`w-full overflow-hidden rounded-md transition-opacity ${
-            isSubmitting || isKakaoLoading ? 'cursor-not-allowed opacity-60' : 'hover:opacity-90'
-          }`}
-        >
-          <img
-            src="/kakao_login/ko/kakao_login_medium_wide.png"
-            alt="카카오로 로그인"
-            className="h-11 w-full object-contain"
-          />
-          <span className="sr-only">{kakaoButtonLabel}</span>
-        </button>
+          <button
+            type="button"
+            onClick={onKakaoLogin}
+            disabled={isSubmitting || isKakaoLoading}
+            aria-label={kakaoButtonLabel}
+            aria-busy={isKakaoLoading}
+            className={`h-[45px] w-full overflow-hidden rounded-md transition-opacity ${
+              isSubmitting || isKakaoLoading ? 'cursor-not-allowed opacity-60' : 'hover:opacity-90'
+            }`}
+          >
+            <img
+              src="/kakao_login/ko/kakao_login_medium_wide.png"
+              srcSet="/kakao_login/ko/kakao_login_medium_wide.png 1x, /kakao_login/ko/kakao_login_large_wide.png 2x"
+              width={300}
+              height={45}
+              alt="카카오로 로그인"
+              className="h-full w-full object-contain"
+            />
+            <span className="sr-only">{kakaoButtonLabel}</span>
+          </button>
+        </div>
       </form>
     </Form>
   );
