@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState, type ComponentProps } from 'react';
 import { LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { logout } from '@/feature/auth/api';
+import { getKakaoLogoutUrl, logout } from '@/feature/auth/api';
 
 type LogoutButtonProps = {
   className?: string;
@@ -23,7 +23,12 @@ export default function LogoutButton({
   const doLogout = async () => {
     try {
       setLoading(true);
+      const kakaoLogout = await getKakaoLogoutUrl();
       await logout();
+      if (kakaoLogout.ok) {
+        window.location.href = kakaoLogout.data;
+        return;
+      }
       router.replace('/login');
       router.refresh();
     } finally {
