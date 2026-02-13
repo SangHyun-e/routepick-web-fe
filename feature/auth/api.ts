@@ -14,6 +14,7 @@ import { ApiResult } from '@/types/http';
 type ApiFieldError = { field?: string; reason?: string };
 type ApiErrorBody = { code?: string; message?: string; errors?: ApiFieldError[] };
 type KakaoAuthorizeUrlResponse = { authorizeUrl?: string };
+type KakaoLogoutUrlResponse = { logoutUrl?: string };
 
 const EMAIL_VERIFY_ERROR_MESSAGES: Record<string, string> = {
   'AUTH-410': '인증코드가 올바르지 않습니다. 다시 확인해주세요.',
@@ -135,6 +136,28 @@ export async function loginWithKakao(code: string): Promise<ApiResult<void>> {
     ok: false,
     status: res.status,
     message: err?.message ?? '카카오 로그인 중 오류가 발생했습니다.',
+  };
+}
+
+export async function getKakaoLogoutUrl(): Promise<ApiResult<string>> {
+  const res = await bffFetch('/api/proxy/auth/oauth/kakao/logout-url', {
+    method: 'GET',
+    cache: 'no-store',
+  });
+
+  if (res.ok) {
+    const data = (await res.json().catch(() => null)) as KakaoLogoutUrlResponse | null;
+    if (data?.logoutUrl) {
+      return { ok: true, data: data.logoutUrl };
+    }
+    return { ok: false, status: res.status, message: '카카오 로그아웃 URL을 찾을 수 없습니다.' };
+  }
+
+  const err = (await res.json().catch(() => null)) as ApiErrorBody | null;
+  return {
+    ok: false,
+    status: res.status,
+    message: err?.message ?? '카카오 로그아웃 준비 중 오류가 발생했습니다.',
   };
 }
 

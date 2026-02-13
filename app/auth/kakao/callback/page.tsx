@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AuthShell from '@/components/shared/AuthShell';
 import { loginWithKakao } from '@/feature/auth/api';
+import { bffFetch } from '@/lib/bffFetch';
+import type { Me } from '@/types/user';
 
 function safeFrom(raw: string | null): string {
   if (!raw) return '/';
@@ -35,6 +37,18 @@ export default function KakaoCallbackPage() {
     const run = async () => {
       const res = await loginWithKakao(code);
       if (res.ok) {
+        const meRes = await bffFetch('/api/proxy/users/me', { cache: 'no-store' });
+        if (meRes.ok) {
+          const me = (await meRes.json().catch(() => null)) as Me | null;
+          if (me?.authProvider === 'KAKAO' && me.profileComplete === false) {
+            const next = new URL('/auth/kakao/nickname', window.location.origin);
+            if (redirectTo && redirectTo !== '/') {
+              next.searchParams.set('from', redirectTo);
+            }
+            router.replace(next.pathname + next.search);
+            return;
+          }
+        }
         router.replace(redirectTo);
         router.refresh();
         return;

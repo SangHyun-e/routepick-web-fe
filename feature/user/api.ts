@@ -159,3 +159,18 @@ export async function verifyPassword(password: string): Promise<ApiResult<void>>
 
   return { ok: true, data: undefined };
 }
+
+export async function updateMyNickname(nickname: string): Promise<ApiResult<void>> {
+  const res = await bffFetch('/api/proxy/users/me/nickname', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nickname }),
+  });
+
+  if (!res.ok) {
+    const message = await readErrorMessage(res, '닉네임 변경에 실패했습니다.');
+    return { ok: false, status: res.status, message };
+  }
+
+  return { ok: true, data: undefined };
+}
