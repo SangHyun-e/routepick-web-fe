@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AuthShell from '@/components/shared/AuthShell';
 import { loginWithKakao } from '@/feature/auth/api';
@@ -16,6 +16,7 @@ export default function KakaoCallbackPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
+  const hasProcessed = useRef(false);
 
   const code = useMemo(() => searchParams.get('code'), [searchParams]);
   const redirectTo = useMemo(() => safeFrom(searchParams.get('state')), [searchParams]);
@@ -25,6 +26,11 @@ export default function KakaoCallbackPage() {
       setError('인가 코드가 없습니다. 다시 시도해주세요.');
       return;
     }
+
+    if (hasProcessed.current) {
+      return;
+    }
+    hasProcessed.current = true;
 
     const run = async () => {
       const res = await loginWithKakao(code);
