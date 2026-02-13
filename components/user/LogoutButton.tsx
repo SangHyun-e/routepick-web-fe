@@ -5,6 +5,8 @@ import { useState, type ComponentProps } from 'react';
 import { LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getKakaoLogoutUrl, logout } from '@/feature/auth/api';
+import { bffFetch } from '@/lib/bffFetch';
+import type { Me } from '@/types/user';
 
 type LogoutButtonProps = {
   className?: string;
@@ -23,9 +25,16 @@ export default function LogoutButton({
   const doLogout = async () => {
     try {
       setLoading(true);
-      const kakaoLogout = await getKakaoLogoutUrl();
+      let shouldLogoutFromKakao = false;
+      const meRes = await bffFetch('/api/proxy/users/me', { cache: 'no-store' });
+      if (meRes.ok) {
+        const me = (await meRes.json().catch(() => null)) as Me | null;
+        shouldLogoutFromKakao = me?.authProvider === 'KAKAO';
+      }
+
+      const kakaoLogout = shouldLogoutFromKakao ? await getKakaoLogoutUrl() : null;
       await logout();
-      if (kakaoLogout.ok) {
+      if (kakaoLogout?.ok) {
         window.location.href = kakaoLogout.data;
         return;
       }

@@ -9,7 +9,6 @@ import { toast } from 'sonner';
 
 import { bffFetch } from '@/lib/bffFetch';
 import type { Me } from '@/types/user';
-import LogoutButton from '@/components/user/LogoutButton';
 import UserProfileCard from '@/components/user/UserProfileCard';
 import UserMetaGrid from '@/components/user/UserMetaGrid';
 import { Button } from '@/components/ui/button';
@@ -595,14 +594,14 @@ export default function MePanel() {
         <h3 className="text-lg font-semibold text-slate-900">계정 관리</h3>
         <p className="mt-2 text-sm text-slate-600">
           회원 탈퇴 시 작성한 게시글과 댓글은 삭제되지 않으며, 작성자는 탈퇴회원으로 표시됩니다.
-          <br />
-          카카오 로그인 계정은 탈퇴 시 카카오 연결이 해제됩니다.
+          {isKakaoAccount && (
+            <>
+              <br />
+              카카오 로그인 계정은 탈퇴 시 카카오 연결이 해제됩니다.
+            </>
+          )}
         </p>
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-          <LogoutButton
-            size="default"
-            className="flex-1 justify-center rounded-xl border-red-200 text-red-600 hover:bg-red-50"
-          />
+        <div className="mt-4 flex">
           <Button
             variant="outline"
             onClick={() => {
@@ -611,7 +610,7 @@ export default function MePanel() {
               setShowWithdrawDialog(true);
             }}
             disabled={isWithdrawing}
-            className="flex-1 rounded-xl border-slate-300 text-slate-700 hover:bg-slate-100"
+            className="w-full rounded-xl border-slate-300 text-slate-700 hover:bg-slate-100"
           >
             {isWithdrawing ? '탈퇴 처리 중...' : '회원 탈퇴'}
           </Button>
@@ -637,13 +636,15 @@ export default function MePanel() {
               <br />
               작성한 게시글과 댓글은 그대로 남습니다.
             </p>
-            <p className="text-sm text-slate-600">
-              카카오 로그인 계정은 탈퇴 시 카카오 연결이 해제됩니다.
-            </p>
             {isKakaoAccount ? (
-              <p className="text-sm text-slate-600">
-                카카오 로그인 계정은 비밀번호 확인 없이 탈퇴됩니다.
-              </p>
+              <div className="space-y-2">
+                <p className="text-sm text-slate-600">
+                  카카오 로그인 계정은 탈퇴 시 카카오 연결이 해제됩니다.
+                </p>
+                <p className="text-sm text-slate-600">
+                  카카오 로그인 계정은 비밀번호 확인 없이 탈퇴됩니다.
+                </p>
+              </div>
             ) : (
               <div className="space-y-2">
                 <label className="text-sm font-medium text-slate-700">비밀번호 확인</label>
