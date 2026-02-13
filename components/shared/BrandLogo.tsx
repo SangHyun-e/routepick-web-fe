@@ -23,17 +23,19 @@ export default function BrandLogo({ className = '', href = '/', showText = true 
         <circle cx="24" cy="17" r="5" fill="white" />
         <rect x="22.6" y="26" width="2.8" height="8" rx="1.4" fill="white" opacity="0.9" />
       </svg>
-      {showText && <span className="text-2xl font-bold tracking-tight">RoutePick</span>}
+      {showText && (
+        <span className="text-2xl leading-none font-medium tracking-tight">RoutePick</span>
+      )}
     </>
   );
 
   if (href) {
     return (
-      <Link href={href} className={`inline-flex items-center gap-2.5 ${className}`}>
+      <Link href={href} className={`inline-flex items-center gap-1.5 ${className}`}>
         {content}
       </Link>
     );
   }
 
-  return <span className={`inline-flex items-center gap-2.5 ${className}`}>{content}</span>;
+  return <span className={`inline-flex items-center gap-1.5 ${className}`}>{content}</span>;
 }
