@@ -103,6 +103,7 @@ export default function MePanel() {
   const showActivityEmpty = !activeLoading && !activeError && activeItems.length === 0;
   const hasActiveItems = activeItems.length > 0;
   const showActivityError = Boolean(activeError) && !hasActiveItems;
+  const isKakaoAccount = data?.authProvider === 'KAKAO';
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -287,22 +288,27 @@ export default function MePanel() {
   const handleWithdrawConfirm = useCallback(
     async (event?: MouseEvent<HTMLButtonElement>) => {
       event?.preventDefault();
-      if (!withdrawPassword.trim()) {
-        setWithdrawError('비밀번호를 입력해주세요.');
-        return;
-      }
-
-      setWithdrawError(null);
-      setIsWithdrawing(true);
-      const verifyRes = await verifyPassword(withdrawPassword);
-      if (!verifyRes.ok) {
-        setIsWithdrawing(false);
-        if (verifyRes.status === 401) {
-          setWithdrawError('비밀번호가 올바르지 않습니다.');
+      if (!isKakaoAccount) {
+        if (!withdrawPassword.trim()) {
+          setWithdrawError('비밀번호를 입력해주세요.');
           return;
         }
-        setWithdrawError(verifyRes.message ?? '비밀번호 확인에 실패했습니다.');
-        return;
+
+        setWithdrawError(null);
+        setIsWithdrawing(true);
+        const verifyRes = await verifyPassword(withdrawPassword);
+        if (!verifyRes.ok) {
+          setIsWithdrawing(false);
+          if (verifyRes.status === 401) {
+            setWithdrawError('비밀번호가 올바르지 않습니다.');
+            return;
+          }
+          setWithdrawError(verifyRes.message ?? '비밀번호 확인에 실패했습니다.');
+          return;
+        }
+      } else {
+        setWithdrawError(null);
+        setIsWithdrawing(true);
       }
 
       const res = await withdrawUser();
@@ -320,7 +326,7 @@ export default function MePanel() {
       router.replace('/');
       router.refresh();
     },
-    [router, withdrawPassword],
+    [isKakaoAccount, router, withdrawPassword],
   );
 
   if (loading) {
@@ -634,37 +640,43 @@ export default function MePanel() {
             <p className="text-sm text-slate-600">
               카카오 로그인 계정은 탈퇴 시 카카오 연결이 해제됩니다.
             </p>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">비밀번호 확인</label>
-              <div className="relative">
-                <Input
-                  type={showWithdrawPassword ? 'text' : 'password'}
-                  value={withdrawPassword}
-                  onChange={(event) => {
-                    setWithdrawPassword(event.target.value);
-                    setWithdrawError(null);
-                  }}
-                  placeholder="비밀번호를 입력하세요"
-                  autoComplete="current-password"
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowWithdrawPassword((prev) => !prev)}
-                  aria-label={showWithdrawPassword ? '비밀번호 숨기기' : '비밀번호 보기'}
-                  className="absolute top-1/2 right-2 -translate-y-1/2 rounded-md p-1.5 transition-colors hover:bg-slate-100"
-                >
-                  {showWithdrawPassword ? (
-                    <EyeOff className="size-4 text-slate-500" />
-                  ) : (
-                    <Eye className="size-4 text-slate-500" />
-                  )}
-                </button>
+            {isKakaoAccount ? (
+              <p className="text-sm text-slate-600">
+                카카오 로그인 계정은 비밀번호 확인 없이 탈퇴됩니다.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700">비밀번호 확인</label>
+                <div className="relative">
+                  <Input
+                    type={showWithdrawPassword ? 'text' : 'password'}
+                    value={withdrawPassword}
+                    onChange={(event) => {
+                      setWithdrawPassword(event.target.value);
+                      setWithdrawError(null);
+                    }}
+                    placeholder="비밀번호를 입력하세요"
+                    autoComplete="current-password"
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowWithdrawPassword((prev) => !prev)}
+                    aria-label={showWithdrawPassword ? '비밀번호 숨기기' : '비밀번호 보기'}
+                    className="absolute top-1/2 right-2 -translate-y-1/2 rounded-md p-1.5 transition-colors hover:bg-slate-100"
+                  >
+                    {showWithdrawPassword ? (
+                      <EyeOff className="size-4 text-slate-500" />
+                    ) : (
+                      <Eye className="size-4 text-slate-500" />
+                    )}
+                  </button>
+                </div>
+                {withdrawError && (
+                  <p className="text-xs font-medium text-red-600">{withdrawError}</p>
+                )}
               </div>
-              {withdrawError && (
-                <p className="text-xs font-medium text-red-600">{withdrawError}</p>
-              )}
-            </div>
+            )}
           </div>
         }
         confirmText={isWithdrawing ? '탈퇴 처리 중...' : '탈퇴하기'}
