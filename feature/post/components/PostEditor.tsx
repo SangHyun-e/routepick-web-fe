@@ -101,6 +101,7 @@ export default function PostEditor({
   const [isPreview, setIsPreview] = useState(false);
   const [selectionVersion, setSelectionVersion] = useState(0);
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
       Image,
