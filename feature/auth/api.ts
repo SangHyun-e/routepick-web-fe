@@ -13,6 +13,7 @@ import { ApiResult } from '@/types/http';
 
 type ApiFieldError = { field?: string; reason?: string };
 type ApiErrorBody = { code?: string; message?: string; errors?: ApiFieldError[] };
+type KakaoAuthorizeUrlResponse = { authorizeUrl?: string };
 
 const EMAIL_VERIFY_ERROR_MESSAGES: Record<string, string> = {
   'AUTH-410': '인증코드가 올바르지 않습니다. 다시 확인해주세요.',
@@ -93,6 +94,47 @@ export async function login(payload: LoginPayload): Promise<ApiResult<void>> {
     ok: false,
     status: res.status,
     message: err?.message ?? '로그인 중 오류가 발생했습니다.',
+  };
+}
+
+export async function getKakaoAuthorizeUrl(state?: string): Promise<ApiResult<string>> {
+  const search = state ? `?state=${encodeURIComponent(state)}` : '';
+  const res = await bffFetch(`/api/proxy/auth/oauth/kakao/authorize-url${search}`, {
+    method: 'GET',
+    cache: 'no-store',
+  });
+
+  if (res.ok) {
+    const data = (await res.json().catch(() => null)) as KakaoAuthorizeUrlResponse | null;
+    if (data?.authorizeUrl) {
+      return { ok: true, data: data.authorizeUrl };
+    }
+    return { ok: false, status: res.status, message: '카카오 인증 URL을 찾을 수 없습니다.' };
+  }
+
+  const err = (await res.json().catch(() => null)) as ApiErrorBody | null;
+  return {
+    ok: false,
+    status: res.status,
+    message: err?.message ?? '카카오 로그인 준비 중 오류가 발생했습니다.',
+  };
+}
+
+export async function loginWithKakao(code: string): Promise<ApiResult<void>> {
+  const res = await fetch('/api/auth/kakao', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    cache: 'no-store',
+    body: JSON.stringify({ code }),
+  });
+
+  if (res.ok) return { ok: true, data: undefined };
+  const err = (await res.json().catch(() => null)) as ApiErrorBody | null;
+  return {
+    ok: false,
+    status: res.status,
+    message: err?.message ?? '카카오 로그인 중 오류가 발생했습니다.',
   };
 }
 

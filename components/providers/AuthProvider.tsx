@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { startTokenRefreshTimer } from '@/lib/auth-client';
 import { useEffect } from 'react';
 
-const PUBLIC_PATHS = ['/login', '/signup', '/verify-email', '/'];
+const PUBLIC_PATHS = ['/login', '/signup', '/verify-email', '/auth/kakao/callback', '/'];
 const PUBLIC_PREFIXES = ['/password-reset'];
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
