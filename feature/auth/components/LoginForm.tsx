@@ -27,6 +27,7 @@ export default function LoginForm({ redirectTo = '/' }: { redirectTo?: string })
   const [serverError, setServerError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [isKakaoLoading, setIsKakaoLoading] = useState(false);
+  const kakaoButtonLabel = isKakaoLoading ? '카카오 로그인 중...' : '카카오로 로그인';
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -149,14 +150,23 @@ export default function LoginForm({ redirectTo = '/' }: { redirectTo?: string })
           {isSubmitting ? '로그인 중...' : '로그인'}
         </Button>
 
-        <Button
+        <button
           type="button"
           onClick={onKakaoLogin}
           disabled={isSubmitting || isKakaoLoading}
-          className="h-11 w-full bg-[#FEE500] font-medium text-black hover:bg-[#f5dc00]"
+          aria-label={kakaoButtonLabel}
+          aria-busy={isKakaoLoading}
+          className={`w-full overflow-hidden rounded-md transition-opacity ${
+            isSubmitting || isKakaoLoading ? 'cursor-not-allowed opacity-60' : 'hover:opacity-90'
+          }`}
         >
-          {isKakaoLoading ? '카카오 로그인 중...' : '카카오로 로그인'}
-        </Button>
+          <img
+            src="/kakao_login/ko/kakao_login_medium_wide.png"
+            alt="카카오로 로그인"
+            className="h-11 w-full object-contain"
+          />
+          <span className="sr-only">{kakaoButtonLabel}</span>
+        </button>
       </form>
     </Form>
   );

@@ -589,6 +589,8 @@ export default function MePanel() {
         <h3 className="text-lg font-semibold text-slate-900">계정 관리</h3>
         <p className="mt-2 text-sm text-slate-600">
           회원 탈퇴 시 작성한 게시글과 댓글은 삭제되지 않으며, 작성자는 탈퇴회원으로 표시됩니다.
+          <br />
+          카카오 로그인 계정은 탈퇴 시 카카오 연결이 해제됩니다.
         </p>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row">
           <LogoutButton
@@ -628,6 +630,9 @@ export default function MePanel() {
               정말 탈퇴하시겠습니까? 탈퇴 후에는 복구할 수 없습니다.
               <br />
               작성한 게시글과 댓글은 그대로 남습니다.
+            </p>
+            <p className="text-sm text-slate-600">
+              카카오 로그인 계정은 탈퇴 시 카카오 연결이 해제됩니다.
             </p>
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700">비밀번호 확인</label>
