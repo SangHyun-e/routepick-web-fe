@@ -17,7 +17,6 @@ import EmailVerificationForm from '@/feature/auth/components/EmailVerificationFo
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import type { MyCommentListItem } from '@/feature/comment/types';
 import type { PostListItemResponse } from '@/feature/post/types';
-import { getKakaoLogoutUrl } from '@/feature/auth/api';
 import {
   activateMyPost,
   fetchMyComments,
@@ -323,13 +322,6 @@ export default function MePanel() {
         return;
       }
       toast.success('회원 탈퇴가 완료되었습니다.');
-      if (isKakaoAccount) {
-        const kakaoLogout = await getKakaoLogoutUrl();
-        if (kakaoLogout.ok) {
-          window.location.href = kakaoLogout.data;
-          return;
-        }
-      }
       router.replace('/');
       router.refresh();
     },
