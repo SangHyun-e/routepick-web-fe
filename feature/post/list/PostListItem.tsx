@@ -43,6 +43,14 @@ function statusBadge(status: string | undefined) {
   }
 }
 
+function noticeBadge() {
+  return (
+    <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">
+      공지
+    </span>
+  );
+}
+
 export default function PostListItem({ item }: { item: PostListItemResponse }) {
   if (!item) {
     return null;
@@ -64,6 +72,7 @@ export default function PostListItem({ item }: { item: PostListItemResponse }) {
 
             {/* Meta info */}
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+              {item.isNotice && noticeBadge()}
               {statusBadge(item.status)}
               {item.region && (
                 <div className="flex items-center gap-1">

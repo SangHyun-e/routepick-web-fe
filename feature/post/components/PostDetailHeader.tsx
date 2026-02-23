@@ -198,7 +198,14 @@ export default function PostDetailHeader({ post, isOwner, isAdmin }: PostDetailH
               </div>
             )}
           </div>
-          <h1 className="mb-4 text-3xl font-bold text-balance text-slate-900">{post.title}</h1>
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            {post.isNotice && (
+              <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
+                공지사항
+              </span>
+            )}
+            <h1 className="text-3xl font-bold text-balance text-slate-900">{post.title}</h1>
+          </div>
 
           <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600">
             {post.region && (

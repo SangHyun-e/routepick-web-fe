@@ -94,6 +94,24 @@ export async function hardDeleteAdminPost(postId: number): Promise<ApiResult<voi
   return { ok: true, data: undefined };
 }
 
+export async function updateAdminPostNotice(
+  postId: number,
+  isNotice: boolean,
+): Promise<ApiResult<void>> {
+  const res = await bffFetch(`/api/proxy/admin/posts/${postId}/notice`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ isNotice }),
+  });
+
+  if (!res.ok) {
+    const message = await readErrorMessage(res, '공지 설정에 실패했습니다.');
+    return { ok: false, status: res.status, message };
+  }
+
+  return { ok: true, data: undefined };
+}
+
 export async function fetchAdminComments(
   page = 0,
   size = 20,
