@@ -20,6 +20,7 @@ interface Props {
   postAuthorNickname: string | null;
   currentUserId: number | null;
   isAdmin: boolean;
+  isNotice: boolean;
   commentCount: number;
   bestComments?: CommentResponse[];
 }
@@ -30,6 +31,7 @@ export default function CommentSection({
   postAuthorNickname,
   currentUserId,
   isAdmin,
+  isNotice,
   commentCount,
   bestComments = [],
 }: Props) {
@@ -56,6 +58,10 @@ export default function CommentSection({
   const [submitting, setSubmitting] = useState<boolean>(false);
 
   const onSubmit = async () => {
+    if (isNotice) {
+      toast.error('공지글에는 댓글을 작성할 수 없습니다.');
+      return;
+    }
     const trimmed: string = content.trim();
 
     if (trimmed.length === 0) {
@@ -146,62 +152,70 @@ export default function CommentSection({
           <p className="mt-1 text-xs text-slate-500">다른 사용자와 의견을 나눠보세요</p>
         </div>
 
-        <div className="space-y-4 px-6 py-4">
-          {!currentUserId && (
-            <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-2">
-              <p className="text-sm text-blue-800">
-                💡 댓글을 작성하려면{' '}
-                <a href="/login" className="font-semibold underline hover:no-underline">
-                  로그인
-                </a>
-                이 필요합니다.
-              </p>
+        {isNotice ? (
+          <div className="px-6 py-4">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+              공지글에는 댓글을 작성할 수 없습니다.
             </div>
-          )}
-
-          <Textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder={
-              currentUserId
-                ? '댓글을 입력하세요. (Shift+Enter: 줄바꿈)'
-                : '로그인 후 댓글을 작성할 수 있습니다.'
-            }
-            className="min-h-28 resize-none border-slate-200 focus:border-slate-400"
-            maxLength={1000}
-            disabled={submitting || !currentUserId}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                void onSubmit();
-              }
-            }}
-          />
-
-          <div className="flex items-center justify-between">
-            <span
-              className={`text-xs font-medium ${
-                content.length > 900 ? 'text-amber-600' : 'text-slate-400'
-              }`}
-            >
-              {content.length}/1000
-            </span>
-            <Button
-              onClick={onSubmit}
-              disabled={submitting || content.trim().length === 0 || !currentUserId}
-              className="min-w-28"
-            >
-              {submitting ? (
-                <>
-                  <span className="mr-2 inline-block animate-spin">⏳</span>
-                  등록 중…
-                </>
-              ) : (
-                '댓글 등록'
-              )}
-            </Button>
           </div>
-        </div>
+        ) : (
+          <div className="space-y-4 px-6 py-4">
+            {!currentUserId && (
+              <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-2">
+                <p className="text-sm text-blue-800">
+                  💡 댓글을 작성하려면{' '}
+                  <a href="/login" className="font-semibold underline hover:no-underline">
+                    로그인
+                  </a>
+                  이 필요합니다.
+                </p>
+              </div>
+            )}
+
+            <Textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder={
+                currentUserId
+                  ? '댓글을 입력하세요. (Shift+Enter: 줄바꿈)'
+                  : '로그인 후 댓글을 작성할 수 있습니다.'
+              }
+              className="min-h-28 resize-none border-slate-200 focus:border-slate-400"
+              maxLength={1000}
+              disabled={submitting || !currentUserId}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  void onSubmit();
+                }
+              }}
+            />
+
+            <div className="flex items-center justify-between">
+              <span
+                className={`text-xs font-medium ${
+                  content.length > 900 ? 'text-amber-600' : 'text-slate-400'
+                }`}
+              >
+                {content.length}/1000
+              </span>
+              <Button
+                onClick={onSubmit}
+                disabled={submitting || content.trim().length === 0 || !currentUserId}
+                className="min-w-28"
+              >
+                {submitting ? (
+                  <>
+                    <span className="mr-2 inline-block animate-spin">⏳</span>
+                    등록 중…
+                  </>
+                ) : (
+                  '댓글 등록'
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 댓글 목록 */}

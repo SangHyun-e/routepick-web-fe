@@ -10,6 +10,8 @@ import {
   fetchAdminPosts,
   hardDeleteAdminPost,
   hideAdminPost,
+  updateAdminPostNotice,
+  toggleAdminPostNoticePinned,
 } from '@/feature/admin/api';
 import { deletePost } from '@/feature/post/api';
 import type { PaginatedResponse, PostListItemResponse } from '@/feature/post/types';
@@ -53,13 +55,18 @@ export default function AdminPostsPage() {
   }, [load]);
 
   const handleAction = useCallback(
-    async (postId: number, action: 'activate' | 'hide' | 'delete' | 'hard-delete') => {
+    async (
+      postId: number,
+      action: 'activate' | 'hide' | 'delete' | 'hard-delete' | 'notice-on' | 'notice-off',
+    ) => {
       setActionId(postId);
       let res;
 
       if (action === 'activate') res = await activateAdminPost(postId);
       else if (action === 'hide') res = await hideAdminPost(postId);
       else if (action === 'hard-delete') res = await hardDeleteAdminPost(postId);
+      else if (action === 'notice-on') res = await updateAdminPostNotice(postId, true);
+      else if (action === 'notice-off') res = await updateAdminPostNotice(postId, false);
       else res = await deletePost(postId);
 
       setActionId(null);
@@ -73,7 +80,42 @@ export default function AdminPostsPage() {
         return;
       }
       toast.success(
-        action === 'hard-delete' ? '게시글이 삭제되었습니다.' : '상태가 업데이트되었습니다.',
+        action === 'hard-delete'
+          ? '게시글이 삭제되었습니다.'
+          : action === 'notice-on'
+            ? '공지사항으로 등록했습니다.'
+            : action === 'notice-off'
+              ? '공지사항을 해제했습니다.'
+              : '상태가 업데이트되었습니다.',
+      );
+      load();
+    },
+    [load, router],
+  );
+
+  const handleNoticePin = useCallback(
+    async (post: PostListItemResponse) => {
+      if (!post.isNotice) {
+        toast.error('공지 게시글만 고정할 수 있습니다.');
+        return;
+      }
+
+      setActionId(post.id);
+      const res = await toggleAdminPostNoticePinned(post.id);
+      setActionId(null);
+
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          toast.error('관리자 권한이 필요합니다.');
+          router.push('/login');
+          return;
+        }
+        toast.error(res.message ?? '공지 고정 상태를 변경하지 못했습니다.');
+        return;
+      }
+
+      toast.success(
+        post.noticePinned ? '공지 고정이 해제되었습니다.' : '공지 고정이 완료되었습니다.',
       );
       load();
     },
@@ -139,17 +181,37 @@ export default function AdminPostsPage() {
                 <div key={post.id} className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <Link
-                        href={`/posts/${post.id}`}
-                        className="text-sm font-semibold text-slate-900 transition hover:text-blue-600"
-                      >
-                        {post.title}
-                      </Link>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {post.isNotice && (
+                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                            공지
+                          </span>
+                        )}
+                        <Link
+                          href={`/posts/${post.id}`}
+                          className="text-sm font-semibold text-slate-900 transition hover:text-blue-600"
+                        >
+                          {post.title}
+                        </Link>
+                        {post.noticePinned && (
+                          <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                            고정
+                          </span>
+                        )}
+                      </div>
                       <p className="mt-1 text-xs text-slate-500">
                         작성자: {post.authorNickname ?? '익명'} · 상태: {post.status}
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => handleNoticePin(post)}
+                        disabled={!post.isNotice || actionId === post.id}
+                        title={!post.isNotice ? '공지 게시글만 고정할 수 있습니다.' : undefined}
+                        className="rounded-md border border-indigo-200 px-3 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {post.noticePinned ? '고정 해제' : '공지 고정'}
+                      </button>
                       <button
                         onClick={() => handleAction(post.id, 'activate')}
                         disabled={actionId === post.id}
@@ -171,6 +233,23 @@ export default function AdminPostsPage() {
                       >
                         삭제
                       </button>
+                      {post.isNotice ? (
+                        <button
+                          onClick={() => handleAction(post.id, 'notice-off')}
+                          disabled={actionId === post.id}
+                          className="rounded-md border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 hover:bg-amber-100"
+                        >
+                          공지 해제
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleAction(post.id, 'notice-on')}
+                          disabled={actionId === post.id}
+                          className="rounded-md border border-amber-200 px-3 py-1 text-xs font-medium text-amber-700 hover:bg-amber-50"
+                        >
+                          공지 등록
+                        </button>
+                      )}
                       <button
                         onClick={() => setHardDeleteTarget(post)}
                         disabled={actionId === post.id}

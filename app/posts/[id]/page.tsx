@@ -57,6 +57,7 @@ export default async function PostDetailPage({ params }: PageProps) {
           postAuthorNickname={res.data.authorNickname}
           currentUserId={currentUserId}
           isAdmin={isAdmin}
+          isNotice={res.data.isNotice}
           commentCount={res.data.commentCount}
           bestComments={res.data.bestComments ?? []}
         />

@@ -14,6 +14,7 @@ const EMPTY_DRAFT: PostFormDraft = {
   latitude: '',
   longitude: '',
   tagsText: '',
+  isNotice: false,
 };
 
 export function usePostWrite() {
@@ -23,7 +24,7 @@ export function usePostWrite() {
   const [errors, setErrors] = useState<PostFormErrors>({});
   const [submitting, setSubmitting] = useState(false);
 
-  function update<K extends keyof PostFormDraft>(key: K, value: string) {
+  function update<K extends keyof PostFormDraft>(key: K, value: PostFormDraft[K]) {
     setDraft((prev) => ({ ...prev, [key]: value }));
   }
 

@@ -1,5 +1,5 @@
 import type { PostListItemResponse } from '@/feature/post/types';
-import { Heart, Eye, MapPin, Clock, EyeOff, MessageCircle } from 'lucide-react';
+import { Heart, Eye, MapPin, Clock, EyeOff, MessageCircle, Star } from 'lucide-react';
 
 function formatDate(iso: string) {
   const d = new Date(iso);
@@ -43,6 +43,14 @@ function statusBadge(status: string | undefined) {
   }
 }
 
+function noticeBadge() {
+  return (
+    <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">
+      공지
+    </span>
+  );
+}
+
 export default function PostListItem({ item }: { item: PostListItemResponse }) {
   if (!item) {
     return null;
@@ -64,6 +72,13 @@ export default function PostListItem({ item }: { item: PostListItemResponse }) {
 
             {/* Meta info */}
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+              {item.isNotice && noticeBadge()}
+              {item.noticePinned && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
+                  <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                  고정
+                </span>
+              )}
               {statusBadge(item.status)}
               {item.region && (
                 <div className="flex items-center gap-1">
