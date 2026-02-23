@@ -429,7 +429,8 @@ export default function MePanel() {
           <div className="mt-4 flex flex-col gap-2 sm:flex-row">
             <Button
               onClick={() => router.push('/admin/posts')}
-              className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white"
+              variant="outline"
+              className="rounded-xl border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100"
             >
               게시글 관리로 이동
             </Button>
