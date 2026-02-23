@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { createPost } from '@/feature/post/api';
 import type { PostFormDraft, PostFormErrors } from '@/feature/post/types';
 import { isEmptyErrors, toPostCreatePayload, validatePostForm } from '@/feature/post/validation';
@@ -23,18 +23,21 @@ export function usePostWrite() {
   const [draft, setDraft] = useState<PostFormDraft>(EMPTY_DRAFT);
   const [errors, setErrors] = useState<PostFormErrors>({});
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
 
   function update<K extends keyof PostFormDraft>(key: K, value: PostFormDraft[K]) {
     setDraft((prev) => ({ ...prev, [key]: value }));
   }
 
   async function submit() {
-    if (submitting) return;
+    if (submittingRef.current) return;
+    submittingRef.current = true;
 
     const nextErrors = validatePostForm(draft);
     setErrors(nextErrors);
     if (!isEmptyErrors(nextErrors)) {
       toast.error('입력 내용을 확인해주세요.');
+      submittingRef.current = false;
       return;
     }
 
@@ -65,6 +68,7 @@ export function usePostWrite() {
       setErrors({ form: '요청 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' });
     } finally {
       setSubmitting(false);
+      submittingRef.current = false;
     }
   }
 
