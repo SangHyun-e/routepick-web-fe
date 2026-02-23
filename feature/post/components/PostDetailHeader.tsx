@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { usePostActions } from '@/feature/post/hooks/usePostActions';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { likePost } from '@/feature/post/api';
-import { hardDeleteAdminPost } from '@/feature/admin/api';
+import { hardDeleteAdminPost, updateAdminPostNotice } from '@/feature/admin/api';
 
 interface PostDetailHeaderProps {
   post: PostResponse;
@@ -31,7 +31,9 @@ export default function PostDetailHeader({ post, isOwner, isAdmin }: PostDetailH
   const router = useRouter();
   const [likeCount, setLikeCount] = useState(post.likeCount ?? 0);
   const [isLiked, setIsLiked] = useState(post.isLikedByCurrentUser ?? false);
+  const [isNotice, setIsNotice] = useState(post.isNotice ?? false);
   const [isLiking, setIsLiking] = useState(false);
+  const [isNoticeUpdating, setIsNoticeUpdating] = useState(false);
   const [showHardDeleteDialog, setShowHardDeleteDialog] = useState(false);
   const [isHardDeleting, setIsHardDeleting] = useState(false);
   const {
@@ -77,9 +79,37 @@ export default function PostDetailHeader({ post, isOwner, isAdmin }: PostDetailH
   const showOwnerActions = isOwner;
   const showAdminSoftDelete = isAdmin && !isOwner;
   const showAdminHardDelete = isAdmin;
+  const showAdminNotice = isAdmin;
 
   const confirmHardDelete = () => {
     setShowHardDeleteDialog(true);
+  };
+
+  const handleNoticeToggle = async () => {
+    if (isNoticeUpdating) return;
+    setIsNoticeUpdating(true);
+
+    const res = await updateAdminPostNotice(post.id, !isNotice);
+    setIsNoticeUpdating(false);
+
+    if (!res.ok) {
+      if (res.status === 401) {
+        toast.error('로그인이 필요합니다. 다시 로그인해주세요.');
+        router.push(`/login?from=/posts/${post.id}`);
+        return;
+      }
+      if (res.status === 403) {
+        toast.error('관리자 권한이 필요합니다.');
+        return;
+      }
+      toast.error(res.message ?? '공지 설정에 실패했습니다.');
+      return;
+    }
+
+    const nextNotice = !isNotice;
+    setIsNotice(nextNotice);
+    toast.success(nextNotice ? '공지사항으로 등록했습니다.' : '공지사항을 해제했습니다.');
+    router.refresh();
   };
 
   const doHardDelete = async () => {
@@ -195,11 +225,21 @@ export default function PostDetailHeader({ post, isOwner, isAdmin }: PostDetailH
                     물리삭제
                   </Button>
                 )}
+                {showAdminNotice && (
+                  <Button
+                    variant="outline"
+                    onClick={handleNoticeToggle}
+                    disabled={isNoticeUpdating}
+                    className="border-amber-200 text-amber-700 hover:bg-amber-50"
+                  >
+                    {isNotice ? '공지 해제' : '공지 등록'}
+                  </Button>
+                )}
               </div>
             )}
           </div>
           <div className="mb-4 flex flex-wrap items-center gap-3">
-            {post.isNotice && (
+            {isNotice && (
               <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
                 공지사항
               </span>
