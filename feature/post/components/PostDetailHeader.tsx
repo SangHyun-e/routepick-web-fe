@@ -9,7 +9,11 @@ import { Button } from '@/components/ui/button';
 import { usePostActions } from '@/feature/post/hooks/usePostActions';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { likePost } from '@/feature/post/api';
-import { hardDeleteAdminPost, toggleAdminPostNoticePinned } from '@/feature/admin/api';
+import {
+  hardDeleteAdminPost,
+  toggleAdminPostNoticePinned,
+  updateAdminPostNotice,
+} from '@/feature/admin/api';
 
 interface PostDetailHeaderProps {
   post: PostResponse;
@@ -31,7 +35,9 @@ export default function PostDetailHeader({ post, isOwner, isAdmin }: PostDetailH
   const router = useRouter();
   const [likeCount, setLikeCount] = useState(post.likeCount ?? 0);
   const [isLiked, setIsLiked] = useState(post.isLikedByCurrentUser ?? false);
+  const [isNotice, setIsNotice] = useState(post.isNotice ?? false);
   const [isLiking, setIsLiking] = useState(false);
+  const [isNoticeUpdating, setIsNoticeUpdating] = useState(false);
   const [noticePinned, setNoticePinned] = useState(post.noticePinned ?? false);
   const [isPinUpdating, setIsPinUpdating] = useState(false);
   const [showHardDeleteDialog, setShowHardDeleteDialog] = useState(false);
@@ -50,7 +56,7 @@ export default function PostDetailHeader({ post, isOwner, isAdmin }: PostDetailH
   });
 
   const handleLike = async () => {
-    if (post.isNotice) {
+    if (isNotice) {
       toast.error('공지글에는 좋아요를 누를 수 없습니다.');
       return;
     }
@@ -83,10 +89,41 @@ export default function PostDetailHeader({ post, isOwner, isAdmin }: PostDetailH
   const showOwnerActions = isOwner;
   const showAdminSoftDelete = isAdmin && !isOwner;
   const showAdminHardDelete = isAdmin;
+  const showAdminNotice = isAdmin;
   const showAdminNoticePin = isAdmin;
 
   const confirmHardDelete = () => {
     setShowHardDeleteDialog(true);
+  };
+
+  const handleNoticeToggle = async () => {
+    if (isNoticeUpdating) return;
+    setIsNoticeUpdating(true);
+
+    const res = await updateAdminPostNotice(post.id, !isNotice);
+    setIsNoticeUpdating(false);
+
+    if (!res.ok) {
+      if (res.status === 401) {
+        toast.error('로그인이 필요합니다. 다시 로그인해주세요.');
+        router.push(`/login?from=/posts/${post.id}`);
+        return;
+      }
+      if (res.status === 403) {
+        toast.error('관리자 권한이 필요합니다.');
+        return;
+      }
+      toast.error(res.message ?? '공지 설정에 실패했습니다.');
+      return;
+    }
+
+    const nextNotice = !isNotice;
+    setIsNotice(nextNotice);
+    if (!nextNotice) {
+      setNoticePinned(false);
+    }
+    toast.success(nextNotice ? '공지사항으로 등록했습니다.' : '공지사항을 해제했습니다.');
+    router.refresh();
   };
 
   const doHardDelete = async () => {
@@ -125,7 +162,7 @@ export default function PostDetailHeader({ post, isOwner, isAdmin }: PostDetailH
   const editedAtText: string = isEdited ? formatDate(post.updatedAt!) : '';
 
   const handleNoticePin = async () => {
-    if (!post.isNotice) {
+    if (!isNotice) {
       toast.error('공지 게시글만 고정할 수 있습니다.');
       return;
     }
@@ -153,7 +190,7 @@ export default function PostDetailHeader({ post, isOwner, isAdmin }: PostDetailH
     toast.success(noticePinned ? '공지 고정이 해제되었습니다.' : '공지 고정이 완료되었습니다.');
   };
 
-  const likeButtonClass = post.isNotice
+  const likeButtonClass = isNotice
     ? 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'
     : isLiked
       ? 'border-red-500 bg-red-500 text-white hover:bg-red-600'
@@ -172,13 +209,13 @@ export default function PostDetailHeader({ post, isOwner, isAdmin }: PostDetailH
               뒤로가기
             </button>
 
-            {(showOwnerActions || showAdminSoftDelete || showAdminHardDelete || showAdminNoticePin) && (
+            {(showOwnerActions || showAdminSoftDelete || showAdminHardDelete || showAdminNotice || showAdminNoticePin) && (
               <div className="flex flex-wrap items-center gap-2">
                 {showAdminNoticePin && (
                   <Button
                     variant="outline"
                     onClick={handleNoticePin}
-                    disabled={!post.isNotice || isPinUpdating}
+                    disabled={!isNotice || isPinUpdating}
                     className="border-indigo-200 text-indigo-700 hover:bg-indigo-50"
                   >
                     <Star className="mr-1 h-4 w-4" />
@@ -248,15 +285,32 @@ export default function PostDetailHeader({ post, isOwner, isAdmin }: PostDetailH
                     물리삭제
                   </Button>
                 )}
+                {showAdminNotice && (
+                  <Button
+                    variant="outline"
+                    onClick={handleNoticeToggle}
+                    disabled={isNoticeUpdating}
+                    className="border-amber-200 text-amber-700 hover:bg-amber-50"
+                  >
+                    {isNotice ? '공지 해제' : '공지 등록'}
+                  </Button>
+                )}
               </div>
             )}
           </div>
-          {noticePinned && (
+          {(isNotice || noticePinned) && (
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-                <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                고정
-              </span>
+              {isNotice && (
+                <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
+                  공지
+                </span>
+              )}
+              {noticePinned && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                  <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                  고정
+                </span>
+              )}
             </div>
           )}
           <h1 className="mb-4 text-3xl font-bold text-balance text-slate-900">{post.title}</h1>
@@ -295,7 +349,7 @@ export default function PostDetailHeader({ post, isOwner, isAdmin }: PostDetailH
           <div className="mt-4 flex items-center gap-4 text-sm">
             <button
               onClick={handleLike}
-              disabled={isLiking || post.isNotice}
+              disabled={isLiking || isNotice}
               className={`flex items-center gap-2 rounded-full border px-4 py-2 transition-all hover:shadow-sm active:scale-95 disabled:opacity-50 ${likeButtonClass}`}
             >
               <Heart
@@ -308,7 +362,7 @@ export default function PostDetailHeader({ post, isOwner, isAdmin }: PostDetailH
               <span className="font-medium">{post.viewCount ?? 0}</span>
             </div>
           </div>
-          {post.isNotice && (
+          {isNotice && (
             <p className="mt-2 text-xs text-slate-500">공지글에서는 좋아요를 사용할 수 없습니다.</p>
           )}
         </div>

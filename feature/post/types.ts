@@ -61,6 +61,7 @@ export type PostCreateRequest = {
   latitude?: number;
   longitude?: number;
   tags?: string[];
+  isNotice?: boolean;
 };
 
 export type PostUpdateRequest = {
@@ -79,6 +80,7 @@ export type PostFormDraft = {
   latitude: string;
   longitude: string;
   tagsText: string;
+  isNotice: boolean;
 };
 
 export type PostFormErrors = Partial<Record<keyof PostFormDraft, string>> & {

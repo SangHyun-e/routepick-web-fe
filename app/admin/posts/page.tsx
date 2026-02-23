@@ -10,6 +10,7 @@ import {
   fetchAdminPosts,
   hardDeleteAdminPost,
   hideAdminPost,
+  updateAdminPostNotice,
   toggleAdminPostNoticePinned,
 } from '@/feature/admin/api';
 import { deletePost } from '@/feature/post/api';
@@ -54,13 +55,18 @@ export default function AdminPostsPage() {
   }, [load]);
 
   const handleAction = useCallback(
-    async (postId: number, action: 'activate' | 'hide' | 'delete' | 'hard-delete') => {
+    async (
+      postId: number,
+      action: 'activate' | 'hide' | 'delete' | 'hard-delete' | 'notice-on' | 'notice-off',
+    ) => {
       setActionId(postId);
       let res;
 
       if (action === 'activate') res = await activateAdminPost(postId);
       else if (action === 'hide') res = await hideAdminPost(postId);
       else if (action === 'hard-delete') res = await hardDeleteAdminPost(postId);
+      else if (action === 'notice-on') res = await updateAdminPostNotice(postId, true);
+      else if (action === 'notice-off') res = await updateAdminPostNotice(postId, false);
       else res = await deletePost(postId);
 
       setActionId(null);
@@ -74,7 +80,13 @@ export default function AdminPostsPage() {
         return;
       }
       toast.success(
-        action === 'hard-delete' ? '게시글이 삭제되었습니다.' : '상태가 업데이트되었습니다.',
+        action === 'hard-delete'
+          ? '게시글이 삭제되었습니다.'
+          : action === 'notice-on'
+            ? '공지사항으로 등록했습니다.'
+            : action === 'notice-off'
+              ? '공지사항을 해제했습니다.'
+              : '상태가 업데이트되었습니다.',
       );
       load();
     },
@@ -170,6 +182,11 @@ export default function AdminPostsPage() {
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
+                        {post.isNotice && (
+                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                            공지
+                          </span>
+                        )}
                         <Link
                           href={`/posts/${post.id}`}
                           className="text-sm font-semibold text-slate-900 transition hover:text-blue-600"
@@ -216,6 +233,23 @@ export default function AdminPostsPage() {
                       >
                         삭제
                       </button>
+                      {post.isNotice ? (
+                        <button
+                          onClick={() => handleAction(post.id, 'notice-off')}
+                          disabled={actionId === post.id}
+                          className="rounded-md border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 hover:bg-amber-100"
+                        >
+                          공지 해제
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleAction(post.id, 'notice-on')}
+                          disabled={actionId === post.id}
+                          className="rounded-md border border-amber-200 px-3 py-1 text-xs font-medium text-amber-700 hover:bg-amber-50"
+                        >
+                          공지 등록
+                        </button>
+                      )}
                       <button
                         onClick={() => setHardDeleteTarget(post)}
                         disabled={actionId === post.id}

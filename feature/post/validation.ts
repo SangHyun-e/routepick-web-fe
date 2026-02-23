@@ -35,6 +35,7 @@ export function toPostCreatePayload(draft: PostFormDraft): PostCreateRequest {
     latitude,
     longitude,
     tags: tags.length > 0 ? tags : undefined,
+    isNotice: draft.isNotice ? true : undefined,
   };
 }
 

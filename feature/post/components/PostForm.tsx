@@ -16,7 +16,7 @@ type Props = {
   draft: PostFormDraft;
   errors: PostFormErrors;
   submitting: boolean;
-  onChange: <K extends keyof PostFormDraft>(key: K, value: string) => void;
+  onChange: <K extends keyof PostFormDraft>(key: K, value: PostFormDraft[K]) => void;
   onSubmit: () => void;
 
   heading?: string;
@@ -24,6 +24,7 @@ type Props = {
   cancelHref?: string;
   backHref?: string;
   postId?: number;
+  showNoticeToggle?: boolean;
 };
 
 export default function PostForm({
@@ -37,6 +38,7 @@ export default function PostForm({
   cancelHref = '/posts',
   backHref = '/posts',
   postId,
+  showNoticeToggle = false,
 }: Props) {
   const [editor, setEditor] = useState<Editor | null>(null);
   const lastImageInsertPosRef = useRef<number | null>(null);
@@ -164,6 +166,22 @@ export default function PostForm({
                 />
                 {errors.title && <p className="text-sm text-red-600">{errors.title}</p>}
               </div>
+
+              {showNoticeToggle && (
+                <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50/60 px-4 py-3">
+                  <label className="flex items-center gap-3 text-sm font-medium text-amber-900">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-amber-300 text-amber-600 focus:ring-2 focus:ring-amber-400/40"
+                      checked={draft.isNotice}
+                      onChange={(e) => onChange('isNotice', e.target.checked)}
+                      disabled={submitting}
+                    />
+                    공지사항으로 등록
+                  </label>
+                  <span className="text-xs font-medium text-amber-700">관리자 전용</span>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <label

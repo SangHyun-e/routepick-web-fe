@@ -24,6 +24,7 @@ function toDraft(post: PostResponse): PostFormDraft {
     latitude: post.latitude != null ? String(post.latitude) : '',
     longitude: post.longitude != null ? String(post.longitude) : '',
     tagsText: Array.isArray(post.tags) ? post.tags.join(', ') : '',
+    isNotice: post.isNotice ?? false,
   };
 }
 
@@ -60,9 +61,12 @@ export function usePostEdit({ post }: Options) {
   const [errors, setErrors] = useState<PostFormErrors>({});
   const [submitting, setSubmitting] = useState<boolean>(false);
 
-  const onChange = useCallback(<K extends keyof PostFormDraft>(key: K, value: string) => {
-    setDraft((prev) => ({ ...prev, [key]: value }));
-  }, []);
+  const onChange = useCallback(
+    <K extends keyof PostFormDraft>(key: K, value: PostFormDraft[K]) => {
+      setDraft((prev) => ({ ...prev, [key]: value }));
+    },
+    [],
+  );
 
   const onSubmit = useCallback(async () => {
     if (submitting) return;
