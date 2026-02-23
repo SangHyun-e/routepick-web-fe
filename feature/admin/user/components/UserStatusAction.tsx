@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import type { AdminUserStatus } from '@/feature/admin/user/types';
 
-type ActionType = 'BLOCK' | 'UNBLOCK' | 'DELETE';
+type ActionType = 'BLOCK' | 'UNBLOCK' | 'DELETE' | 'APPROVE';
 
 type Props = {
   status: AdminUserStatus;
@@ -38,6 +38,13 @@ const ACTION_CONFIG: Record<ActionType, ActionConfig> = {
     description: '정지 해제 시 사용자가 다시 로그인할 수 있습니다.',
     confirmText: '해제',
   },
+  APPROVE: {
+    label: '가입 승인',
+    nextStatus: 'ACTIVE',
+    title: '가입을 승인하시겠습니까?',
+    description: '승인 시 사용자가 정상적으로 로그인할 수 있습니다.',
+    confirmText: '승인',
+  },
   DELETE: {
     label: '탈퇴 처리',
     nextStatus: 'DELETED',
@@ -61,6 +68,7 @@ export default function UserStatusAction({
   const availableActions = useMemo(() => {
     if (status === 'DELETED') return [];
     const actions: ActionType[] = [];
+    if (status === 'PENDING') actions.push('APPROVE');
     if (status === 'ACTIVE') actions.push('BLOCK');
     if (status === 'BLOCKED') actions.push('UNBLOCK');
     if (allowDelete) actions.push('DELETE');
