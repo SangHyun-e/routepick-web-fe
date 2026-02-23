@@ -10,6 +10,7 @@ import {
   fetchAdminPosts,
   hardDeleteAdminPost,
   hideAdminPost,
+  toggleAdminPostNoticePinned,
 } from '@/feature/admin/api';
 import { deletePost } from '@/feature/post/api';
 import type { PaginatedResponse, PostListItemResponse } from '@/feature/post/types';
@@ -80,6 +81,35 @@ export default function AdminPostsPage() {
     [load, router],
   );
 
+  const handleNoticePin = useCallback(
+    async (post: PostListItemResponse) => {
+      if (!post.isNotice) {
+        toast.error('공지 게시글만 고정할 수 있습니다.');
+        return;
+      }
+
+      setActionId(post.id);
+      const res = await toggleAdminPostNoticePinned(post.id);
+      setActionId(null);
+
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          toast.error('관리자 권한이 필요합니다.');
+          router.push('/login');
+          return;
+        }
+        toast.error(res.message ?? '공지 고정 상태를 변경하지 못했습니다.');
+        return;
+      }
+
+      toast.success(
+        post.noticePinned ? '공지 고정이 해제되었습니다.' : '공지 고정이 완료되었습니다.',
+      );
+      load();
+    },
+    [load, router],
+  );
+
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="mx-auto max-w-5xl px-4 py-10">
@@ -139,17 +169,32 @@ export default function AdminPostsPage() {
                 <div key={post.id} className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <Link
-                        href={`/posts/${post.id}`}
-                        className="text-sm font-semibold text-slate-900 transition hover:text-blue-600"
-                      >
-                        {post.title}
-                      </Link>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Link
+                          href={`/posts/${post.id}`}
+                          className="text-sm font-semibold text-slate-900 transition hover:text-blue-600"
+                        >
+                          {post.title}
+                        </Link>
+                        {post.noticePinned && (
+                          <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                            고정
+                          </span>
+                        )}
+                      </div>
                       <p className="mt-1 text-xs text-slate-500">
                         작성자: {post.authorNickname ?? '익명'} · 상태: {post.status}
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => handleNoticePin(post)}
+                        disabled={!post.isNotice || actionId === post.id}
+                        title={!post.isNotice ? '공지 게시글만 고정할 수 있습니다.' : undefined}
+                        className="rounded-md border border-indigo-200 px-3 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {post.noticePinned ? '고정 해제' : '공지 고정'}
+                      </button>
                       <button
                         onClick={() => handleAction(post.id, 'activate')}
                         disabled={actionId === post.id}

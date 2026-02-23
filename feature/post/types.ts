@@ -7,6 +7,8 @@ export type PostListItemResponse = {
   title: string;
   region: string | null;
   status: PostStatus;
+  isNotice: boolean;
+  noticePinned: boolean;
   likeCount: number;
   viewCount: number;
   createdAt: string;
@@ -39,6 +41,8 @@ export type PostResponse = {
   likeCount: number;
   viewCount: number;
   status: PostStatus;
+  isNotice: boolean;
+  noticePinned: boolean;
   createdAt: string;
   updatedAt: string | null;
   createdBy: string | null;

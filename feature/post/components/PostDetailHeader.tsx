@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowLeft, MapPin, Clock, Heart, Eye, EyeOff, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Heart, Eye, EyeOff, Pencil, Trash2, Star } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import type { PostResponse } from '@/feature/post/types';
@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { usePostActions } from '@/feature/post/hooks/usePostActions';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { likePost } from '@/feature/post/api';
-import { hardDeleteAdminPost } from '@/feature/admin/api';
+import { hardDeleteAdminPost, toggleAdminPostNoticePinned } from '@/feature/admin/api';
 
 interface PostDetailHeaderProps {
   post: PostResponse;
@@ -32,6 +32,8 @@ export default function PostDetailHeader({ post, isOwner, isAdmin }: PostDetailH
   const [likeCount, setLikeCount] = useState(post.likeCount ?? 0);
   const [isLiked, setIsLiked] = useState(post.isLikedByCurrentUser ?? false);
   const [isLiking, setIsLiking] = useState(false);
+  const [noticePinned, setNoticePinned] = useState(post.noticePinned ?? false);
+  const [isPinUpdating, setIsPinUpdating] = useState(false);
   const [showHardDeleteDialog, setShowHardDeleteDialog] = useState(false);
   const [isHardDeleting, setIsHardDeleting] = useState(false);
   const {
@@ -48,6 +50,10 @@ export default function PostDetailHeader({ post, isOwner, isAdmin }: PostDetailH
   });
 
   const handleLike = async () => {
+    if (post.isNotice) {
+      toast.error('공지글에는 좋아요를 누를 수 없습니다.');
+      return;
+    }
     if (isLiking) return;
     setIsLiking(true);
 
@@ -77,6 +83,7 @@ export default function PostDetailHeader({ post, isOwner, isAdmin }: PostDetailH
   const showOwnerActions = isOwner;
   const showAdminSoftDelete = isAdmin && !isOwner;
   const showAdminHardDelete = isAdmin;
+  const showAdminNoticePin = isAdmin;
 
   const confirmHardDelete = () => {
     setShowHardDeleteDialog(true);
@@ -117,6 +124,41 @@ export default function PostDetailHeader({ post, isOwner, isAdmin }: PostDetailH
   const isEdited: boolean = Boolean(post.updatedAt && post.updatedAt !== post.createdAt);
   const editedAtText: string = isEdited ? formatDate(post.updatedAt!) : '';
 
+  const handleNoticePin = async () => {
+    if (!post.isNotice) {
+      toast.error('공지 게시글만 고정할 수 있습니다.');
+      return;
+    }
+    if (isPinUpdating) return;
+
+    setIsPinUpdating(true);
+    const res = await toggleAdminPostNoticePinned(post.id);
+    setIsPinUpdating(false);
+
+    if (!res.ok) {
+      if (res.status === 401) {
+        toast.error('로그인이 필요합니다. 다시 로그인해주세요.');
+        router.push(`/login?from=/posts/${post.id}`);
+        return;
+      }
+      if (res.status === 403) {
+        toast.error('관리자 권한이 필요합니다.');
+        return;
+      }
+      toast.error(res.message ?? '공지 고정 설정에 실패했습니다.');
+      return;
+    }
+
+    setNoticePinned((prev) => !prev);
+    toast.success(noticePinned ? '공지 고정이 해제되었습니다.' : '공지 고정이 완료되었습니다.');
+  };
+
+  const likeButtonClass = post.isNotice
+    ? 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'
+    : isLiked
+      ? 'border-red-500 bg-red-500 text-white hover:bg-red-600'
+      : 'border-red-200 bg-white text-red-600 hover:bg-red-50';
+
   return (
     <>
       <div className="border-b border-slate-200 bg-white">
@@ -130,8 +172,19 @@ export default function PostDetailHeader({ post, isOwner, isAdmin }: PostDetailH
               뒤로가기
             </button>
 
-            {(showOwnerActions || showAdminSoftDelete || showAdminHardDelete) && (
+            {(showOwnerActions || showAdminSoftDelete || showAdminHardDelete || showAdminNoticePin) && (
               <div className="flex flex-wrap items-center gap-2">
+                {showAdminNoticePin && (
+                  <Button
+                    variant="outline"
+                    onClick={handleNoticePin}
+                    disabled={!post.isNotice || isPinUpdating}
+                    className="border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                  >
+                    <Star className="mr-1 h-4 w-4" />
+                    {noticePinned ? '고정 해제' : '공지 고정'}
+                  </Button>
+                )}
                 {showOwnerActions && (
                   <>
                     {post.status === 'ACTIVE' && (
@@ -198,6 +251,14 @@ export default function PostDetailHeader({ post, isOwner, isAdmin }: PostDetailH
               </div>
             )}
           </div>
+          {noticePinned && (
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                고정
+              </span>
+            </div>
+          )}
           <h1 className="mb-4 text-3xl font-bold text-balance text-slate-900">{post.title}</h1>
 
           <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600">
@@ -234,12 +295,8 @@ export default function PostDetailHeader({ post, isOwner, isAdmin }: PostDetailH
           <div className="mt-4 flex items-center gap-4 text-sm">
             <button
               onClick={handleLike}
-              disabled={isLiking}
-              className={`flex items-center gap-2 rounded-full border px-4 py-2 transition-all hover:shadow-sm active:scale-95 disabled:opacity-50 ${
-                isLiked
-                  ? 'border-red-500 bg-red-500 text-white hover:bg-red-600'
-                  : 'border-red-200 bg-white text-red-600 hover:bg-red-50'
-              }`}
+              disabled={isLiking || post.isNotice}
+              className={`flex items-center gap-2 rounded-full border px-4 py-2 transition-all hover:shadow-sm active:scale-95 disabled:opacity-50 ${likeButtonClass}`}
             >
               <Heart
                 className={`h-4 w-4 ${isLiking ? 'animate-pulse' : ''} ${isLiked ? 'fill-current' : ''}`}
@@ -251,6 +308,9 @@ export default function PostDetailHeader({ post, isOwner, isAdmin }: PostDetailH
               <span className="font-medium">{post.viewCount ?? 0}</span>
             </div>
           </div>
+          {post.isNotice && (
+            <p className="mt-2 text-xs text-slate-500">공지글에서는 좋아요를 사용할 수 없습니다.</p>
+          )}
         </div>
       </div>
 
