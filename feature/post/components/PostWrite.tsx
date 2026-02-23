@@ -3,7 +3,11 @@
 import PostForm from '@/feature/post/components/PostForm';
 import { usePostWrite } from '@/feature/post/hooks/usePostWrite';
 
-export default function PostWrite() {
+type Props = {
+  isAdmin?: boolean;
+};
+
+export default function PostWrite({ isAdmin = false }: Props) {
   const { draft, errors, submitting, update, submit } = usePostWrite();
 
   return (
@@ -13,6 +17,7 @@ export default function PostWrite() {
       submitting={submitting}
       onChange={update}
       onSubmit={submit}
+      showNoticeToggle={isAdmin}
     />
   );
 }
