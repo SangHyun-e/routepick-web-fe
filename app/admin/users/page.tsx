@@ -8,6 +8,7 @@ import type { PaginatedResponse } from '@/feature/post/types';
 import UserTable from '@/feature/admin/user/components/UserTable';
 import {
   fetchAdminUsers,
+  lockAdminUserRejoinRestrictionByEmail,
   releaseAdminUserRejoinRestrictionByEmail,
   updateAdminUserStatus,
 } from '@/feature/admin/user/api';
@@ -32,6 +33,7 @@ export default function AdminUsersPage() {
   const [releaseEmail, setReleaseEmail] = useState('');
   const [releaseReason, setReleaseReason] = useState('');
   const [releaseLoading, setReleaseLoading] = useState(false);
+  const [lockLoading, setLockLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -103,6 +105,30 @@ export default function AdminUsersPage() {
     setReleaseEmail('');
     setReleaseReason('');
   }, [releaseEmail, releaseReason, router]);
+
+  const onLockByEmail = useCallback(async () => {
+    const trimmedEmail = releaseEmail.trim();
+    if (!trimmedEmail) {
+      toast.error('이메일을 입력해주세요.');
+      return;
+    }
+
+    setLockLoading(true);
+    const res = await lockAdminUserRejoinRestrictionByEmail(trimmedEmail);
+    setLockLoading(false);
+
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 403) {
+        toast.error('관리자 권한이 필요합니다.');
+        router.push('/login');
+        return;
+      }
+      toast.error(res.message ?? '재가입 제한 설정에 실패했습니다.');
+      return;
+    }
+
+    toast.success('재가입 제한이 다시 설정되었습니다.');
+  }, [releaseEmail, router]);
 
   const emptyMessage = useMemo(() => {
     if (loading) return '';
@@ -179,13 +205,22 @@ export default function AdminUsersPage() {
                 className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
               />
             </div>
-            <button
-              onClick={onReleaseByEmail}
-              disabled={releaseLoading}
-              className="h-10 rounded-lg border border-amber-200 px-4 text-sm font-medium text-amber-700 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {releaseLoading ? '해제 중...' : '제한 해제'}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={onReleaseByEmail}
+                disabled={releaseLoading}
+                className="h-10 rounded-lg border border-amber-200 px-4 text-sm font-medium text-amber-700 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {releaseLoading ? '해제 중...' : '제한 해제'}
+              </button>
+              <button
+                onClick={onLockByEmail}
+                disabled={lockLoading}
+                className="h-10 rounded-lg border border-rose-200 px-4 text-sm font-medium text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {lockLoading ? '설정 중...' : '제한 설정'}
+              </button>
+            </div>
           </div>
         </div>
 

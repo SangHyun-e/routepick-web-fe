@@ -131,6 +131,19 @@ export async function releaseAdminUserRejoinRestriction(
   return { ok: true, data: undefined };
 }
 
+export async function lockAdminUserRejoinRestriction(userId: number): Promise<ApiResult<void>> {
+  const res = await bffFetch(`/api/proxy/admin/users/${userId}/rejoin-restriction/lock`, {
+    method: 'PATCH',
+  });
+
+  if (!res.ok) {
+    const message = await readErrorMessage(res, '재가입 제한 설정에 실패했습니다.');
+    return { ok: false, status: res.status, message };
+  }
+
+  return { ok: true, data: undefined };
+}
+
 export async function releaseAdminUserRejoinRestrictionByEmail(
   email: string,
   reason?: string | null,
@@ -143,6 +156,23 @@ export async function releaseAdminUserRejoinRestrictionByEmail(
 
   if (!res.ok) {
     const message = await readErrorMessage(res, '재가입 제한 해제에 실패했습니다.');
+    return { ok: false, status: res.status, message };
+  }
+
+  return { ok: true, data: undefined };
+}
+
+export async function lockAdminUserRejoinRestrictionByEmail(
+  email: string,
+): Promise<ApiResult<void>> {
+  const res = await bffFetch('/api/proxy/admin/users/rejoin-restriction/lock-by-email', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+
+  if (!res.ok) {
+    const message = await readErrorMessage(res, '재가입 제한 설정에 실패했습니다.');
     return { ok: false, status: res.status, message };
   }
 
