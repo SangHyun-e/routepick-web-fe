@@ -43,6 +43,7 @@ export default function AdminUserDetailPage({ params }: PageProps) {
   const [loading, setLoading] = useState(true);
   const [actioning, setActioning] = useState(false);
   const [rejoinDialogOpen, setRejoinDialogOpen] = useState(false);
+  const [rejoinReleaseReason, setRejoinReleaseReason] = useState('');
   const [historyPage, setHistoryPage] = useState(0);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [historyData, setHistoryData] =
@@ -117,9 +118,14 @@ export default function AdminUserDetailPage({ params }: PageProps) {
 
   const handleReleaseRejoinRestriction = useCallback(async () => {
     setActioning(true);
-    const res = await releaseAdminUserRejoinRestriction(userId);
+    const trimmedReason = rejoinReleaseReason.trim();
+    const res = await releaseAdminUserRejoinRestriction(
+      userId,
+      trimmedReason.length > 0 ? trimmedReason : null,
+    );
     setActioning(false);
     setRejoinDialogOpen(false);
+    setRejoinReleaseReason('');
 
     if (!res.ok) {
       if (res.status === 401 || res.status === 403) {
@@ -133,7 +139,7 @@ export default function AdminUserDetailPage({ params }: PageProps) {
 
     toast.success('재가입 제한이 해제되었습니다.');
     loadUser();
-  }, [loadUser, router, userId]);
+  }, [loadUser, rejoinReleaseReason, router, userId]);
 
   const historyItems = useMemo(() => historyData?.content ?? [], [historyData]);
   const rejoinRestrictionLabel = useMemo(() => {
@@ -209,16 +215,25 @@ export default function AdminUserDetailPage({ params }: PageProps) {
               인증 제공자: {user.authProvider} · 프로필 완료: {user.profileComplete ? 'Y' : 'N'}
               {user.updatedAt && <span> · 수정일: {formatDateTime(user.updatedAt)}</span>}
             </div>
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
-              <span>재가입 제한: {rejoinRestrictionLabel}</span>
-              {canReleaseRejoinRestriction && (
-                <button
-                  onClick={() => setRejoinDialogOpen(true)}
-                  disabled={actioning}
-                  className="rounded-md border border-amber-200 px-3 py-1 text-xs font-medium text-amber-700 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  제한 해제
-                </button>
+            <div className="mt-4 space-y-2 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span>재가입 제한: {rejoinRestrictionLabel}</span>
+                {canReleaseRejoinRestriction && (
+                  <button
+                    onClick={() => {
+                      setRejoinReleaseReason('');
+                      setRejoinDialogOpen(true);
+                    }}
+                    disabled={actioning}
+                    className="rounded-md border border-amber-200 px-3 py-1 text-xs font-medium text-amber-700 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    제한 해제
+                  </button>
+                )}
+              </div>
+              {user.withdrawReason && <p>탈퇴 사유: {user.withdrawReason}</p>}
+              {user.rejoinRestrictionReleaseReason && (
+                <p>해제 사유: {user.rejoinRestrictionReleaseReason}</p>
               )}
             </div>
           </div>
@@ -241,9 +256,31 @@ export default function AdminUserDetailPage({ params }: PageProps) {
 
       <ConfirmDialog
         open={rejoinDialogOpen}
-        onOpenChange={setRejoinDialogOpen}
+        onOpenChange={(open) => {
+          setRejoinDialogOpen(open);
+          if (!open) {
+            setRejoinReleaseReason('');
+          }
+        }}
         title="재가입 제한을 해제하시겠습니까?"
-        description="해제하면 사용자가 바로 재가입할 수 있습니다."
+        description={
+          <div className="space-y-3">
+            <p>해제하면 사용자가 바로 재가입할 수 있습니다.</p>
+            <div className="space-y-1">
+              <label htmlFor="rejoin-release-reason" className="text-xs font-medium text-slate-600">
+                해제 사유(선택)
+              </label>
+              <textarea
+                id="rejoin-release-reason"
+                value={rejoinReleaseReason}
+                onChange={(event) => setRejoinReleaseReason(event.target.value)}
+                rows={3}
+                className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm"
+                placeholder="해제 사유를 입력하세요"
+              />
+            </div>
+          </div>
+        }
         confirmText="해제"
         confirmDisabled={actioning}
         onConfirm={handleReleaseRejoinRestriction}

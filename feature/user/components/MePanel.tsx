@@ -76,6 +76,7 @@ export default function MePanel() {
   const [showWithdrawDialog, setShowWithdrawDialog] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [withdrawPassword, setWithdrawPassword] = useState('');
+  const [withdrawReason, setWithdrawReason] = useState('');
   const [withdrawError, setWithdrawError] = useState<string | null>(null);
   const [showWithdrawPassword, setShowWithdrawPassword] = useState(false);
   const [activityTab, setActivityTab] = useState<'posts' | 'comments'>('posts');
@@ -310,7 +311,8 @@ export default function MePanel() {
         setIsWithdrawing(true);
       }
 
-      const res = await withdrawUser();
+      const trimmedReason = withdrawReason.trim();
+      const res = await withdrawUser(trimmedReason.length > 0 ? trimmedReason : null);
       if (!res.ok) {
         setIsWithdrawing(false);
         if (res.status === 401) {
@@ -325,7 +327,7 @@ export default function MePanel() {
       router.replace('/');
       router.refresh();
     },
-    [isKakaoAccount, router, withdrawPassword],
+    [isKakaoAccount, router, withdrawPassword, withdrawReason],
   );
 
   if (loading) {
@@ -614,6 +616,7 @@ export default function MePanel() {
             variant="outline"
             onClick={() => {
               setWithdrawPassword('');
+              setWithdrawReason('');
               setWithdrawError(null);
               setShowWithdrawDialog(true);
             }}
@@ -631,6 +634,7 @@ export default function MePanel() {
           setShowWithdrawDialog(open);
           if (!open) {
             setWithdrawPassword('');
+            setWithdrawReason('');
             setWithdrawError(null);
             setIsWithdrawing(false);
             setShowWithdrawPassword(false);
@@ -686,6 +690,19 @@ export default function MePanel() {
                 )}
               </div>
             )}
+            <div className="space-y-2">
+              <label htmlFor="withdraw-reason" className="text-sm font-medium text-slate-700">
+                탈퇴 사유(선택)
+              </label>
+              <textarea
+                id="withdraw-reason"
+                value={withdrawReason}
+                onChange={(event) => setWithdrawReason(event.target.value)}
+                rows={3}
+                className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm"
+                placeholder="탈퇴 사유를 입력하세요"
+              />
+            </div>
           </div>
         }
         confirmText={isWithdrawing ? '탈퇴 처리 중...' : '탈퇴하기'}
