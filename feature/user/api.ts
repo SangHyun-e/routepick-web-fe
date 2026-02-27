@@ -120,8 +120,12 @@ export async function hideMyPost(postId: number): Promise<ApiResult<void>> {
   return { ok: true, data: undefined };
 }
 
-export async function withdrawUser(): Promise<ApiResult<void>> {
-  const res = await bffFetch('/api/proxy/users/me', { method: 'DELETE' });
+export async function withdrawUser(reason?: string | null): Promise<ApiResult<void>> {
+  const res = await bffFetch('/api/proxy/users/me', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason: reason ?? null }),
+  });
 
   if (!res.ok) {
     const message = await res

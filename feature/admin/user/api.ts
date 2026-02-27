@@ -115,9 +115,12 @@ export async function fetchAdminUserStatusHistory(
 
 export async function releaseAdminUserRejoinRestriction(
   userId: number,
+  reason?: string | null,
 ): Promise<ApiResult<void>> {
   const res = await bffFetch(`/api/proxy/admin/users/${userId}/rejoin-restriction/release`, {
     method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason: reason ?? null }),
   });
 
   if (!res.ok) {

@@ -18,9 +18,11 @@ export type AdminUserDetail = {
   status: AdminUserStatus;
   authProvider: string;
   profileComplete: boolean;
+  withdrawReason: string | null;
   rejoinRestrictedUntil: string | null;
   rejoinRestrictionReleasedAt: string | null;
   rejoinRestrictionReleasedBy: number | null;
+  rejoinRestrictionReleaseReason: string | null;
   createdAt: string;
   updatedAt: string;
 };
