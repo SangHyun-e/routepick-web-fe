@@ -178,3 +178,26 @@ export async function updateMyNickname(nickname: string): Promise<ApiResult<void
 
   return { ok: true, data: undefined };
 }
+
+export type ChangePasswordPayload = {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+};
+
+export async function changeMyPassword(
+  payload: ChangePasswordPayload,
+): Promise<ApiResult<void>> {
+  const res = await bffFetch('/api/proxy/users/me/password', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const message = await readErrorMessage(res, '비밀번호 변경에 실패했습니다.');
+    return { ok: false, status: res.status, message };
+  }
+
+  return { ok: true, data: undefined };
+}
