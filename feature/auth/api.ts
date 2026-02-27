@@ -25,6 +25,7 @@ const EMAIL_VERIFY_ERROR_MESSAGES: Record<string, string> = {
 const SIGNUP_ERROR_MESSAGES: Record<string, string> = {
   'USER-409': '이미 사용 중인 이메일입니다.',
   'USER-410': '이미 사용 중인 닉네임입니다.',
+  'USER-414': '탈퇴 후 7일간 재가입할 수 없습니다.',
 };
 
 const PASSWORD_RESET_ERROR_MESSAGES: Record<string, string> = {

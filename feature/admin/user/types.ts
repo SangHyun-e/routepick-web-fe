@@ -18,6 +18,9 @@ export type AdminUserDetail = {
   status: AdminUserStatus;
   authProvider: string;
   profileComplete: boolean;
+  rejoinRestrictedUntil: string | null;
+  rejoinRestrictionReleasedAt: string | null;
+  rejoinRestrictionReleasedBy: number | null;
   createdAt: string;
   updatedAt: string;
 };
