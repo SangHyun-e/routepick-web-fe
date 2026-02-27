@@ -75,8 +75,11 @@ export default function ProfileMenu() {
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
+        side="bottom"
         sideOffset={10}
-        className="w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-lg"
+        avoidCollisions
+        collisionPadding={12}
+        className="w-56 max-w-[calc(100vw-1.5rem)] rounded-xl border border-slate-200 bg-white p-2 shadow-lg"
       >
         <DropdownMenuLabel className="px-2 py-2">
           <div className="flex items-center gap-3">
