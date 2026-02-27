@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { AlertTriangle, Eye, EyeOff } from 'lucide-react';
+import { AlertTriangle, ChevronDown, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -546,184 +546,211 @@ export default function MePanel() {
       )}
 
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h3 className="text-lg font-semibold text-slate-900">프로필 설정</h3>
-        <p className="mt-2 text-sm text-slate-600">닉네임을 변경할 수 있습니다.</p>
-        <Form {...nicknameForm}>
-          <form
-            onSubmit={nicknameForm.handleSubmit(handleNicknameSubmit)}
-            className="mt-4 space-y-4"
-          >
-            <FormField
-              control={nicknameForm.control}
-              name="nickname"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm font-medium">닉네임</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      placeholder="닉네임을 입력하세요"
-                      autoComplete="nickname"
-                      className="h-11"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            {nicknameError && (
-              <div
-                className="rounded-lg bg-red-50 p-3 text-sm text-red-700"
-                aria-live="polite"
-              >
-                {nicknameError}
+        <h3 className="text-lg font-semibold text-slate-900">계정 설정</h3>
+        <p className="mt-2 text-sm text-slate-600">
+          프로필과 보안 설정은 필요할 때만 수정하세요.
+        </p>
+        <div className="mt-4 space-y-3">
+          <details className="group rounded-xl border border-slate-200 bg-slate-50">
+            <summary className="flex cursor-pointer items-center justify-between gap-3 px-4 py-3 list-none [&::-webkit-details-marker]:hidden">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">닉네임 변경</p>
+                <p className="text-xs text-slate-500">현재 닉네임: {data.nickname ?? '-'}</p>
               </div>
-            )}
-            <Button
-              type="submit"
-              disabled={nicknameForm.formState.isSubmitting}
-              className="h-11"
-            >
-              {nicknameForm.formState.isSubmitting ? '변경 중...' : '닉네임 변경'}
-            </Button>
-          </form>
-        </Form>
-      </section>
-
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h3 className="text-lg font-semibold text-slate-900">비밀번호 변경</h3>
-        <p className="mt-2 text-sm text-slate-600">{PASSWORD_POLICY_MESSAGE}</p>
-        {isKakaoAccount ? (
-          <div className="mt-4 rounded-xl bg-slate-50 p-4 text-sm text-slate-500">
-            카카오 로그인 계정은 비밀번호를 변경할 수 없습니다.
-          </div>
-        ) : (
-          <Form {...passwordForm}>
-            <form
-              onSubmit={passwordForm.handleSubmit(handlePasswordSubmit)}
-              className="mt-4 space-y-4"
-            >
-              <FormField
-                control={passwordForm.control}
-                name="currentPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-medium">현재 비밀번호</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Input
-                          {...field}
-                          type={showCurrentPassword ? 'text' : 'password'}
-                          placeholder="현재 비밀번호를 입력하세요"
-                          autoComplete="current-password"
-                          className="h-11 pr-10"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowCurrentPassword((prev) => !prev)}
-                          aria-label={
-                            showCurrentPassword ? '비밀번호 숨기기' : '비밀번호 보기'
-                          }
-                          className="absolute top-1/2 right-2 -translate-y-1/2 rounded-md p-1.5 transition-colors hover:bg-slate-100"
-                        >
-                          {showCurrentPassword ? (
-                            <EyeOff className="size-4 text-slate-500" />
-                          ) : (
-                            <Eye className="size-4 text-slate-500" />
-                          )}
-                        </button>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={passwordForm.control}
-                name="newPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-medium">새 비밀번호</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Input
-                          {...field}
-                          type={showNewPassword ? 'text' : 'password'}
-                          placeholder="새 비밀번호를 입력하세요"
-                          autoComplete="new-password"
-                          className="h-11 pr-10"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowNewPassword((prev) => !prev)}
-                          aria-label={showNewPassword ? '비밀번호 숨기기' : '비밀번호 보기'}
-                          className="absolute top-1/2 right-2 -translate-y-1/2 rounded-md p-1.5 transition-colors hover:bg-slate-100"
-                        >
-                          {showNewPassword ? (
-                            <EyeOff className="size-4 text-slate-500" />
-                          ) : (
-                            <Eye className="size-4 text-slate-500" />
-                          )}
-                        </button>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={passwordForm.control}
-                name="confirmPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-medium">새 비밀번호 확인</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Input
-                          {...field}
-                          type={showConfirmPassword ? 'text' : 'password'}
-                          placeholder="새 비밀번호를 다시 입력하세요"
-                          autoComplete="new-password"
-                          className="h-11 pr-10"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowConfirmPassword((prev) => !prev)}
-                          aria-label={
-                            showConfirmPassword ? '비밀번호 숨기기' : '비밀번호 보기'
-                          }
-                          className="absolute top-1/2 right-2 -translate-y-1/2 rounded-md p-1.5 transition-colors hover:bg-slate-100"
-                        >
-                          {showConfirmPassword ? (
-                            <EyeOff className="size-4 text-slate-500" />
-                          ) : (
-                            <Eye className="size-4 text-slate-500" />
-                          )}
-                        </button>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              {passwordError && (
-                <div
-                  className="rounded-lg bg-red-50 p-3 text-sm text-red-700"
-                  aria-live="polite"
+              <ChevronDown className="size-4 text-slate-400 transition group-open:rotate-180" />
+            </summary>
+            <div className="border-t border-slate-200 bg-white px-4 pb-4 pt-4">
+              <Form {...nicknameForm}>
+                <form
+                  onSubmit={nicknameForm.handleSubmit(handleNicknameSubmit)}
+                  className="space-y-4"
                 >
-                  {passwordError}
+                  <FormField
+                    control={nicknameForm.control}
+                    name="nickname"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium">닉네임</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder="닉네임을 입력하세요"
+                            autoComplete="nickname"
+                            className="h-11"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  {nicknameError && (
+                    <div
+                      className="rounded-lg bg-red-50 p-3 text-sm text-red-700"
+                      aria-live="polite"
+                    >
+                      {nicknameError}
+                    </div>
+                  )}
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={nicknameForm.formState.isSubmitting}
+                  >
+                    {nicknameForm.formState.isSubmitting ? '변경 중...' : '닉네임 변경'}
+                  </Button>
+                </form>
+              </Form>
+            </div>
+          </details>
+
+          <details className="group rounded-xl border border-slate-200 bg-slate-50">
+            <summary className="flex cursor-pointer items-center justify-between gap-3 px-4 py-3 list-none [&::-webkit-details-marker]:hidden">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">비밀번호 변경</p>
+                <p className="text-xs text-slate-500">
+                  {isKakaoAccount
+                    ? '카카오 로그인 계정은 비밀번호 변경이 불가합니다.'
+                    : '주기적으로 변경해 계정을 안전하게 관리하세요.'}
+                </p>
+              </div>
+              <ChevronDown className="size-4 text-slate-400 transition group-open:rotate-180" />
+            </summary>
+            <div className="border-t border-slate-200 bg-white px-4 pb-4 pt-4">
+              {isKakaoAccount ? (
+                <div className="rounded-lg bg-slate-50 p-3 text-sm text-slate-500">
+                  카카오 로그인 계정은 비밀번호를 변경할 수 없습니다.
                 </div>
+              ) : (
+                <Form {...passwordForm}>
+                  <form
+                    onSubmit={passwordForm.handleSubmit(handlePasswordSubmit)}
+                    className="space-y-4"
+                  >
+                    <p className="text-xs text-slate-500">{PASSWORD_POLICY_MESSAGE}</p>
+                    <FormField
+                      control={passwordForm.control}
+                      name="currentPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium">현재 비밀번호</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Input
+                                {...field}
+                                type={showCurrentPassword ? 'text' : 'password'}
+                                placeholder="현재 비밀번호를 입력하세요"
+                                autoComplete="current-password"
+                                className="h-11 pr-10"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowCurrentPassword((prev) => !prev)}
+                                aria-label={
+                                  showCurrentPassword ? '비밀번호 숨기기' : '비밀번호 보기'
+                                }
+                                className="absolute top-1/2 right-2 -translate-y-1/2 rounded-md p-1.5 transition-colors hover:bg-slate-100"
+                              >
+                                {showCurrentPassword ? (
+                                  <EyeOff className="size-4 text-slate-500" />
+                                ) : (
+                                  <Eye className="size-4 text-slate-500" />
+                                )}
+                              </button>
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={passwordForm.control}
+                      name="newPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium">새 비밀번호</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Input
+                                {...field}
+                                type={showNewPassword ? 'text' : 'password'}
+                                placeholder="새 비밀번호를 입력하세요"
+                                autoComplete="new-password"
+                                className="h-11 pr-10"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowNewPassword((prev) => !prev)}
+                                aria-label={showNewPassword ? '비밀번호 숨기기' : '비밀번호 보기'}
+                                className="absolute top-1/2 right-2 -translate-y-1/2 rounded-md p-1.5 transition-colors hover:bg-slate-100"
+                              >
+                                {showNewPassword ? (
+                                  <EyeOff className="size-4 text-slate-500" />
+                                ) : (
+                                  <Eye className="size-4 text-slate-500" />
+                                )}
+                              </button>
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={passwordForm.control}
+                      name="confirmPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium">새 비밀번호 확인</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Input
+                                {...field}
+                                type={showConfirmPassword ? 'text' : 'password'}
+                                placeholder="새 비밀번호를 다시 입력하세요"
+                                autoComplete="new-password"
+                                className="h-11 pr-10"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowConfirmPassword((prev) => !prev)}
+                                aria-label={
+                                  showConfirmPassword ? '비밀번호 숨기기' : '비밀번호 보기'
+                                }
+                                className="absolute top-1/2 right-2 -translate-y-1/2 rounded-md p-1.5 transition-colors hover:bg-slate-100"
+                              >
+                                {showConfirmPassword ? (
+                                  <EyeOff className="size-4 text-slate-500" />
+                                ) : (
+                                  <Eye className="size-4 text-slate-500" />
+                                )}
+                              </button>
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    {passwordError && (
+                      <div
+                        className="rounded-lg bg-red-50 p-3 text-sm text-red-700"
+                        aria-live="polite"
+                      >
+                        {passwordError}
+                      </div>
+                    )}
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={passwordForm.formState.isSubmitting}
+                    >
+                      {passwordForm.formState.isSubmitting ? '변경 중...' : '비밀번호 변경'}
+                    </Button>
+                  </form>
+                </Form>
               )}
-              <Button
-                type="submit"
-                disabled={passwordForm.formState.isSubmitting}
-                className="h-11"
-              >
-                {passwordForm.formState.isSubmitting ? '변경 중...' : '비밀번호 변경'}
-              </Button>
-            </form>
-          </Form>
-        )}
+            </div>
+          </details>
+        </div>
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -872,38 +899,47 @@ export default function MePanel() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-rose-200 bg-white p-6 shadow-sm">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h3 className="text-lg font-semibold text-slate-900">계정 관리</h3>
-            <p className="mt-1 text-xs font-semibold text-rose-500">Danger Zone</p>
-          </div>
-        </div>
+      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h3 className="text-lg font-semibold text-slate-900">계정 관리</h3>
         <p className="mt-2 text-sm text-slate-600">
-          회원 탈퇴 시 작성한 게시글과 댓글은 삭제되지 않으며, 작성자는 탈퇴회원으로 표시됩니다.
-          {isKakaoAccount && (
-            <>
-              <br />
-              카카오 로그인 계정은 탈퇴 시 카카오 연결이 해제됩니다.
-            </>
-          )}
+          계정 삭제는 복구할 수 없으므로 신중하게 진행해주세요.
         </p>
-        <div className="mt-4 flex justify-end">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setWithdrawPassword('');
-              setWithdrawReason('');
-              setWithdrawError(null);
-              setShowWithdrawDialog(true);
-            }}
-            disabled={isWithdrawing}
-            className="rounded-md border-rose-200 text-rose-600 hover:bg-rose-50"
-          >
-            {isWithdrawing ? '탈퇴 처리 중...' : '회원 탈퇴'}
-          </Button>
-        </div>
+        <details className="group mt-4 rounded-xl border border-rose-200 bg-rose-50/60">
+          <summary className="flex cursor-pointer items-center justify-between gap-3 px-4 py-3 list-none [&::-webkit-details-marker]:hidden">
+            <div>
+              <p className="text-sm font-semibold text-rose-600">회원 탈퇴</p>
+              <p className="text-xs text-rose-400">작성한 콘텐츠는 유지됩니다.</p>
+            </div>
+            <ChevronDown className="size-4 text-rose-300 transition group-open:rotate-180" />
+          </summary>
+          <div className="border-t border-rose-200/60 bg-white px-4 pb-4 pt-4">
+            <p className="text-sm text-slate-600">
+              회원 탈퇴 시 작성한 게시글과 댓글은 삭제되지 않으며, 작성자는 탈퇴회원으로 표시됩니다.
+              {isKakaoAccount && (
+                <>
+                  <br />
+                  카카오 로그인 계정은 탈퇴 시 카카오 연결이 해제됩니다.
+                </>
+              )}
+            </p>
+            <div className="mt-4 flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setWithdrawPassword('');
+                  setWithdrawReason('');
+                  setWithdrawError(null);
+                  setShowWithdrawDialog(true);
+                }}
+                disabled={isWithdrawing}
+                className="rounded-md border-rose-200 text-rose-600 hover:bg-rose-50"
+              >
+                {isWithdrawing ? '탈퇴 처리 중...' : '회원 탈퇴'}
+              </Button>
+            </div>
+          </div>
+        </details>
       </section>
 
       <ConfirmDialog
