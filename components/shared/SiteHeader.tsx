@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import BrandLogo from '@/components/shared/BrandLogo';
-import LogoutButton from '@/components/user/LogoutButton';
+import ProfileMenu from '@/components/user/ProfileMenu';
 
 export default function SiteHeader() {
   const cookieStore = cookies();
@@ -27,19 +27,11 @@ export default function SiteHeader() {
           >
             커뮤니티
           </Link>
-          <Link
-            href="/me"
-            className="transition hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 focus-visible:outline-none"
-          >
-            마이페이지
-          </Link>
         </nav>
 
         <div className="flex items-center gap-3">
           {isAuthed ? (
-            <>
-              <LogoutButton />
-            </>
+            <ProfileMenu />
           ) : (
             <Link
               href="/login"
