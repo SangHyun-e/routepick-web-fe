@@ -112,3 +112,18 @@ export async function fetchAdminUserStatusHistory(
   const data = (await res.json()) as PaginatedResponse<AdminUserStatusHistoryItem>;
   return { ok: true, data };
 }
+
+export async function releaseAdminUserRejoinRestriction(
+  userId: number,
+): Promise<ApiResult<void>> {
+  const res = await bffFetch(`/api/proxy/admin/users/${userId}/rejoin-restriction/release`, {
+    method: 'PATCH',
+  });
+
+  if (!res.ok) {
+    const message = await readErrorMessage(res, '재가입 제한 해제에 실패했습니다.');
+    return { ok: false, status: res.status, message };
+  }
+
+  return { ok: true, data: undefined };
+}

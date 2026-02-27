@@ -5,12 +5,14 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import Pagination from '@/feature/post/list/Pagination';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import UserStatusBadge from '@/feature/admin/user/components/UserStatusBadge';
 import UserStatusAction from '@/feature/admin/user/components/UserStatusAction';
 import UserStatusHistoryList from '@/feature/admin/user/components/UserStatusHistoryList';
 import {
   fetchAdminUserDetail,
   fetchAdminUserStatusHistory,
+  releaseAdminUserRejoinRestriction,
   updateAdminUserStatus,
 } from '@/feature/admin/user/api';
 import type {
@@ -40,6 +42,7 @@ export default function AdminUserDetailPage({ params }: PageProps) {
   const [user, setUser] = useState<AdminUserDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [actioning, setActioning] = useState(false);
+  const [rejoinDialogOpen, setRejoinDialogOpen] = useState(false);
   const [historyPage, setHistoryPage] = useState(0);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [historyData, setHistoryData] =
@@ -112,7 +115,48 @@ export default function AdminUserDetailPage({ params }: PageProps) {
     [loadHistory, loadUser, router, userId],
   );
 
+  const handleReleaseRejoinRestriction = useCallback(async () => {
+    setActioning(true);
+    const res = await releaseAdminUserRejoinRestriction(userId);
+    setActioning(false);
+    setRejoinDialogOpen(false);
+
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 403) {
+        toast.error('관리자 권한이 필요합니다.');
+        router.push('/login');
+        return;
+      }
+      toast.error(res.message ?? '재가입 제한 해제에 실패했습니다.');
+      return;
+    }
+
+    toast.success('재가입 제한이 해제되었습니다.');
+    loadUser();
+  }, [loadUser, router, userId]);
+
   const historyItems = useMemo(() => historyData?.content ?? [], [historyData]);
+  const rejoinRestrictionLabel = useMemo(() => {
+    if (!user?.rejoinRestrictedUntil) return '없음';
+    if (user.rejoinRestrictionReleasedAt) {
+      return `해제됨 (${formatDateTime(user.rejoinRestrictionReleasedAt)})`;
+    }
+    const untilTime = new Date(user.rejoinRestrictedUntil).getTime();
+    if (Number.isNaN(untilTime)) {
+      return '확인 불가';
+    }
+    if (untilTime <= Date.now()) {
+      return `만료됨 (${formatDateTime(user.rejoinRestrictedUntil)})`;
+    }
+    return `제한 중 (${formatDateTime(user.rejoinRestrictedUntil)})`;
+  }, [user]);
+  const canReleaseRejoinRestriction = useMemo(() => {
+    if (!user || user.status !== 'DELETED') return false;
+    if (!user.rejoinRestrictedUntil || user.rejoinRestrictionReleasedAt) return false;
+    const untilTime = new Date(user.rejoinRestrictedUntil).getTime();
+    if (Number.isNaN(untilTime)) return false;
+    return untilTime > Date.now();
+  }, [user]);
 
   if (!Number.isFinite(userId)) {
     return (
@@ -165,6 +209,18 @@ export default function AdminUserDetailPage({ params }: PageProps) {
               인증 제공자: {user.authProvider} · 프로필 완료: {user.profileComplete ? 'Y' : 'N'}
               {user.updatedAt && <span> · 수정일: {formatDateTime(user.updatedAt)}</span>}
             </div>
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
+              <span>재가입 제한: {rejoinRestrictionLabel}</span>
+              {canReleaseRejoinRestriction && (
+                <button
+                  onClick={() => setRejoinDialogOpen(true)}
+                  disabled={actioning}
+                  className="rounded-md border border-amber-200 px-3 py-1 text-xs font-medium text-amber-700 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  제한 해제
+                </button>
+              )}
+            </div>
           </div>
         )}
 
@@ -182,6 +238,16 @@ export default function AdminUserDetailPage({ params }: PageProps) {
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={rejoinDialogOpen}
+        onOpenChange={setRejoinDialogOpen}
+        title="재가입 제한을 해제하시겠습니까?"
+        description="해제하면 사용자가 바로 재가입할 수 있습니다."
+        confirmText="해제"
+        confirmDisabled={actioning}
+        onConfirm={handleReleaseRejoinRestriction}
+      />
     </div>
   );
 }
