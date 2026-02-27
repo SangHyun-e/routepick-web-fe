@@ -1,10 +1,9 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import { ChevronDown, LogOut, User } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { LogOut } from 'lucide-react';
 
-import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,11 +13,28 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { getKakaoLogoutUrl, logout } from '@/feature/auth/api';
 import { bffFetch } from '@/lib/bffFetch';
+import { initialsFrom } from '@/lib/ui';
 import type { Me } from '@/types/user';
 
 export default function ProfileMenu() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [profileName, setProfileName] = useState<string>('');
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const meRes = await bffFetch('/api/proxy/users/me', { cache: 'no-store' });
+      if (!mounted) return;
+      if (!meRes.ok) return;
+      const me = (await meRes.json().catch(() => null)) as Me | null;
+      const name = me?.nickname || me?.email?.split('@')[0] || '';
+      setProfileName(name);
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -46,11 +62,13 @@ export default function ProfileMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
-          <User className="size-4" />
-          프로필
-          <ChevronDown className="size-4 text-slate-400" />
-        </Button>
+        <button
+          type="button"
+          aria-label="프로필 메뉴"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+        >
+          {initialsFrom(profileName)}
+        </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-40 rounded-lg p-1">
         <DropdownMenuItem
