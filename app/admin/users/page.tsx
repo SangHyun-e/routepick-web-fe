@@ -6,7 +6,11 @@ import { toast } from 'sonner';
 import Pagination from '@/feature/post/list/Pagination';
 import type { PaginatedResponse } from '@/feature/post/types';
 import UserTable from '@/feature/admin/user/components/UserTable';
-import { fetchAdminUsers, updateAdminUserStatus } from '@/feature/admin/user/api';
+import {
+  fetchAdminUsers,
+  releaseAdminUserRejoinRestrictionByEmail,
+  updateAdminUserStatus,
+} from '@/feature/admin/user/api';
 import type { AdminUserListItem, AdminUserStatus } from '@/feature/admin/user/types';
 
 const STATUS_OPTIONS: { value: 'ALL' | AdminUserStatus; label: string }[] = [
@@ -25,6 +29,9 @@ export default function AdminUsersPage() {
   const [data, setData] = useState<PaginatedResponse<AdminUserListItem> | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState<number | null>(null);
+  const [releaseEmail, setReleaseEmail] = useState('');
+  const [releaseReason, setReleaseReason] = useState('');
+  const [releaseLoading, setReleaseLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -66,6 +73,36 @@ export default function AdminUsersPage() {
     },
     [load, router],
   );
+
+  const onReleaseByEmail = useCallback(async () => {
+    const trimmedEmail = releaseEmail.trim();
+    if (!trimmedEmail) {
+      toast.error('이메일을 입력해주세요.');
+      return;
+    }
+
+    setReleaseLoading(true);
+    const trimmedReason = releaseReason.trim();
+    const res = await releaseAdminUserRejoinRestrictionByEmail(
+      trimmedEmail,
+      trimmedReason.length > 0 ? trimmedReason : null,
+    );
+    setReleaseLoading(false);
+
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 403) {
+        toast.error('관리자 권한이 필요합니다.');
+        router.push('/login');
+        return;
+      }
+      toast.error(res.message ?? '재가입 제한 해제에 실패했습니다.');
+      return;
+    }
+
+    toast.success('재가입 제한이 해제되었습니다.');
+    setReleaseEmail('');
+    setReleaseReason('');
+  }, [releaseEmail, releaseReason, router]);
 
   const emptyMessage = useMemo(() => {
     if (loading) return '';
@@ -113,6 +150,43 @@ export default function AdminUsersPage() {
           >
             검색
           </button>
+        </div>
+
+        <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-3 text-sm font-semibold text-slate-700">재가입 제한 해제</div>
+          <div className="grid gap-3 md:grid-cols-[1.4fr_2fr_auto] md:items-end">
+            <div className="space-y-1">
+              <label htmlFor="release-email" className="text-xs font-medium text-slate-600">
+                이메일
+              </label>
+              <input
+                id="release-email"
+                value={releaseEmail}
+                onChange={(event) => setReleaseEmail(event.target.value)}
+                placeholder="user@example.com"
+                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="release-reason" className="text-xs font-medium text-slate-600">
+                해제 사유(선택)
+              </label>
+              <input
+                id="release-reason"
+                value={releaseReason}
+                onChange={(event) => setReleaseReason(event.target.value)}
+                placeholder="요청 확인 후 해제"
+                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
+              />
+            </div>
+            <button
+              onClick={onReleaseByEmail}
+              disabled={releaseLoading}
+              className="h-10 rounded-lg border border-amber-200 px-4 text-sm font-medium text-amber-700 hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {releaseLoading ? '해제 중...' : '제한 해제'}
+            </button>
+          </div>
         </div>
 
         {loading ? (

@@ -130,3 +130,21 @@ export async function releaseAdminUserRejoinRestriction(
 
   return { ok: true, data: undefined };
 }
+
+export async function releaseAdminUserRejoinRestrictionByEmail(
+  email: string,
+  reason?: string | null,
+): Promise<ApiResult<void>> {
+  const res = await bffFetch('/api/proxy/admin/users/rejoin-restriction/release-by-email', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, reason: reason ?? null }),
+  });
+
+  if (!res.ok) {
+    const message = await readErrorMessage(res, '재가입 제한 해제에 실패했습니다.');
+    return { ok: false, status: res.status, message };
+  }
+
+  return { ok: true, data: undefined };
+}
