@@ -15,6 +15,7 @@ export type PostListItemResponse = {
   authorId: number | null;
   authorNickname: string | null;
   isLikedByCurrentUser: boolean | null;
+  isScrappedByCurrentUser: boolean | null;
   commentCount: number;
 };
 
@@ -50,6 +51,7 @@ export type PostResponse = {
   authorId: number | null;
   authorNickname: string | null;
   isLikedByCurrentUser: boolean | null;
+  isScrappedByCurrentUser: boolean | null;
   commentCount: number;
   bestComments?: CommentResponse[];
 };
@@ -93,4 +95,8 @@ export type PostSortOption = 'latest' | 'popular' | 'views' | 'comments';
 // 좋아요 응답 타입
 export type LikeResponse = {
   likeCount: number;
+};
+
+export type ScrapResponse = {
+  scrapped: boolean;
 };

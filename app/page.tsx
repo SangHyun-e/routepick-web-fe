@@ -4,11 +4,12 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState, type KeyboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
 
-import { recommendCourse } from '@/feature/course/api';
+import { recommendCourse, saveRecommendation } from '@/feature/course/api';
 import type { CourseRecommendationResponse, CourseTheme } from '@/feature/course/types';
 import { fetchPosts } from '@/feature/post/api';
 import PostList from '@/feature/post/list/PostList';
 import type { PostListItemResponse } from '@/feature/post/types';
+import { toast } from 'sonner';
 
 export default function Home() {
   const router = useRouter();
@@ -19,6 +20,7 @@ export default function Home() {
   const [recommendation, setRecommendation] = useState<CourseRecommendationResponse | null>(null);
   const [recommendLoading, setRecommendLoading] = useState(false);
   const [recommendError, setRecommendError] = useState<string | null>(null);
+  const [recommendSaving, setRecommendSaving] = useState(false);
   const [popularPosts, setPopularPosts] = useState<PostListItemResponse[]>([]);
   const [latestPosts, setLatestPosts] = useState<PostListItemResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,6 +100,36 @@ export default function Home() {
     },
     [handleRecommend],
   );
+
+  const handleSaveRecommendation = useCallback(async () => {
+    if (!recommendation) {
+      toast.error('저장할 추천 결과가 없습니다.');
+      return;
+    }
+    if (recommendSaving) return;
+
+    setRecommendSaving(true);
+    const result = await saveRecommendation({
+      origin: originInput.trim(),
+      destination: destinationInput.trim(),
+      theme: themeInput,
+      routeSummary: recommendation.routeSummary,
+      explanation: recommendation.explanation,
+      stops: recommendation.stops,
+    });
+    setRecommendSaving(false);
+
+    if (!result.ok) {
+      if (result.status === 401) {
+        toast.error('로그인이 필요합니다. 로그인 후 다시 시도해주세요.');
+        return;
+      }
+      toast.error(result.message ?? '추천 코스 저장에 실패했습니다.');
+      return;
+    }
+
+    toast.success('추천 코스를 저장했습니다.');
+  }, [destinationInput, originInput, recommendation, recommendSaving, themeInput]);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -232,16 +264,26 @@ export default function Home() {
                   <p className="text-sm font-semibold text-slate-700">추천 경로</p>
                   <p className="text-sm text-slate-500">{recommendation.routeSummary}</p>
                 </div>
-                <a
-                  href={`https://map.kakao.com/?sName=${encodeURIComponent(
-                    originInput.trim(),
-                  )}&eName=${encodeURIComponent(destinationInput.trim())}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-slate-300"
-                >
-                  지도 링크
-                </a>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={`https://map.kakao.com/?sName=${encodeURIComponent(
+                      originInput.trim(),
+                    )}&eName=${encodeURIComponent(destinationInput.trim())}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-slate-300"
+                  >
+                    지도 링크
+                  </a>
+                  <button
+                    type="button"
+                    onClick={handleSaveRecommendation}
+                    disabled={recommendSaving}
+                    className="inline-flex items-center justify-center rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+                  >
+                    {recommendSaving ? '저장 중...' : '코스로 저장'}
+                  </button>
+                </div>
               </div>
 
               <div className="grid gap-3 md:grid-cols-3">
@@ -264,12 +306,6 @@ export default function Home() {
                       >
                         지도 보기
                       </a>
-                      <button
-                        type="button"
-                        className="inline-flex flex-1 items-center justify-center rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white"
-                      >
-                        코스로 저장
-                      </button>
                     </div>
                   </div>
                 ))}

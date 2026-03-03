@@ -98,6 +98,32 @@ export async function fetchMyComments(
   return { ok: true, data };
 }
 
+export async function fetchMyScraps(
+  page = 0,
+  size = 3,
+): Promise<ApiResult<PaginatedResponse<PostListItemResponse>>> {
+  const params = new URLSearchParams();
+  params.set('page', String(page));
+  params.set('size', String(size));
+  params.append('sort', 'createdAt,desc');
+
+  const res = await bffFetch(`/api/proxy/users/me/scraps?${params.toString()}`, {
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    const message = await readErrorMessage(
+      res,
+      `스크랩을 불러오지 못했습니다. (${res.status})`,
+    );
+    return { ok: false, status: res.status, message };
+  }
+
+  const raw = await res.json().catch(() => ({}));
+  const data = normalizePage<PostListItemResponse>(raw);
+  return { ok: true, data };
+}
+
 export async function activateMyPost(postId: number): Promise<ApiResult<void>> {
   const res = await bffFetch(`/api/proxy/posts/${postId}/activate`, { method: 'PATCH' });
 

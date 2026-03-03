@@ -6,6 +6,7 @@ import type {
   PaginatedResponse,
   PostSortOption,
   LikeResponse,
+  ScrapResponse,
 } from '@/feature/post/types';
 import type { ApiResult } from '@/types/http';
 import { bffFetch } from '@/lib/bffFetch';
@@ -179,6 +180,19 @@ export async function likePost(id: number): Promise<ApiResult<LikeResponse>> {
   }
 
   const data = (await res.json()) as LikeResponse;
+  return { ok: true, data };
+}
+
+/** 스크랩 토글 */
+export async function scrapPost(id: number): Promise<ApiResult<ScrapResponse>> {
+  const res = await bffFetch(`/api/proxy/posts/${id}/scrap`, { method: 'POST' });
+
+  if (!res.ok) {
+    const message = await readErrorMessage(res, '스크랩 실패');
+    return { ok: false, status: res.status, message };
+  }
+
+  const data = (await res.json()) as ScrapResponse;
   return { ok: true, data };
 }
 
