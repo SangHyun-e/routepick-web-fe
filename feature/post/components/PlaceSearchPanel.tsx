@@ -17,6 +17,7 @@ export default function PlaceSearchPanel({ onInsert, onApplyLocation }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<KakaoPlaceDocument[]>([]);
+  const [expanded, setExpanded] = useState(false);
 
   const handleSearch = useCallback(async () => {
     const trimmed = keyword.trim();
@@ -33,7 +34,10 @@ export default function PlaceSearchPanel({ onInsert, onApplyLocation }: Props) {
       return;
     }
     setResults(res.data.documents ?? []);
+    setExpanded(false);
   }, [keyword]);
+
+  const visibleResults = expanded ? results : results.slice(0, 3);
 
   return (
     <div className="space-y-3">
@@ -70,7 +74,7 @@ export default function PlaceSearchPanel({ onInsert, onApplyLocation }: Props) {
 
       {results.length > 0 && (
         <div className="space-y-3">
-          {results.map((place) => (
+          {visibleResults.map((place) => (
             <div
               key={place.id}
               className="rounded-xl border border-slate-200 bg-white p-4 text-sm"
@@ -108,6 +112,18 @@ export default function PlaceSearchPanel({ onInsert, onApplyLocation }: Props) {
               </div>
             </div>
           ))}
+          {results.length > 3 && (
+            <div className="flex justify-center">
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => setExpanded((prev) => !prev)}
+              >
+                {expanded ? '접기' : `더보기 (${results.length - 3})`}
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>
