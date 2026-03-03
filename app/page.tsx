@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState, type KeyboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
 
+import { recommendCourse } from '@/feature/course/api';
+import type { CourseRecommendationResponse, CourseTheme } from '@/feature/course/types';
 import { fetchPosts } from '@/feature/post/api';
 import PostList from '@/feature/post/list/PostList';
 import type { PostListItemResponse } from '@/feature/post/types';
@@ -11,6 +13,12 @@ import type { PostListItemResponse } from '@/feature/post/types';
 export default function Home() {
   const router = useRouter();
   const [searchInput, setSearchInput] = useState('');
+  const [originInput, setOriginInput] = useState('');
+  const [destinationInput, setDestinationInput] = useState('');
+  const [themeInput, setThemeInput] = useState<CourseTheme>('야경');
+  const [recommendation, setRecommendation] = useState<CourseRecommendationResponse | null>(null);
+  const [recommendLoading, setRecommendLoading] = useState(false);
+  const [recommendError, setRecommendError] = useState<string | null>(null);
   const [popularPosts, setPopularPosts] = useState<PostListItemResponse[]>([]);
   const [latestPosts, setLatestPosts] = useState<PostListItemResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +57,46 @@ export default function Home() {
       }
     },
     [handleSearch],
+  );
+
+  const handleRecommend = useCallback(async () => {
+    const origin = originInput.trim();
+    const destination = destinationInput.trim();
+
+    if (!origin || !destination) {
+      setRecommendError('출발지와 도착지를 모두 입력해주세요.');
+      return;
+    }
+
+    setRecommendLoading(true);
+    setRecommendError(null);
+
+    const result = await recommendCourse({
+      origin,
+      destination,
+      theme: themeInput,
+      maxStops: 3,
+      maxDetourKm: 10,
+    });
+
+    if (result.ok) {
+      setRecommendation(result.data);
+    } else {
+      setRecommendation(null);
+      setRecommendError(result.message ?? '추천 결과를 불러오지 못했습니다.');
+    }
+
+    setRecommendLoading(false);
+  }, [destinationInput, originInput, themeInput]);
+
+  const handleRecommendKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        handleRecommend();
+      }
+    },
+    [handleRecommend],
   );
 
   return (
@@ -122,6 +170,116 @@ export default function Home() {
               </span>
             </Link>
           </div>
+        </section>
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-slate-900">AI 드라이브 코스 추천</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                출발지와 도착지를 입력하면 테마에 맞는 코스를 제안해요.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-slate-400">
+              <span>기본 정차 3곳</span>
+              <span>·</span>
+              <span>최대 우회 10km</span>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-3 md:grid-cols-4">
+            <input
+              value={originInput}
+              onChange={(event) => setOriginInput(event.target.value)}
+              onKeyDown={handleRecommendKeyDown}
+              placeholder="출발지 (예: 서울 강남역)"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm transition outline-none focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
+            />
+            <input
+              value={destinationInput}
+              onChange={(event) => setDestinationInput(event.target.value)}
+              onKeyDown={handleRecommendKeyDown}
+              placeholder="도착지 (예: 양평 두물머리)"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm transition outline-none focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
+            />
+            <select
+              value={themeInput}
+              onChange={(event) => setThemeInput(event.target.value as CourseTheme)}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm transition outline-none focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
+            >
+              {['야경', '바다', '산', '카페', '맛집'].map((theme) => (
+                <option key={theme} value={theme}>
+                  {theme}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={handleRecommend}
+              disabled={recommendLoading}
+              className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+            >
+              {recommendLoading ? '추천 중...' : '코스 추천'}
+            </button>
+          </div>
+
+          {recommendError ? <p className="mt-3 text-sm text-rose-500">{recommendError}</p> : null}
+
+          {recommendation ? (
+            <div className="mt-6 space-y-4 rounded-xl border border-slate-100 bg-slate-50 p-4">
+              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-slate-700">추천 경로</p>
+                  <p className="text-sm text-slate-500">{recommendation.routeSummary}</p>
+                </div>
+                <a
+                  href={`https://map.kakao.com/?sName=${encodeURIComponent(
+                    originInput.trim(),
+                  )}&eName=${encodeURIComponent(destinationInput.trim())}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-slate-300"
+                >
+                  지도 링크
+                </a>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-3">
+                {recommendation.stops.map((stop) => (
+                  <div
+                    key={`${stop.name}-${stop.x}-${stop.y}`}
+                    className="flex h-full flex-col justify-between rounded-xl border border-slate-200 bg-white p-4"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">{stop.name}</p>
+                      <p className="mt-1 text-xs text-slate-500">{stop.category}</p>
+                      <p className="mt-2 text-xs text-slate-600">{stop.address}</p>
+                    </div>
+                    <div className="mt-4 flex items-center gap-2">
+                      <a
+                        href={`https://map.kakao.com/link/search/${encodeURIComponent(stop.name)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex flex-1 items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-slate-300"
+                      >
+                        지도 보기
+                      </a>
+                      <button
+                        type="button"
+                        className="inline-flex flex-1 items-center justify-center rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white"
+                      >
+                        코스로 저장
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="rounded-lg bg-white p-3 text-sm whitespace-pre-line text-slate-600">
+                {recommendation.explanation}
+              </div>
+            </div>
+          ) : null}
         </section>
 
         <section className="space-y-3">
