@@ -27,6 +27,12 @@ export default function SiteHeader() {
           >
             커뮤니티
           </Link>
+          <Link
+            href="/drive"
+            className="transition hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 focus-visible:outline-none"
+          >
+            드라이브 코스 추천
+          </Link>
         </nav>
 
         <div className="flex items-center gap-3">
