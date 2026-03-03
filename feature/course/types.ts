@@ -35,3 +35,19 @@ export interface CourseRecommendationSaveResponse extends CourseRecommendationSa
   id: number;
   createdAt: string;
 }
+
+export interface CourseCurationResponse {
+  course_title: string;
+  vibe_summary: string;
+  route_details: {
+    start: string;
+    stopover: string;
+    destination: string;
+  };
+  drive_info: {
+    duration: string;
+    difficulty: string;
+    best_time: string;
+  };
+  curator_tips: string[];
+}
