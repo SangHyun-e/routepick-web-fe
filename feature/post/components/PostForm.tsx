@@ -14,6 +14,16 @@ import PostImageUploader from '@/feature/post/components/PostImageUploader';
 import PlaceSearchPanel from '@/feature/post/components/PlaceSearchPanel';
 import { fetchSavedRecommendations } from '@/feature/course/api';
 import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 type Props = {
   draft: PostFormDraft;
@@ -48,6 +58,7 @@ export default function PostForm({
   const [savedCoursesLoading, setSavedCoursesLoading] = useState(false);
   const [savedCoursesError, setSavedCoursesError] = useState<string | null>(null);
   const [selectedStops, setSelectedStops] = useState<Record<number, number[]>>({});
+  const [savedCoursesOpen, setSavedCoursesOpen] = useState(false);
   const lastImageInsertPosRef = useRef<number | null>(null);
   const parseOptionalNumber = useCallback((value: string) => {
     const trimmed = value.trim();
@@ -180,15 +191,7 @@ export default function PostForm({
       const stopItems = selected
         .map((stop) => `<li>${stop.name} - ${stop.address}</li>`)
         .join('');
-      const html = `
-<div>
-  <p><strong>${course.origin} → ${course.destination}</strong></p>
-  <p>${course.theme} 추천 코스</p>
-  <ul>
-    ${stopItems}
-  </ul>
-</div>
-`;
+      const html = `<div><p><strong>${course.origin} → ${course.destination}</strong></p><p>${course.theme} 추천 코스</p><ul>${stopItems}</ul></div>`;
 
       editor.chain().focus().insertContent(html).run();
       setSelectedStops((prev) => ({ ...prev, [course.id]: [] }));
@@ -295,72 +298,97 @@ export default function PostForm({
                 onApplyLocation={handleApplyLocation}
               />
 
-              <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div className="flex flex-col gap-1">
-                  <p className="text-sm font-semibold text-slate-800">저장한 추천 코스</p>
-                  <p className="text-xs text-slate-500">
-                    저장된 추천 코스의 장소를 선택해 본문에 추가할 수 있습니다.
-                  </p>
-                </div>
-                {savedCoursesLoading && (
-                  <p className="text-xs text-slate-500">추천 코스를 불러오는 중...</p>
-                )}
-                {!savedCoursesLoading && savedCoursesError && (
-                  <p className="text-xs text-rose-500">{savedCoursesError}</p>
-                )}
-                {!savedCoursesLoading && !savedCoursesError && savedCourses.length === 0 && (
-                  <p className="text-xs text-slate-500">저장된 추천 코스가 없습니다.</p>
-                )}
-                {!savedCoursesLoading && !savedCoursesError && savedCourses.length > 0 && (
-                  <div className="space-y-3">
-                    {savedCourses.map((course) => (
-                      <div key={course.id} className="rounded-lg border border-slate-200 bg-white p-3">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div>
-                            <p className="text-sm font-semibold text-slate-900">
-                              {course.routeSummary}
-                            </p>
-                            <p className="text-xs text-slate-500">{course.theme}</p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleInsertSavedStops(course)}
-                            className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white"
-                          >
-                            선택한 장소 추가
-                          </button>
-                        </div>
-                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                          {course.stops.map((stop, index) => {
-                            const selected = (selectedStops[course.id] ?? []).includes(index);
-                            return (
-                              <label
-                                key={`${course.id}-${stop.name}-${stop.x}`}
-                                className={`flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2 text-xs transition ${
-                                  selected
-                                    ? 'border-slate-900 bg-slate-900 text-white'
-                                    : 'border-slate-200 bg-white text-slate-600'
-                                }`}
-                              >
-                                <input
-                                  type="checkbox"
-                                  className="mt-0.5"
-                                  checked={selected}
-                                  onChange={() => toggleStopSelection(course.id, index)}
-                                />
-                                <span>
-                                  <span className="block font-semibold">{stop.name}</span>
-                                  <span className="block text-[11px] opacity-80">{stop.address}</span>
-                                </span>
-                              </label>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
+              <AlertDialog open={savedCoursesOpen} onOpenChange={setSavedCoursesOpen}>
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800">저장한 추천 코스</p>
+                    <p className="text-xs text-slate-500">
+                      추천 코스를 선택해 글 본문에 추가할 수 있습니다.
+                    </p>
                   </div>
-                )}
-              </div>
+                  <AlertDialogTrigger asChild>
+                    <Button type="button" size="sm" variant="outline">
+                      추천 코스 보기
+                    </Button>
+                  </AlertDialogTrigger>
+                </div>
+                <AlertDialogContent className="max-w-3xl">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>저장한 추천 코스</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      체크한 장소를 선택해 게시글 본문에 삽입할 수 있습니다.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <div className="max-h-[60vh] space-y-3 overflow-y-auto">
+                    {savedCoursesLoading && (
+                      <p className="text-xs text-slate-500">추천 코스를 불러오는 중...</p>
+                    )}
+                    {!savedCoursesLoading && savedCoursesError && (
+                      <p className="text-xs text-rose-500">{savedCoursesError}</p>
+                    )}
+                    {!savedCoursesLoading && !savedCoursesError && savedCourses.length === 0 && (
+                      <p className="text-xs text-slate-500">저장된 추천 코스가 없습니다.</p>
+                    )}
+                    {!savedCoursesLoading && !savedCoursesError && savedCourses.length > 0 && (
+                      <div className="space-y-3">
+                        {savedCourses.map((course) => (
+                          <div
+                            key={course.id}
+                            className="rounded-lg border border-slate-200 bg-white p-3"
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div>
+                                <p className="text-sm font-semibold text-slate-900">
+                                  {course.routeSummary}
+                                </p>
+                                <p className="text-xs text-slate-500">{course.theme}</p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleInsertSavedStops(course)}
+                                className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white"
+                              >
+                                선택한 장소 추가
+                              </button>
+                            </div>
+                            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                              {course.stops.map((stop, index) => {
+                                const selected = (selectedStops[course.id] ?? []).includes(index);
+                                return (
+                                  <label
+                                    key={`${course.id}-${stop.name}-${stop.x}`}
+                                    className={`flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2 text-xs transition ${
+                                      selected
+                                        ? 'border-slate-900 bg-slate-900 text-white'
+                                        : 'border-slate-200 bg-white text-slate-600'
+                                    }`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      className="mt-0.5"
+                                      checked={selected}
+                                      onChange={() => toggleStopSelection(course.id, index)}
+                                    />
+                                    <span>
+                                      <span className="block font-semibold">{stop.name}</span>
+                                      <span className="block text-[11px] opacity-80">
+                                        {stop.address}
+                                      </span>
+                                    </span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>닫기</AlertDialogCancel>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
 
               <div className="space-y-2">
                 <label
