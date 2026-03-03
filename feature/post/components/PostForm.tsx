@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/react';
 import type { KakaoPlaceDocument } from '@/feature/place/types';
 import type { PostFormDraft, PostFormErrors } from '@/feature/post/types';
+import type { CourseRecommendationSaveResponse } from '@/feature/course/types';
 import { parseTags } from '@/feature/post/validation';
 import { FileText, MapPin, Navigation, Tag, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
@@ -11,6 +12,8 @@ import { Button } from '@/components/ui/button';
 import PostEditor from '@/feature/post/components/PostEditor';
 import PostImageUploader from '@/feature/post/components/PostImageUploader';
 import PlaceSearchPanel from '@/feature/post/components/PlaceSearchPanel';
+import { fetchSavedRecommendations } from '@/feature/course/api';
+import { toast } from 'sonner';
 
 type Props = {
   draft: PostFormDraft;
@@ -41,6 +44,10 @@ export default function PostForm({
   showNoticeToggle = false,
 }: Props) {
   const [editor, setEditor] = useState<Editor | null>(null);
+  const [savedCourses, setSavedCourses] = useState<CourseRecommendationSaveResponse[]>([]);
+  const [savedCoursesLoading, setSavedCoursesLoading] = useState(false);
+  const [savedCoursesError, setSavedCoursesError] = useState<string | null>(null);
+  const [selectedStops, setSelectedStops] = useState<Record<number, number[]>>({});
   const lastImageInsertPosRef = useRef<number | null>(null);
   const parseOptionalNumber = useCallback((value: string) => {
     const trimmed = value.trim();
@@ -75,6 +82,27 @@ export default function PostForm({
       editor.off('selectionUpdate', updateSelection);
     };
   }, [editor]);
+
+  useEffect(() => {
+    let mounted = true;
+    setSavedCoursesLoading(true);
+    (async () => {
+      const result = await fetchSavedRecommendations(0, 10);
+      if (!mounted) return;
+
+      if (result.ok) {
+        setSavedCourses(result.data.content);
+        setSavedCoursesError(null);
+      } else {
+        setSavedCourses([]);
+        setSavedCoursesError(result.message ?? '저장된 추천 코스를 불러오지 못했습니다.');
+      }
+      setSavedCoursesLoading(false);
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleInsertImage = useCallback(
     (url: string) => {
@@ -119,6 +147,54 @@ export default function PostForm({
       }
     },
     [onChange],
+  );
+
+  const toggleStopSelection = useCallback((courseId: number, stopIndex: number) => {
+    setSelectedStops((prev) => {
+      const current = new Set(prev[courseId] ?? []);
+      if (current.has(stopIndex)) {
+        current.delete(stopIndex);
+      } else {
+        current.add(stopIndex);
+      }
+      return { ...prev, [courseId]: Array.from(current) };
+    });
+  }, []);
+
+  const handleInsertSavedStops = useCallback(
+    (course: CourseRecommendationSaveResponse) => {
+      const selectedIndexes = selectedStops[course.id] ?? [];
+      const selected = selectedIndexes
+        .map((index) => course.stops[index])
+        .filter((stop) => Boolean(stop));
+
+      if (selected.length === 0) {
+        toast.error('추가할 장소를 선택해주세요.');
+        return;
+      }
+      if (!editor) {
+        toast.error('에디터가 준비되지 않았습니다.');
+        return;
+      }
+
+      const stopItems = selected
+        .map((stop) => `<li>${stop.name} - ${stop.address}</li>`)
+        .join('');
+      const html = `
+<div>
+  <p><strong>${course.origin} → ${course.destination}</strong></p>
+  <p>${course.theme} 추천 코스</p>
+  <ul>
+    ${stopItems}
+  </ul>
+</div>
+`;
+
+      editor.chain().focus().insertContent(html).run();
+      setSelectedStops((prev) => ({ ...prev, [course.id]: [] }));
+      toast.success('선택한 장소를 본문에 추가했습니다.');
+    },
+    [editor, selectedStops],
   );
 
   return (
@@ -218,6 +294,73 @@ export default function PostForm({
                 onInsert={handleInsertPlace}
                 onApplyLocation={handleApplyLocation}
               />
+
+              <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex flex-col gap-1">
+                  <p className="text-sm font-semibold text-slate-800">저장한 추천 코스</p>
+                  <p className="text-xs text-slate-500">
+                    저장된 추천 코스의 장소를 선택해 본문에 추가할 수 있습니다.
+                  </p>
+                </div>
+                {savedCoursesLoading && (
+                  <p className="text-xs text-slate-500">추천 코스를 불러오는 중...</p>
+                )}
+                {!savedCoursesLoading && savedCoursesError && (
+                  <p className="text-xs text-rose-500">{savedCoursesError}</p>
+                )}
+                {!savedCoursesLoading && !savedCoursesError && savedCourses.length === 0 && (
+                  <p className="text-xs text-slate-500">저장된 추천 코스가 없습니다.</p>
+                )}
+                {!savedCoursesLoading && !savedCoursesError && savedCourses.length > 0 && (
+                  <div className="space-y-3">
+                    {savedCourses.map((course) => (
+                      <div key={course.id} className="rounded-lg border border-slate-200 bg-white p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-900">
+                              {course.routeSummary}
+                            </p>
+                            <p className="text-xs text-slate-500">{course.theme}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleInsertSavedStops(course)}
+                            className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white"
+                          >
+                            선택한 장소 추가
+                          </button>
+                        </div>
+                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                          {course.stops.map((stop, index) => {
+                            const selected = (selectedStops[course.id] ?? []).includes(index);
+                            return (
+                              <label
+                                key={`${course.id}-${stop.name}-${stop.x}`}
+                                className={`flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2 text-xs transition ${
+                                  selected
+                                    ? 'border-slate-900 bg-slate-900 text-white'
+                                    : 'border-slate-200 bg-white text-slate-600'
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  className="mt-0.5"
+                                  checked={selected}
+                                  onChange={() => toggleStopSelection(course.id, index)}
+                                />
+                                <span>
+                                  <span className="block font-semibold">{stop.name}</span>
+                                  <span className="block text-[11px] opacity-80">{stop.address}</span>
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               <div className="space-y-2">
                 <label

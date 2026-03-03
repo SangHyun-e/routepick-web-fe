@@ -21,3 +21,17 @@ export interface CourseRecommendationResponse {
   routeSummary: string;
   explanation: string;
 }
+
+export interface CourseRecommendationSaveRequest {
+  origin: string;
+  destination: string;
+  theme: CourseTheme;
+  routeSummary: string;
+  explanation: string;
+  stops: CourseStop[];
+}
+
+export interface CourseRecommendationSaveResponse extends CourseRecommendationSaveRequest {
+  id: number;
+  createdAt: string;
+}

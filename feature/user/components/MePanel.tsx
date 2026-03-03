@@ -30,11 +30,14 @@ import { logout } from '@/feature/auth/api';
 import { PASSWORD_POLICY_MESSAGE, PASSWORD_POLICY_REGEX } from '@/feature/auth/schemas';
 import type { MyCommentListItem } from '@/feature/comment/types';
 import type { PostListItemResponse } from '@/feature/post/types';
+import type { CourseRecommendationSaveResponse } from '@/feature/course/types';
+import { fetchSavedRecommendations } from '@/feature/course/api';
 import {
   activateMyPost,
   changeMyPassword,
   fetchMyComments,
   fetchMyPosts,
+  fetchMyScraps,
   hideMyPost,
   updateMyNickname,
   verifyPassword,
@@ -118,7 +121,9 @@ export default function MePanel() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [activityTab, setActivityTab] = useState<'posts' | 'comments'>('posts');
+  const [activityTab, setActivityTab] = useState<'posts' | 'comments' | 'scraps' | 'saved'>(
+    'posts',
+  );
   const [postStatusFilter, setPostStatusFilter] = useState<PostStatusFilter>('ALL');
   const [postActionId, setPostActionId] = useState<number | null>(null);
   const [activityPosts, setActivityPosts] = useState<ActivityState<PostListItemResponse>>(
@@ -127,13 +132,31 @@ export default function MePanel() {
   const [activityComments, setActivityComments] = useState<ActivityState<MyCommentListItem>>(
     createActivityState<MyCommentListItem>(),
   );
+  const [activityScraps, setActivityScraps] = useState<ActivityState<PostListItemResponse>>(
+    createActivityState<PostListItemResponse>(),
+  );
+  const [activitySavedCourses, setActivitySavedCourses] =
+    useState<ActivityState<CourseRecommendationSaveResponse>>(
+      createActivityState<CourseRecommendationSaveResponse>(),
+    );
   const isMountedRef = useRef(true);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const activityEmptyMessage =
     activityTab === 'posts'
       ? '아직 작성한 글이 없어요. 첫 글을 작성해볼까요?'
-      : '아직 작성한 댓글이 없어요.';
-  const activeActivity = activityTab === 'posts' ? activityPosts : activityComments;
+      : activityTab === 'comments'
+        ? '아직 작성한 댓글이 없어요.'
+        : activityTab === 'scraps'
+          ? '아직 스크랩한 글이 없어요.'
+          : '저장한 추천 코스가 아직 없어요.';
+  const activeActivity =
+    activityTab === 'posts'
+      ? activityPosts
+      : activityTab === 'comments'
+        ? activityComments
+        : activityTab === 'scraps'
+          ? activityScraps
+          : activitySavedCourses;
   const activeItems = activeActivity.items;
   const activeLoading = activeActivity.loading;
   const activeError = activeActivity.error;
@@ -271,6 +294,86 @@ export default function MePanel() {
     }
   }, []);
 
+  const loadScrapsPage = useCallback(async (page: number, replace: boolean) => {
+    setActivityScraps((prev) => ({
+      ...prev,
+      ...(replace ? { items: [], page: 0, total: null } : {}),
+      loading: true,
+      error: null,
+    }));
+
+    try {
+      const result = await fetchMyScraps(page, ACTIVITY_PAGE_SIZE);
+      if (!isMountedRef.current) return;
+
+      if (result.ok) {
+        setActivityScraps((prev) => ({
+          items: replace ? result.data.content : [...prev.items, ...result.data.content],
+          page: result.data.number,
+          total: result.data.totalElements,
+          loading: false,
+          error: null,
+        }));
+        return;
+      }
+
+      setActivityScraps((prev) => ({
+        ...prev,
+        ...(replace ? { items: [], page: 0, total: null } : {}),
+        loading: false,
+        error: result.message,
+      }));
+    } catch {
+      if (!isMountedRef.current) return;
+      setActivityScraps((prev) => ({
+        ...prev,
+        ...(replace ? { items: [], page: 0, total: null } : {}),
+        loading: false,
+        error: '스크랩을 불러오지 못했습니다.',
+      }));
+    }
+  }, []);
+
+  const loadSavedCoursesPage = useCallback(async (page: number, replace: boolean) => {
+    setActivitySavedCourses((prev) => ({
+      ...prev,
+      ...(replace ? { items: [], page: 0, total: null } : {}),
+      loading: true,
+      error: null,
+    }));
+
+    try {
+      const result = await fetchSavedRecommendations(page, ACTIVITY_PAGE_SIZE);
+      if (!isMountedRef.current) return;
+
+      if (result.ok) {
+        setActivitySavedCourses((prev) => ({
+          items: replace ? result.data.content : [...prev.items, ...result.data.content],
+          page: result.data.number,
+          total: result.data.totalElements,
+          loading: false,
+          error: null,
+        }));
+        return;
+      }
+
+      setActivitySavedCourses((prev) => ({
+        ...prev,
+        ...(replace ? { items: [], page: 0, total: null } : {}),
+        loading: false,
+        error: result.message,
+      }));
+    } catch {
+      if (!isMountedRef.current) return;
+      setActivitySavedCourses((prev) => ({
+        ...prev,
+        ...(replace ? { items: [], page: 0, total: null } : {}),
+        loading: false,
+        error: '저장된 추천 코스를 불러오지 못했습니다.',
+      }));
+    }
+  }, []);
+
   useEffect(() => {
     if (!data) return;
     void loadPostsPage(0, true);
@@ -280,6 +383,16 @@ export default function MePanel() {
     if (!data) return;
     void loadCommentsPage(0, true);
   }, [data?.id, loadCommentsPage]);
+
+  useEffect(() => {
+    if (!data) return;
+    void loadScrapsPage(0, true);
+  }, [data?.id, loadScrapsPage]);
+
+  useEffect(() => {
+    if (!data) return;
+    void loadSavedCoursesPage(0, true);
+  }, [data?.id, loadSavedCoursesPage]);
 
   const loadMorePosts = useCallback(async () => {
     if (activityPosts.loading || activityPosts.error) return;
@@ -297,6 +410,25 @@ export default function MePanel() {
     }
     void loadCommentsPage(activityComments.page + 1, false);
   }, [activityComments, loadCommentsPage]);
+
+  const loadMoreScraps = useCallback(async () => {
+    if (activityScraps.loading || activityScraps.error) return;
+    if (activityScraps.total !== null && activityScraps.items.length >= activityScraps.total) {
+      return;
+    }
+    void loadScrapsPage(activityScraps.page + 1, false);
+  }, [activityScraps, loadScrapsPage]);
+
+  const loadMoreSavedCourses = useCallback(async () => {
+    if (activitySavedCourses.loading || activitySavedCourses.error) return;
+    if (
+      activitySavedCourses.total !== null &&
+      activitySavedCourses.items.length >= activitySavedCourses.total
+    ) {
+      return;
+    }
+    void loadSavedCoursesPage(activitySavedCourses.page + 1, false);
+  }, [activitySavedCourses, loadSavedCoursesPage]);
 
   const handlePostStatusChange = useCallback(
     async (postId: number, action: 'hide' | 'activate') => {
@@ -329,16 +461,24 @@ export default function MePanel() {
         if (!entries[0]?.isIntersecting) return;
         if (activityTab === 'posts') {
           void loadMorePosts();
-        } else {
-          void loadMoreComments();
+          return;
         }
+        if (activityTab === 'comments') {
+          void loadMoreComments();
+          return;
+        }
+        if (activityTab === 'scraps') {
+          void loadMoreScraps();
+          return;
+        }
+        void loadMoreSavedCourses();
       },
       { rootMargin: '200px' },
     );
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [activityTab, loadMorePosts, loadMoreComments]);
+  }, [activityTab, loadMorePosts, loadMoreComments, loadMoreScraps, loadMoreSavedCourses]);
 
   const handleWithdrawConfirm = useCallback(
     async (event?: MouseEvent<HTMLButtonElement>) => {
@@ -779,6 +919,28 @@ export default function MePanel() {
             >
               내가 쓴 댓글
             </button>
+            <button
+              type="button"
+              onClick={() => setActivityTab('scraps')}
+              className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
+                activityTab === 'scraps'
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              스크랩
+            </button>
+            <button
+              type="button"
+              onClick={() => setActivityTab('saved')}
+              className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
+                activityTab === 'saved'
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              추천 저장
+            </button>
           </div>
           {activityTab === 'posts' && (
             <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-600">
@@ -880,6 +1042,57 @@ export default function MePanel() {
                         <span className="line-clamp-2">{comment.content}</span>
                       </div>
                     </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {hasActiveItems && activityTab === 'scraps' && (
+              <ul className="mt-4 space-y-3">
+                {activityScraps.items.map((post) => (
+                  <li key={post.id} className="rounded-lg border border-slate-200 bg-white p-3">
+                    <Link
+                      href={`/posts/${post.id}`}
+                      className="block transition hover:text-blue-600"
+                    >
+                      <p className="line-clamp-1 text-sm font-semibold text-slate-900">
+                        {post.title}
+                      </p>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                        {post.region && <span>{post.region}</span>}
+                        <span>{formatActivityDate(post.createdAt)}</span>
+                        <span>댓글 {post.commentCount ?? 0}</span>
+                      </div>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {hasActiveItems && activityTab === 'saved' && (
+              <ul className="mt-4 space-y-3">
+                {activitySavedCourses.items.map((course) => (
+                  <li key={course.id} className="rounded-lg border border-slate-200 bg-white p-4">
+                    <div className="flex flex-col gap-2">
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                        <span>{course.theme}</span>
+                        <span>{formatActivityDate(course.createdAt)}</span>
+                      </div>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {course.routeSummary}
+                      </p>
+                      <div className="flex flex-wrap gap-2 text-xs text-slate-600">
+                        {course.stops.map((stop) => (
+                          <span
+                            key={`${course.id}-${stop.name}-${stop.x}`}
+                            className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5"
+                          >
+                            {stop.name}
+                          </span>
+                        ))}
+                      </div>
+                      <p className="text-xs text-slate-500 whitespace-pre-line">
+                        {course.explanation}
+                      </p>
+                    </div>
                   </li>
                 ))}
               </ul>
