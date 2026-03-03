@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useState, type KeyboardEvent } from 'react';
 
 import { curateCourse, recommendCourse, saveRecommendation } from '@/feature/course/api';
@@ -23,6 +24,7 @@ export default function DrivePage() {
   const [curation, setCuration] = useState<CourseCurationResponse | null>(null);
   const [curationLoading, setCurationLoading] = useState(false);
   const [curationError, setCurationError] = useState<string | null>(null);
+  const [curationRequiresLogin, setCurationRequiresLogin] = useState(false);
 
   const handleRecommend = useCallback(async () => {
     const origin = originInput.trim();
@@ -37,6 +39,7 @@ export default function DrivePage() {
     setRecommendError(null);
     setCuration(null);
     setCurationError(null);
+    setCurationRequiresLogin(false);
 
     const result = await recommendCourse({
       origin,
@@ -109,6 +112,7 @@ export default function DrivePage() {
 
     setCurationLoading(true);
     setCurationError(null);
+    setCurationRequiresLogin(false);
 
     const result = await curateCourse({
       origin: originInput.trim(),
@@ -122,6 +126,14 @@ export default function DrivePage() {
     if (result.ok) {
       setCuration(result.data);
     } else {
+      if (result.status === 401) {
+        setCuration(null);
+        setCurationRequiresLogin(true);
+        setCurationError('로그인 후 크루저 큐레이션을 이용해주세요.');
+        toast.error('로그인이 필요합니다. 로그인 후 다시 시도해주세요.');
+        setCurationLoading(false);
+        return;
+      }
       setCuration(null);
       setCurationError(result.message ?? '크루저 큐레이션을 불러오지 못했습니다.');
     }
@@ -245,7 +257,19 @@ export default function DrivePage() {
               {recommendation.explanation}
             </div>
 
-            {curationError ? <p className="text-sm text-rose-500">{curationError}</p> : null}
+            {curationError ? (
+              <div className="flex flex-wrap items-center gap-2 text-sm text-rose-500">
+                <p>{curationError}</p>
+                {curationRequiresLogin ? (
+                  <Link
+                    href="/login"
+                    className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-600 transition hover:border-rose-300"
+                  >
+                    로그인하기
+                  </Link>
+                ) : null}
+              </div>
+            ) : null}
 
             {curation ? (
               <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4">
