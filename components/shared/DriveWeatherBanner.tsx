@@ -6,7 +6,7 @@ import { fetchDriveWeatherMessage } from '@/feature/weather/api';
 import type { DriveWeatherResponse } from '@/feature/weather/types';
 
 const FALLBACK_LOCATION = { lat: 37.5665, lng: 126.978 };
-const FALLBACK_MESSAGE = '날씨 정보를 불러오지 못했어요. 그래도 안전운전!';
+const FALLBACK_MESSAGE = '🙌 날씨 정보를 불러오지 못했어요. 그래도 안전운전!';
 
 export default function DriveWeatherBanner() {
   const [weatherInfo, setWeatherInfo] = useState<DriveWeatherResponse | null>(null);
@@ -67,7 +67,6 @@ export default function DriveWeatherBanner() {
   }, []);
 
   const weatherLabel = weatherUsedFallback ? '서울 기준' : '현재 위치 기준';
-
   const skyLabel = weatherInfo?.skyStatus != null ? mapSkyLabel(weatherInfo.skyStatus) : null;
   const precipitationLabel =
     weatherInfo?.precipitationType != null
@@ -80,38 +79,38 @@ export default function DriveWeatherBanner() {
   const weatherTags = [temperatureLabel, skyLabel, precipitationLabel, windLabel].filter(
     (value): value is string => Boolean(value),
   );
+  const weatherIcon = getWeatherIcon(
+    weatherInfo?.precipitationType ?? null,
+    weatherInfo?.skyStatus ?? null,
+    weatherInfo?.windSpeed ?? null,
+  );
+  const weatherMessage = weatherLoading
+    ? '날씨 정보를 불러오는 중이에요.'
+    : (weatherInfo?.message ?? FALLBACK_MESSAGE);
 
   return (
-    <section className="border-b border-slate-200 bg-slate-50/60">
-      <div className="mx-auto max-w-5xl px-6 py-6">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-400">
-                <span className="tracking-wide uppercase">Drive Weather</span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-500">
-                  {weatherLabel}
-                </span>
-              </div>
-              <p className="text-sm text-slate-600">
-                {weatherLoading
-                  ? '날씨 정보를 불러오는 중이에요.'
-                  : (weatherInfo?.message ?? FALLBACK_MESSAGE)}
-              </p>
-            </div>
+    <section className="border-b border-slate-200 bg-white">
+      <div className="mx-auto max-w-6xl px-4 py-3 lg:px-6">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-wrap items-center gap-3 text-sm text-slate-700">
+            <span className="text-lg" aria-hidden>
+              {weatherIcon}
+            </span>
+            <span>{weatherMessage}</span>
           </div>
-          {weatherTags.length > 0 ? (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {weatherTags.map((tag) => (
-                <span
-                  key={tag}
-                  className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          ) : null}
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-500">
+              {weatherLabel}
+            </span>
+            {weatherTags.map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-500"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
     </section>
@@ -150,4 +149,22 @@ function mapPrecipitationLabel(value: number): string {
     default:
       return '강수 정보 없음';
   }
+}
+
+function getWeatherIcon(
+  precipitationType: number | null,
+  skyStatus: number | null,
+  windSpeed: number | null,
+): string {
+  if (precipitationType != null) {
+    if ([3, 7, 2, 6].includes(precipitationType)) return '❄️';
+    if ([1, 5, 2, 6].includes(precipitationType)) return '🌧️';
+  }
+  if (windSpeed != null && windSpeed >= 10) {
+    return '💨';
+  }
+  if (skyStatus === 1) return '☀️';
+  if (skyStatus === 3) return '⛅️';
+  if (skyStatus === 4) return '☁️';
+  return '🚗';
 }
