@@ -7,6 +7,8 @@ import { useRouter } from 'next/navigation';
 import { fetchPosts } from '@/feature/post/api';
 import PostList from '@/feature/post/list/PostList';
 import type { PostListItemResponse } from '@/feature/post/types';
+import { fetchDriveWeatherMessage } from '@/feature/weather/api';
+import type { DriveWeatherResponse } from '@/feature/weather/types';
 
 export default function Home() {
   const router = useRouter();
@@ -14,6 +16,12 @@ export default function Home() {
   const [popularPosts, setPopularPosts] = useState<PostListItemResponse[]>([]);
   const [latestPosts, setLatestPosts] = useState<PostListItemResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [weatherInfo, setWeatherInfo] = useState<DriveWeatherResponse | null>(null);
+  const [weatherLoading, setWeatherLoading] = useState(true);
+  const [weatherUsedFallback, setWeatherUsedFallback] = useState(false);
+
+  const fallbackLocation = { lat: 37.5665, lng: 126.978 }; // Seoul
+  const fallbackMessage = '날씨 정보를 불러오지 못했어요. 그래도 안전운전!';
 
   useEffect(() => {
     let mounted = true;
@@ -33,6 +41,74 @@ export default function Home() {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const applyResult = (result: DriveWeatherResponse, usedFallbackLocation: boolean) => {
+      if (!mounted) return;
+      setWeatherInfo(result);
+      setWeatherUsedFallback(usedFallbackLocation);
+      setWeatherLoading(false);
+    };
+
+    const fetchWeather = async (lat: number, lng: number, usedFallbackLocation: boolean) => {
+      const response = await fetchDriveWeatherMessage(lat, lng, usedFallbackLocation);
+      if (!mounted) return;
+
+      if (response.ok) {
+        applyResult(response.data, response.data.usedFallbackLocation);
+      } else {
+        applyResult(
+          {
+            message: fallbackMessage,
+            temperature: null,
+            precipitationType: null,
+            skyStatus: null,
+            windSpeed: null,
+            usedFallbackLocation,
+          },
+          usedFallbackLocation,
+        );
+      }
+    };
+
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      fetchWeather(fallbackLocation.lat, fallbackLocation.lng, true);
+      return () => {
+        mounted = false;
+      };
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        fetchWeather(pos.coords.latitude, pos.coords.longitude, false);
+      },
+      () => {
+        fetchWeather(fallbackLocation.lat, fallbackLocation.lng, true);
+      },
+      { timeout: 5000, maximumAge: 600000 },
+    );
+
+    return () => {
+      mounted = false;
+    };
+  }, [fallbackLocation.lat, fallbackLocation.lng, fallbackMessage]);
+
+  const weatherLabel = weatherUsedFallback ? '서울 기준' : '현재 위치 기준';
+
+  const skyLabel = weatherInfo?.skyStatus != null ? mapSkyLabel(weatherInfo.skyStatus) : null;
+  const precipitationLabel =
+    weatherInfo?.precipitationType != null
+      ? mapPrecipitationLabel(weatherInfo.precipitationType)
+      : null;
+  const temperatureLabel =
+    weatherInfo?.temperature != null ? `기온 ${Math.round(weatherInfo.temperature)}°C` : null;
+  const windLabel =
+    weatherInfo?.windSpeed != null ? `풍속 ${weatherInfo.windSpeed.toFixed(1)}m/s` : null;
+  const weatherTags = [temperatureLabel, skyLabel, precipitationLabel, windLabel].filter(
+    (value): value is string => Boolean(value),
+  );
 
   const handleSearch = useCallback(() => {
     const keyword = searchInput.trim();
@@ -125,6 +201,35 @@ export default function Home() {
         </section>
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-400">
+                <span className="tracking-wide uppercase">Drive Weather</span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-500">
+                  {weatherLabel}
+                </span>
+              </div>
+              <p className="text-sm text-slate-600">
+                {weatherLoading
+                  ? '날씨 정보를 불러오는 중이에요.'
+                  : (weatherInfo?.message ?? fallbackMessage)}
+              </p>
+            </div>
+          </div>
+          {weatherTags.length > 0 ? (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {weatherTags.map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </section>
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="text-xl font-semibold text-slate-900">드라이브 코스 추천</h2>
               <p className="mt-1 text-sm text-slate-500">
@@ -170,4 +275,38 @@ export default function Home() {
       </main>
     </div>
   );
+}
+
+function mapSkyLabel(value: number): string {
+  switch (value) {
+    case 1:
+      return '하늘 맑음';
+    case 3:
+      return '구름 많음';
+    case 4:
+      return '하늘 흐림';
+    default:
+      return '하늘 정보 없음';
+  }
+}
+
+function mapPrecipitationLabel(value: number): string {
+  switch (value) {
+    case 0:
+      return '강수 없음';
+    case 1:
+      return '비';
+    case 2:
+      return '비/눈';
+    case 3:
+      return '눈';
+    case 5:
+      return '빗방울';
+    case 6:
+      return '빗방울/눈날림';
+    case 7:
+      return '눈날림';
+    default:
+      return '강수 정보 없음';
+  }
 }
