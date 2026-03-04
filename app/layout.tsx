@@ -6,6 +6,7 @@ import { AuthProvider } from '@/components/providers/AuthProvider';
 import { Toaster } from 'sonner';
 import SiteHeader from '@/components/shared/SiteHeader';
 import SiteFooter from '@/components/shared/SiteFooter';
+import DriveWeatherBanner from '@/components/shared/DriveWeatherBanner';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -33,6 +34,7 @@ export default function RootLayout({
         <AuthProvider>
           <div className="flex min-h-screen flex-col">
             <SiteHeader />
+            <DriveWeatherBanner />
             <main className="flex-1">{children}</main>
             <SiteFooter />
           </div>
