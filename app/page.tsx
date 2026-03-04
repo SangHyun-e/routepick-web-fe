@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { fetchPosts } from '@/feature/post/api';
 import PostList from '@/feature/post/list/PostList';
 import type { PostListItemResponse } from '@/feature/post/types';
+import WeatherWidget from '@/feature/weather/components/WeatherWidget';
 
 export default function Home() {
   const router = useRouter();
@@ -53,6 +54,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-slate-50">
       <main className="mx-auto max-w-5xl space-y-12 px-6 py-10">
+        <WeatherWidget />
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div>
