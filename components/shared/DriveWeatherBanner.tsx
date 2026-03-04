@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { fetchDriveWeatherMessage } from '@/feature/weather/api';
 import type { DriveWeatherResponse } from '@/feature/weather/types';
@@ -12,58 +12,65 @@ export default function DriveWeatherBanner() {
   const [weatherInfo, setWeatherInfo] = useState<DriveWeatherResponse | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(true);
   const [weatherUsedFallback, setWeatherUsedFallback] = useState(false);
+  const [weatherError, setWeatherError] = useState(false);
+  const [lastRequest, setLastRequest] = useState<{
+    lat: number;
+    lng: number;
+    fallback: boolean;
+  } | null>(null);
   const [now, setNow] = useState<Date>(() => new Date());
+  const mountedRef = useRef(true);
+
+  const requestWeather = async (lat: number, lng: number, fallback: boolean) => {
+    setWeatherLoading(true);
+    setWeatherError(false);
+    setLastRequest({ lat, lng, fallback });
+
+    const response = await fetchDriveWeatherMessage(lat, lng, fallback);
+    if (!mountedRef.current) return;
+
+    if (response.ok) {
+      setWeatherInfo(response.data);
+      setWeatherUsedFallback(response.data.usedFallbackLocation);
+      setWeatherError(false);
+      setWeatherLoading(false);
+      return;
+    }
+
+    setWeatherInfo({
+      message: FALLBACK_MESSAGE,
+      temperature: null,
+      precipitationType: null,
+      skyStatus: null,
+      windSpeed: null,
+      usedFallbackLocation: fallback,
+    });
+    setWeatherUsedFallback(fallback);
+    setWeatherError(true);
+    setWeatherLoading(false);
+  };
 
   useEffect(() => {
-    let mounted = true;
-
-    const applyResult = (result: DriveWeatherResponse, usedFallbackLocation: boolean) => {
-      if (!mounted) return;
-      setWeatherInfo(result);
-      setWeatherUsedFallback(usedFallbackLocation);
-      setWeatherLoading(false);
-    };
-
-    const fetchWeather = async (lat: number, lng: number, usedFallbackLocation: boolean) => {
-      const response = await fetchDriveWeatherMessage(lat, lng, usedFallbackLocation);
-      if (!mounted) return;
-
-      if (response.ok) {
-        applyResult(response.data, response.data.usedFallbackLocation);
-      } else {
-        applyResult(
-          {
-            message: FALLBACK_MESSAGE,
-            temperature: null,
-            precipitationType: null,
-            skyStatus: null,
-            windSpeed: null,
-            usedFallbackLocation,
-          },
-          usedFallbackLocation,
-        );
-      }
-    };
-
+    mountedRef.current = true;
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      fetchWeather(FALLBACK_LOCATION.lat, FALLBACK_LOCATION.lng, true);
+      requestWeather(FALLBACK_LOCATION.lat, FALLBACK_LOCATION.lng, true);
       return () => {
-        mounted = false;
+        mountedRef.current = false;
       };
     }
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        fetchWeather(pos.coords.latitude, pos.coords.longitude, false);
+        requestWeather(pos.coords.latitude, pos.coords.longitude, false);
       },
       () => {
-        fetchWeather(FALLBACK_LOCATION.lat, FALLBACK_LOCATION.lng, true);
+        requestWeather(FALLBACK_LOCATION.lat, FALLBACK_LOCATION.lng, true);
       },
       { timeout: 5000, maximumAge: 600000 },
     );
 
     return () => {
-      mounted = false;
+      mountedRef.current = false;
     };
   }, []);
 
@@ -82,9 +89,8 @@ export default function DriveWeatherBanner() {
     weatherInfo?.temperature != null ? `기온 ${Math.round(weatherInfo.temperature)}°C` : null;
   const windLabel =
     weatherInfo?.windSpeed != null ? `풍속 ${weatherInfo.windSpeed.toFixed(1)}m/s` : null;
-  const weatherTags = [skyLabel, precipitationLabel, windLabel].filter((value): value is string =>
-    Boolean(value),
-  );
+  const rawTags = [weatherLabel, skyLabel, precipitationLabel, windLabel];
+  const weatherTags = rawTags.filter((value): value is string => Boolean(value));
   const hour = now.getHours();
   const timeLabel = useMemo(() => formatTime(now), [now]);
   const weatherIcon = getWeatherIcon(
@@ -95,57 +101,85 @@ export default function DriveWeatherBanner() {
   );
   const weatherMessage = weatherLoading
     ? '날씨 정보를 불러오는 중이에요.'
-    : (weatherInfo?.message ?? FALLBACK_MESSAGE);
+    : weatherError
+      ? '날씨 정보를 불러오지 못했어요.'
+      : (weatherInfo?.message ?? FALLBACK_MESSAGE);
+  const sublineParts = [] as string[];
+  if (temperatureLabel) {
+    sublineParts.push(`현재 ${temperatureLabel}`);
+  }
+  sublineParts.push(`${timeLabel} 기준`);
+  const subline = sublineParts.join(' · ');
+
+  const handleRetry = () => {
+    if (!lastRequest) {
+      requestWeather(FALLBACK_LOCATION.lat, FALLBACK_LOCATION.lng, true);
+      return;
+    }
+    requestWeather(lastRequest.lat, lastRequest.lng, lastRequest.fallback);
+  };
 
   return (
-    <section className="bg-white">
+    <section className="bg-gradient-to-r from-slate-50 via-white to-slate-100/70">
       <div className="mx-auto max-w-6xl px-4 py-3 lg:px-6">
-        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div className="flex flex-wrap items-center gap-3 text-sm text-slate-700">
-            <span className="text-lg" aria-hidden>
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="text-2xl" aria-hidden>
               {weatherIcon}
             </span>
-            <span>{weatherMessage}</span>
+            <div className="min-w-0 space-y-1">
+              {weatherLoading ? (
+                <div className="h-4 w-56 animate-pulse rounded-full bg-slate-200" />
+              ) : (
+                <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-slate-700">
+                  <span>{weatherMessage}</span>
+                  {weatherError ? (
+                    <button
+                      type="button"
+                      onClick={handleRetry}
+                      className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 text-xs text-slate-500 transition hover:border-slate-300"
+                      aria-label="날씨 다시 불러오기"
+                    >
+                      ↻
+                    </button>
+                  ) : null}
+                </div>
+              )}
+              <p className="text-xs text-slate-500">{subline}</p>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-500">
-              {timeLabel}
-            </span>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-500">
-              {weatherLabel}
-            </span>
-            {weatherTags.map((tag) => (
-              <span
-                key={tag}
-                className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-500"
-              >
-                {tag}
-              </span>
-            ))}
+          <div className="flex w-full gap-2 overflow-x-auto text-xs text-slate-500 md:w-auto md:flex-wrap md:justify-end md:overflow-visible">
+            {!weatherError
+              ? weatherTags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="rounded-full border border-slate-200 bg-white/70 px-2 py-0.5 whitespace-nowrap"
+                  >
+                    {tag}
+                  </span>
+                ))
+              : null}
           </div>
         </div>
-        {temperatureLabel ? (
-          <p className="mt-2 text-xs text-slate-500">현재 {temperatureLabel}예요.</p>
-        ) : null}
       </div>
     </section>
   );
 }
 
-function mapSkyLabel(value: number): string {
+function mapSkyLabel(value: number): string | null {
   switch (value) {
     case 1:
-      return '하늘 맑음';
+      return '맑음';
     case 3:
       return '구름 많음';
     case 4:
-      return '하늘 흐림';
+      return '흐림';
     default:
-      return '하늘 정보 없음';
+      return null;
   }
 }
 
-function mapPrecipitationLabel(value: number): string {
+function mapPrecipitationLabel(value: number): string | null {
   switch (value) {
     case 0:
       return '강수 없음';
@@ -162,7 +196,7 @@ function mapPrecipitationLabel(value: number): string {
     case 7:
       return '눈날림';
     default:
-      return '강수 정보 없음';
+      return null;
   }
 }
 
