@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { LogOut, User } from 'lucide-react';
+import { Bell, LogOut, User } from 'lucide-react';
 
 import {
   DropdownMenu,
@@ -101,6 +101,13 @@ export default function ProfileMenu() {
         >
           <User className="size-4" />
           마이페이지
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => router.push('/notifications')}
+          className="cursor-pointer gap-2 rounded-md px-3 py-2 text-sm text-slate-700 focus:bg-slate-100"
+        >
+          <Bell className="size-4" />
+          알림
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
