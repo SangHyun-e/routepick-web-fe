@@ -323,7 +323,7 @@ export default function PostDetailHeader({ post, isOwner, isAdmin }: PostDetailH
                     className="bg-red-600 hover:bg-red-700"
                   >
                     <Trash2 className="mr-1 h-4 w-4" />
-                    물리삭제
+                    물리삭제(관리자)
                   </Button>
                 )}
                 {showAdminNotice && (

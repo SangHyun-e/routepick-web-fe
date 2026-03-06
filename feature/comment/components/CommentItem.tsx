@@ -363,7 +363,7 @@ export default function CommentItem({
                         disabled={adminUpdating || deleting || updating}
                       >
                         <EyeOff className="h-4 w-4" />
-                        <span className="text-xs">삭제</span>
+                        <span className="text-xs">삭제(관리자)</span>
                       </Button>
                     ) : (
                       <Button
