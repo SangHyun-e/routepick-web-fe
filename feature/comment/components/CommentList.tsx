@@ -14,6 +14,7 @@ interface Props {
   loading: boolean;
   onRefresh: () => Promise<void>;
   onCountDelta: (delta: number) => void;
+  highlightedCommentId?: number | null;
 }
 
 export default function CommentList({
@@ -26,6 +27,7 @@ export default function CommentList({
   loading,
   onRefresh,
   onCountDelta,
+  highlightedCommentId,
 }: Props) {
   if (loading) {
     return (
@@ -56,6 +58,7 @@ export default function CommentList({
           currentUserId={currentUserId}
           isAdmin={isAdmin}
           comment={comment}
+          highlightedCommentId={highlightedCommentId}
           onRefresh={onRefresh}
           onCountDelta={onCountDelta}
         />

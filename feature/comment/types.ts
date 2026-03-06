@@ -56,3 +56,8 @@ export type CommentLikeToggleResponse = {
   likeCount: number;
   liked: boolean;
 };
+
+export type CommentPositionResponse = {
+  page: number;
+  rootCommentId: number;
+};

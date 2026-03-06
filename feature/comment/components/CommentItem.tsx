@@ -1,7 +1,7 @@
 // feature/comment/components/CommentItem.tsx
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Check,
@@ -93,6 +93,7 @@ interface Props {
   currentUserId: number | null;
   isAdmin: boolean;
   comment: CommentResponse;
+  highlightedCommentId?: number | null;
   onRefresh: () => Promise<void>;
   /**
    * 댓글 수(루트+대댓글) 즉시 반영용
@@ -108,6 +109,7 @@ export default function CommentItem({
   currentUserId,
   isAdmin,
   comment,
+  highlightedCommentId,
   onRefresh,
   onCountDelta = () => {
     /* ignore */
@@ -116,6 +118,7 @@ export default function CommentItem({
   const router = useRouter();
   // 1) 기본 파생값
   const isReply: boolean = comment.depth > 0;
+  const isHighlighted: boolean = highlightedCommentId === comment.id;
   const isDeleted: boolean = comment.status === 'DELETED';
 
   const author: string = isDeleted ? '알 수 없음' : (comment.authorNickname ?? '익명');
@@ -173,6 +176,17 @@ export default function CommentItem({
     if (showAllReplies) return replies;
     return replies.slice(0, 3);
   }, [replies, showAllReplies]);
+
+  const hasHighlightedReply = useMemo(() => {
+    if (!highlightedCommentId) return false;
+    return replies.some((reply) => reply.id === highlightedCommentId);
+  }, [highlightedCommentId, replies]);
+
+  useEffect(() => {
+    if (hasHighlightedReply) {
+      setShowAllReplies(true);
+    }
+  }, [hasHighlightedReply]);
 
   /**
    * hiddenCount 계산은 "ACTIVE 기준"으로 해야
@@ -305,12 +319,17 @@ export default function CommentItem({
   }, [comment.replyTargetNickname, isReply]);
 
   return (
-    <div className={isReply ? 'ml-6' : ''}>
+    <div id={`comment-${comment.id}`} className={isReply ? 'ml-6' : ''}>
       <div
         className={[
           'rounded-xl border px-4 py-3',
           isReply ? 'bg-slate-50' : 'bg-white',
           isPostAuthor ? 'border-blue-200' : 'border-slate-200',
+          isHighlighted
+            ? `ring-2 ring-rose-200 ring-offset-2 ${
+                isReply ? 'ring-offset-slate-50' : 'ring-offset-white'
+              }`
+            : '',
         ].join(' ')}
       >
         {/* Header */}
@@ -536,6 +555,7 @@ export default function CommentItem({
                 currentUserId={currentUserId}
                 isAdmin={isAdmin}
                 comment={reply}
+                highlightedCommentId={highlightedCommentId}
                 onRefresh={onRefresh}
                 onCountDelta={onCountDelta}
               />

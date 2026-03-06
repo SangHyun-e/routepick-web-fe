@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { MessageCircle, Star } from 'lucide-react';
 
 import CommentList from '@/feature/comment/components/CommentList';
 import { useComments } from '@/feature/comment/hooks/useComments';
-import { createRootComment } from '@/feature/comment/api';
+import { createRootComment, fetchCommentPosition } from '@/feature/comment/api';
 
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -42,13 +43,93 @@ export default function CommentSection({
     size: 20,
   });
 
+  const searchParams = useSearchParams();
+  const targetCommentId = useMemo(() => {
+    const value = searchParams.get('commentId');
+    if (!value) return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }, [searchParams]);
+
   const [count, setCount] = useState<number>(commentCount);
   const [newCommentCount, setNewCommentCount] = useState(0);
+  const [highlightedCommentId, setHighlightedCommentId] = useState<number | null>(null);
+  const [targetPageResolved, setTargetPageResolved] = useState(false);
 
   useEffect(() => {
     setCount(commentCount);
     setNewCommentCount(0);
   }, [commentCount]);
+
+  useEffect(() => {
+    setTargetPageResolved(false);
+    setHighlightedCommentId(null);
+  }, [targetCommentId]);
+
+  useEffect(() => {
+    if (!targetCommentId || targetPageResolved) {
+      return;
+    }
+
+    let mounted = true;
+    (async () => {
+      const res = await fetchCommentPosition(postId, targetCommentId, 20);
+      if (!mounted) return;
+      if (!res.ok) {
+        setTargetPageResolved(true);
+        return;
+      }
+      if (res.data.page !== page) {
+        setPage(res.data.page);
+      }
+      setTargetPageResolved(true);
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [page, postId, setPage, targetCommentId, targetPageResolved]);
+
+  useEffect(() => {
+    if (!targetCommentId || loading || !data) {
+      return;
+    }
+    setHighlightedCommentId(targetCommentId);
+  }, [data, loading, targetCommentId]);
+
+  useEffect(() => {
+    if (!highlightedCommentId) {
+      return;
+    }
+    const attemptScroll = () => {
+      const element = document.getElementById(`comment-${highlightedCommentId}`);
+      if (!element) {
+        return false;
+      }
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return true;
+    };
+
+    if (attemptScroll()) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      attemptScroll();
+    }, 200);
+
+    return () => window.clearTimeout(timer);
+  }, [data, highlightedCommentId]);
+
+  useEffect(() => {
+    if (!highlightedCommentId) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      setHighlightedCommentId(null);
+    }, 3000);
+    return () => window.clearTimeout(timer);
+  }, [highlightedCommentId]);
 
   useEffect(() => {
     if (isNotice) {
@@ -191,6 +272,7 @@ export default function CommentSection({
                   currentUserId={currentUserId}
                   isAdmin={isAdmin}
                   comment={c}
+                  highlightedCommentId={highlightedCommentId}
                   onRefresh={refresh}
                   onCountDelta={() => {
                     /* ignore */
@@ -294,6 +376,7 @@ export default function CommentSection({
             loading={loading}
             onRefresh={refresh}
             onCountDelta={onCountDelta}
+            highlightedCommentId={highlightedCommentId}
           />
 
           {/* 페이지네이션 */}

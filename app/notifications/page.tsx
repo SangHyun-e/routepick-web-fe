@@ -25,7 +25,12 @@ function formatDateTime(iso: string) {
 
 function resolveNotificationLink(notification: NotificationResponse) {
   if (notification.resourceType === 'POST' && notification.resourceId) {
-    return `/posts/${notification.resourceId}`;
+    const commentId = Number(notification.reason);
+    const hasCommentTarget =
+      ['COMMENT', 'REPLY', 'MENTION'].includes(notification.type) && Number.isFinite(commentId);
+    return hasCommentTarget
+      ? `/posts/${notification.resourceId}?commentId=${commentId}#comment-${commentId}`
+      : `/posts/${notification.resourceId}`;
   }
   if (notification.resourceType === 'COURSE') {
     return '/drive';
@@ -34,7 +39,7 @@ function resolveNotificationLink(notification: NotificationResponse) {
     return '/me';
   }
   if (notification.resourceType === 'NOTICE') {
-    return '/posts';
+    return notification.resourceId ? `/posts/${notification.resourceId}` : '/posts';
   }
   if (notification.resourceType === 'ADMIN') {
     return '/me';

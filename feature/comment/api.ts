@@ -1,6 +1,7 @@
 import {
   CommentCreateRequest,
   CommentLikeToggleResponse,
+  CommentPositionResponse,
   CommentResponse,
 } from '@/feature/comment/types';
 import { PaginatedResponse } from '@/feature/post/types';
@@ -67,6 +68,26 @@ export async function fetchComments(
 
   const raw = await res.json().catch(() => ({}));
   const data = normalizePage<CommentResponse>(raw);
+  return { ok: true, data };
+}
+
+/** 댓글 위치(페이지) 조회 */
+export async function fetchCommentPosition(
+  postId: number,
+  commentId: number,
+  size: number,
+): Promise<ApiResult<CommentPositionResponse>> {
+  const res = await bffFetch(
+    `/api/proxy/posts/${postId}/comments/${commentId}/position?size=${size}`,
+    { cache: 'no-store' },
+  );
+
+  if (!res.ok) {
+    const message = await readErrorMessage(res, `댓글 위치 조회 실패 (${res.status})`);
+    return { ok: false, status: res.status, message };
+  }
+
+  const data = (await res.json()) as CommentPositionResponse;
   return { ok: true, data };
 }
 
