@@ -1,7 +1,8 @@
 const RAW_BASE_URL =
   process.env.NEXT_PUBLIC_SERVER_BASE_URL ??
   process.env.NEXT_PUBLIC_API_BASE_URL ??
-  'http://localhost:8080';
+  process.env.SERVER_BASE_URL ??
+  '';
 
 export const REALTIME_BASE_URL = RAW_BASE_URL.replace(/\/$/, '');
 
