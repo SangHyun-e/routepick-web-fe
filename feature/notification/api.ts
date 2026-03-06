@@ -96,3 +96,42 @@ export async function markAllNotificationsRead(): Promise<ApiResult<void>> {
 
   return { ok: true, data: undefined };
 }
+
+export async function deleteNotification(notificationId: number): Promise<ApiResult<void>> {
+  const res = await bffFetch(`/api/proxy/notifications/${notificationId}`, {
+    method: 'DELETE',
+  });
+
+  if (!res.ok) {
+    const message = await readErrorMessage(res, '알림 삭제에 실패했습니다.');
+    return { ok: false, status: res.status, message };
+  }
+
+  return { ok: true, data: undefined };
+}
+
+export async function deleteAllNotifications(): Promise<ApiResult<void>> {
+  const res = await bffFetch('/api/proxy/notifications', {
+    method: 'DELETE',
+  });
+
+  if (!res.ok) {
+    const message = await readErrorMessage(res, '알림 전체 삭제에 실패했습니다.');
+    return { ok: false, status: res.status, message };
+  }
+
+  return { ok: true, data: undefined };
+}
+
+export async function deleteReadNotifications(): Promise<ApiResult<void>> {
+  const res = await bffFetch('/api/proxy/notifications/read', {
+    method: 'DELETE',
+  });
+
+  if (!res.ok) {
+    const message = await readErrorMessage(res, '읽은 알림 삭제에 실패했습니다.');
+    return { ok: false, status: res.status, message };
+  }
+
+  return { ok: true, data: undefined };
+}

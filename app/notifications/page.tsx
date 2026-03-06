@@ -8,6 +8,9 @@ import type { PaginatedResponse } from '@/feature/post/types';
 import type { NotificationResponse, NotificationSortOption } from '@/feature/notification/types';
 import NotificationSortSelect from '@/feature/notification/components/NotificationSortSelect';
 import {
+  deleteAllNotifications,
+  deleteNotification,
+  deleteReadNotifications,
   fetchNotifications,
   markAllNotificationsRead,
   markNotificationRead,
@@ -53,6 +56,9 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [markingAll, setMarkingAll] = useState(false);
+  const [deletingAll, setDeletingAll] = useState(false);
+  const [deletingRead, setDeletingRead] = useState(false);
+  const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set());
   const [sortOption, setSortOption] = useState<NotificationSortOption>('latest');
   const [onlyUnread, setOnlyUnread] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -168,6 +174,60 @@ export default function NotificationsPage() {
     dispatchUnreadCount(0);
   };
 
+  const handleDeleteNotification = async (notificationId: number) => {
+    const target = items.find((item) => item.id === notificationId);
+    setDeletingIds((prev) => {
+      const next = new Set(prev);
+      next.add(notificationId);
+      return next;
+    });
+    const res = await deleteNotification(notificationId);
+    setDeletingIds((prev) => {
+      const next = new Set(prev);
+      next.delete(notificationId);
+      return next;
+    });
+    if (!res.ok) {
+      toast.error(res.message ?? '알림 삭제에 실패했습니다.');
+      return;
+    }
+    setItems((prev) => prev.filter((item) => item.id !== notificationId));
+    if (target && !target.read) {
+      setUnreadCount((prev) => {
+        const next = Math.max(prev - 1, 0);
+        dispatchUnreadCount(next);
+        return next;
+      });
+    }
+  };
+
+  const handleDeleteRead = async () => {
+    setDeletingRead(true);
+    const res = await deleteReadNotifications();
+    setDeletingRead(false);
+    if (!res.ok) {
+      toast.error(res.message ?? '읽은 알림 삭제에 실패했습니다.');
+      return;
+    }
+    await loadNotifications();
+    if (!onlyUnread) {
+      await refreshUnreadCount();
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    setDeletingAll(true);
+    const res = await deleteAllNotifications();
+    setDeletingAll(false);
+    if (!res.ok) {
+      toast.error(res.message ?? '알림 전체 삭제에 실패했습니다.');
+      return;
+    }
+    setUnreadCount(0);
+    dispatchUnreadCount(0);
+    await loadNotifications();
+  };
+
   const handleLoadMore = () => {
     if (!data || data.last) return;
     loadNotifications(data.number + 1, true);
@@ -206,6 +266,22 @@ export default function NotificationsPage() {
               className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {markingAll ? '처리 중...' : '전체 읽음 처리'}
+            </button>
+            <button
+              type="button"
+              onClick={handleDeleteRead}
+              disabled={deletingRead || items.every((item) => !item.read)}
+              className="rounded-lg border border-rose-200 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {deletingRead ? '삭제 중...' : '읽은 알림 삭제'}
+            </button>
+            <button
+              type="button"
+              onClick={handleDeleteAll}
+              disabled={deletingAll || items.length === 0}
+              className="rounded-lg border border-rose-200 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {deletingAll ? '삭제 중...' : '전체 삭제'}
             </button>
           </div>
         </div>
@@ -258,6 +334,14 @@ export default function NotificationsPage() {
                           읽음 처리
                         </button>
                       )}
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteNotification(item.id)}
+                        disabled={deletingIds.has(item.id)}
+                        className="rounded-md border border-rose-200 px-3 py-1 text-xs text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {deletingIds.has(item.id) ? '삭제 중...' : '삭제'}
+                      </button>
                     </div>
                   </div>
                 </div>
