@@ -12,6 +12,8 @@ export type CommentResponse = {
   updatedAt: string | null;
   authorId: number | null;
   authorNickname: string | null;
+  replyTargetId?: number | null;
+  replyTargetNickname?: string | null;
   replies: CommentResponse[];
   isLikedByCurrentUser?: boolean;
 };
