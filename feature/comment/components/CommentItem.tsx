@@ -3,13 +3,30 @@
 
 import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, Eye, EyeOff, Heart, MessageSquare, Pencil, Trash2, X } from 'lucide-react';
+import {
+  Check,
+  Eye,
+  EyeOff,
+  Heart,
+  MessageSquare,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 import type { CommentResponse } from '@/feature/comment/types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   activateAdminComment,
   hardDeleteAdminComment,
@@ -353,41 +370,43 @@ export default function CommentItem({
                 )}
 
                 {isAdmin && (
-                  <div className="flex items-center gap-1">
-                    {comment.status === 'ACTIVE' ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
                       <Button
                         type="button"
                         variant="ghost"
-                        className="h-8 gap-1.5 px-2 text-amber-700 hover:text-amber-800"
-                        onClick={() => handleAdminAction('hide')}
+                        className="h-8 gap-1.5 px-2 text-slate-600"
                         disabled={adminUpdating || deleting || updating}
                       >
-                        <EyeOff className="h-4 w-4" />
-                        <span className="text-xs">삭제</span>
+                        <MoreVertical className="h-4 w-4" />
+                        <span className="text-xs">관리자</span>
                       </Button>
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        className="h-8 gap-1.5 px-2 text-emerald-700 hover:text-emerald-800"
-                        onClick={() => handleAdminAction('activate')}
-                        disabled={adminUpdating || deleting || updating}
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-40">
+                      {comment.status === 'ACTIVE' ? (
+                        <DropdownMenuItem
+                          onClick={() => handleAdminAction('hide')}
+                          className="text-amber-700"
+                        >
+                          삭제(관리자)
+                        </DropdownMenuItem>
+                      ) : (
+                        <DropdownMenuItem
+                          onClick={() => handleAdminAction('activate')}
+                          className="text-emerald-700"
+                        >
+                          복구(관리자)
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => setShowAdminDeleteDialog(true)}
+                        className="text-red-600"
                       >
-                        <Eye className="h-4 w-4" />
-                        <span className="text-xs">복구</span>
-                      </Button>
-                    )}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="h-8 gap-1.5 px-2 text-red-600 hover:text-red-700"
-                      onClick={() => setShowAdminDeleteDialog(true)}
-                      disabled={adminUpdating || deleting || updating}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      <span className="text-xs">물리삭제</span>
-                    </Button>
-                  </div>
+                        물리삭제(관리자)
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
               </div>
             ) : (
