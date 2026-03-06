@@ -52,13 +52,20 @@ export default function NotificationsPage() {
   const [onlyUnread, setOnlyUnread] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
+  const dispatchUnreadCount = useCallback((count: number) => {
+    window.dispatchEvent(
+      new CustomEvent('notifications:unread', { detail: { unreadCount: count } }),
+    );
+  }, []);
+
   const refreshUnreadCount = useCallback(async () => {
     const res = await fetchNotifications(0, 1, false);
     if (!res.ok) {
       return;
     }
     setUnreadCount(res.data.totalElements);
-  }, []);
+    dispatchUnreadCount(res.data.totalElements);
+  }, [dispatchUnreadCount]);
 
   const loadNotifications = useCallback(
     async (page = 0, append = false) => {
@@ -81,11 +88,12 @@ export default function NotificationsPage() {
       setItems((prev) => (append ? [...prev, ...res.data.content] : res.data.content));
       if (onlyUnread) {
         setUnreadCount(res.data.totalElements);
+        dispatchUnreadCount(res.data.totalElements);
       }
       setLoading(false);
       setLoadingMore(false);
     },
-    [onlyUnread, sortOption],
+    [dispatchUnreadCount, onlyUnread, sortOption],
   );
 
   useEffect(() => {
@@ -94,6 +102,21 @@ export default function NotificationsPage() {
       refreshUnreadCount();
     }
   }, [loadNotifications, onlyUnread, refreshUnreadCount]);
+
+  useEffect(() => {
+    const handleUnreadSync = (event: Event) => {
+      const detail = (event as CustomEvent<{ unreadCount?: number }>).detail;
+      if (typeof detail?.unreadCount !== 'number') {
+        return;
+      }
+      setUnreadCount(detail.unreadCount);
+    };
+
+    window.addEventListener('notifications:unread', handleUnreadSync as EventListener);
+    return () => {
+      window.removeEventListener('notifications:unread', handleUnreadSync as EventListener);
+    };
+  }, []);
 
   const handleSortChange = useCallback((nextSort: NotificationSortOption) => {
     setSortOption(nextSort);
@@ -120,7 +143,11 @@ export default function NotificationsPage() {
         return item;
       });
     });
-    setUnreadCount((prev) => Math.max(prev - 1, 0));
+    setUnreadCount((prev) => {
+      const next = Math.max(prev - 1, 0);
+      dispatchUnreadCount(next);
+      return next;
+    });
   };
 
   const handleMarkAll = async () => {
@@ -133,6 +160,7 @@ export default function NotificationsPage() {
     }
     setItems((prev) => (onlyUnread ? [] : prev.map((item) => ({ ...item, read: true }))));
     setUnreadCount(0);
+    dispatchUnreadCount(0);
   };
 
   const handleLoadMore = () => {
