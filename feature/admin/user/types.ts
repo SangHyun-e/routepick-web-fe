@@ -14,6 +14,8 @@ export type AdminUserDetail = {
   id: number;
   email: string;
   nickname: string;
+  nicknameUpdatedAt: string | null;
+  nicknameChangeReason: string | null;
   role: 'USER' | 'ADMIN';
   status: AdminUserStatus;
   authProvider: string;
@@ -40,4 +42,9 @@ export type AdminUserStatusHistoryItem = {
 export type AdminUserStatusUpdateRequest = {
   status: AdminUserStatus;
   reason?: string | null;
+};
+
+export type AdminUserNicknameUpdateRequest = {
+  nickname: string;
+  reason: string;
 };

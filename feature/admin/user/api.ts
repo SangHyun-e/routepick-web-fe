@@ -4,6 +4,7 @@ import type { PaginatedResponse } from '@/feature/post/types';
 import type {
   AdminUserDetail,
   AdminUserListItem,
+  AdminUserNicknameUpdateRequest,
   AdminUserStatusHistoryItem,
   AdminUserStatusUpdateRequest,
 } from '@/feature/admin/user/types';
@@ -84,6 +85,24 @@ export async function updateAdminUserStatus(
 
   if (!res.ok) {
     const message = await readErrorMessage(res, '상태 변경에 실패했습니다.');
+    return { ok: false, status: res.status, message };
+  }
+
+  return { ok: true, data: undefined };
+}
+
+export async function updateAdminUserNickname(
+  userId: number,
+  payload: AdminUserNicknameUpdateRequest,
+): Promise<ApiResult<void>> {
+  const res = await bffFetch(`/api/proxy/admin/users/${userId}/nickname`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const message = await readErrorMessage(res, '닉네임 변경에 실패했습니다.');
     return { ok: false, status: res.status, message };
   }
 
