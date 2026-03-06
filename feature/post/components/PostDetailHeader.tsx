@@ -8,6 +8,7 @@ import {
   Heart,
   Eye,
   EyeOff,
+  MoreVertical,
   Pencil,
   Trash2,
   Star,
@@ -19,6 +20,13 @@ import type { PostResponse } from '@/feature/post/types';
 import { Button } from '@/components/ui/button';
 import { usePostActions } from '@/feature/post/hooks/usePostActions';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { likePost, scrapPost } from '@/feature/post/api';
 import {
   hardDeleteAdminPost,
@@ -129,6 +137,8 @@ export default function PostDetailHeader({ post, isOwner, isAdmin }: PostDetailH
   const showAdminHardDelete = isAdmin;
   const showAdminNotice = isAdmin;
   const showAdminNoticePin = isAdmin;
+  const showAdminActions =
+    showAdminSoftDelete || showAdminHardDelete || showAdminNotice || showAdminNoticePin;
 
   const confirmHardDelete = () => {
     setShowHardDeleteDialog(true);
@@ -250,19 +260,8 @@ export default function PostDetailHeader({ post, isOwner, isAdmin }: PostDetailH
               뒤로가기
             </button>
 
-            {(showOwnerActions || showAdminSoftDelete || showAdminHardDelete || showAdminNotice || showAdminNoticePin) && (
+            {(showOwnerActions || showAdminActions) && (
               <div className="flex flex-wrap items-center gap-2">
-                {showAdminNoticePin && (
-                  <Button
-                    variant="outline"
-                    onClick={handleNoticePin}
-                    disabled={!isNotice || isPinUpdating}
-                    className="border-indigo-200 text-indigo-700 hover:bg-indigo-50"
-                  >
-                    <Star className="mr-1 h-4 w-4" />
-                    {noticePinned ? '고정 해제' : '공지 고정'}
-                  </Button>
-                )}
                 {showOwnerActions && (
                   <>
                     {post.status === 'ACTIVE' && (
@@ -305,36 +304,51 @@ export default function PostDetailHeader({ post, isOwner, isAdmin }: PostDetailH
                     </Button>
                   </>
                 )}
-                {showAdminSoftDelete && (
-                  <Button
-                    variant="destructive"
-                    onClick={confirmDelete}
-                    className="bg-red-500 hover:bg-red-600"
-                  >
-                    <Trash2 className="mr-1 h-4 w-4" />
-                    소프트삭제
-                  </Button>
-                )}
-                {showAdminHardDelete && (
-                  <Button
-                    variant="destructive"
-                    onClick={confirmHardDelete}
-                    disabled={isHardDeleting}
-                    className="bg-red-600 hover:bg-red-700"
-                  >
-                    <Trash2 className="mr-1 h-4 w-4" />
-                    물리삭제(관리자)
-                  </Button>
-                )}
-                {showAdminNotice && (
-                  <Button
-                    variant="outline"
-                    onClick={handleNoticeToggle}
-                    disabled={isNoticeUpdating}
-                    className="border-amber-200 text-amber-700 hover:bg-amber-50"
-                  >
-                    {isNotice ? '공지 해제' : '공지 등록'}
-                  </Button>
+                {showAdminActions && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="border-slate-200 text-slate-600 hover:bg-slate-50"
+                      >
+                        <MoreVertical className="mr-1 h-4 w-4" />
+                        관리자
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      {showAdminNotice && (
+                        <DropdownMenuItem onClick={handleNoticeToggle} disabled={isNoticeUpdating}>
+                          {isNotice ? '공지 해제(관리자)' : '공지 등록(관리자)'}
+                        </DropdownMenuItem>
+                      )}
+                      {showAdminNoticePin && (
+                        <DropdownMenuItem
+                          onClick={handleNoticePin}
+                          disabled={!isNotice || isPinUpdating}
+                        >
+                          {noticePinned
+                            ? '공지 고정 해제(관리자)'
+                            : '공지 고정(관리자)'}
+                        </DropdownMenuItem>
+                      )}
+                      {(showAdminNotice || showAdminNoticePin) &&
+                        (showAdminSoftDelete || showAdminHardDelete) && <DropdownMenuSeparator />}
+                      {showAdminSoftDelete && (
+                        <DropdownMenuItem onClick={confirmDelete} className="text-red-600">
+                          소프트삭제(관리자)
+                        </DropdownMenuItem>
+                      )}
+                      {showAdminHardDelete && (
+                        <DropdownMenuItem
+                          onClick={confirmHardDelete}
+                          disabled={isHardDeleting}
+                          className="text-red-700"
+                        >
+                          물리삭제(관리자)
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
               </div>
             )}
