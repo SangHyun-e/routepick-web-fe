@@ -10,4 +10,5 @@ export type Me = {
   bio?: string;
   createdAt?: string;
   updatedAt?: string;
+  nicknameUpdatedAt?: string;
 };
