@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
@@ -49,6 +49,16 @@ export default function NotificationsPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [markingAll, setMarkingAll] = useState(false);
   const [sortOption, setSortOption] = useState<NotificationSortOption>('latest');
+  const [onlyUnread, setOnlyUnread] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const refreshUnreadCount = useCallback(async () => {
+    const res = await fetchNotifications(0, 1, false);
+    if (!res.ok) {
+      return;
+    }
+    setUnreadCount(res.data.totalElements);
+  }, []);
 
   const loadNotifications = useCallback(
     async (page = 0, append = false) => {
@@ -58,7 +68,8 @@ export default function NotificationsPage() {
         setLoading(true);
       }
 
-      const res = await fetchNotifications(page, 20, undefined, sortOption);
+      const readFilter = onlyUnread ? false : undefined;
+      const res = await fetchNotifications(page, 20, readFilter, sortOption);
       if (!res.ok) {
         toast.error(res.message ?? '알림을 불러오지 못했습니다.');
         setLoading(false);
@@ -68,18 +79,28 @@ export default function NotificationsPage() {
 
       setData(res.data);
       setItems((prev) => (append ? [...prev, ...res.data.content] : res.data.content));
+      if (onlyUnread) {
+        setUnreadCount(res.data.totalElements);
+      }
       setLoading(false);
       setLoadingMore(false);
     },
-    [sortOption],
+    [onlyUnread, sortOption],
   );
 
   useEffect(() => {
     loadNotifications();
-  }, [loadNotifications]);
+    if (!onlyUnread) {
+      refreshUnreadCount();
+    }
+  }, [loadNotifications, onlyUnread, refreshUnreadCount]);
 
   const handleSortChange = useCallback((nextSort: NotificationSortOption) => {
     setSortOption(nextSort);
+  }, []);
+
+  const handleOnlyUnreadChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    setOnlyUnread(event.target.checked);
   }, []);
 
   const handleMarkRead = async (notificationId: number) => {
@@ -88,9 +109,18 @@ export default function NotificationsPage() {
       toast.error(res.message ?? '읽음 처리에 실패했습니다.');
       return;
     }
-    setItems((prev) =>
-      prev.map((item) => (item.id === notificationId ? { ...item, read: true } : item)),
-    );
+    setItems((prev) => {
+      if (onlyUnread) {
+        return prev.filter((item) => item.id !== notificationId);
+      }
+      return prev.map((item) => {
+        if (item.id === notificationId) {
+          return { ...item, read: true };
+        }
+        return item;
+      });
+    });
+    setUnreadCount((prev) => Math.max(prev - 1, 0));
   };
 
   const handleMarkAll = async () => {
@@ -101,7 +131,8 @@ export default function NotificationsPage() {
       toast.error(res.message ?? '전체 읽음 처리에 실패했습니다.');
       return;
     }
-    setItems((prev) => prev.map((item) => ({ ...item, read: true })));
+    setItems((prev) => (onlyUnread ? [] : prev.map((item) => ({ ...item, read: true }))));
+    setUnreadCount(0);
   };
 
   const handleLoadMore = () => {
@@ -118,6 +149,22 @@ export default function NotificationsPage() {
             <p className="text-sm text-slate-500">최근 알림을 확인하세요.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                unreadCount > 0 ? 'bg-rose-500 text-white' : 'bg-slate-200 text-slate-600'
+              }`}
+            >
+              미확인 {unreadCount}
+            </span>
+            <label className="flex items-center gap-2 text-sm text-slate-600">
+              <input
+                type="checkbox"
+                checked={onlyUnread}
+                onChange={handleOnlyUnreadChange}
+                className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500"
+              />
+              미확인만 보기
+            </label>
             <NotificationSortSelect value={sortOption} onChange={handleSortChange} />
             <button
               type="button"
@@ -153,7 +200,10 @@ export default function NotificationsPage() {
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="space-y-1">
-                      <p className="text-sm font-semibold text-slate-900">{item.title}</p>
+                      <div className="flex items-center gap-2">
+                        {!item.read && <span className="h-2 w-2 rounded-full bg-rose-500" />}
+                        <p className="text-sm font-semibold text-slate-900">{item.title}</p>
+                      </div>
                       <p className="text-sm text-slate-600">{item.message}</p>
                       <p className="text-xs text-slate-400">{formatDateTime(item.createdAt)}</p>
                     </div>
