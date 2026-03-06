@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -86,7 +87,14 @@ export default function SignUpForm({ redirectTo }: Props) {
 
   const form = useForm<SignUpValues>({
     resolver: zodResolver(signUpSchema),
-    defaultValues: { email: '', password: '', confirmPassword: '', nickname: '' },
+    defaultValues: {
+      email: '',
+      password: '',
+      confirmPassword: '',
+      nickname: '',
+      termsAgreement: false,
+      privacyAgreement: false,
+    },
     mode: 'onSubmit',
   });
 
@@ -217,8 +225,10 @@ export default function SignUpForm({ redirectTo }: Props) {
   const {
     handleSubmit,
     control,
-    formState: { isSubmitting },
+    formState: { isSubmitting, errors },
   } = form;
+
+  const agreementError = errors.termsAgreement?.message ?? errors.privacyAgreement?.message;
 
   const handleSendCode = handleSubmit(onSendCode);
   const handleComplete = handleSubmit(async (values) => {
@@ -388,6 +398,68 @@ export default function SignUpForm({ redirectTo }: Props) {
 
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
             이메일 인증을 완료하면 활동 제한이 해제됩니다.
+          </div>
+
+          <div className="space-y-3">
+            <FormField
+              control={control}
+              name="termsAgreement"
+              render={({ field }) => (
+                <FormItem className="flex items-start gap-2 space-y-0">
+                  <FormControl>
+                    <input
+                      type="checkbox"
+                      checked={field.value}
+                      onChange={(event) => field.onChange(event.target.checked)}
+                      onBlur={field.onBlur}
+                      name={field.name}
+                      ref={field.ref}
+                      disabled={hasSignedUp}
+                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500/40"
+                    />
+                  </FormControl>
+                  <FormLabel className="text-sm font-normal text-slate-600">
+                    이용약관 동의{' '}
+                    <Link href="/terms" className="text-primary font-medium hover:underline">
+                      (보기)
+                    </Link>
+                  </FormLabel>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={control}
+              name="privacyAgreement"
+              render={({ field }) => (
+                <FormItem className="flex items-start gap-2 space-y-0">
+                  <FormControl>
+                    <input
+                      type="checkbox"
+                      checked={field.value}
+                      onChange={(event) => field.onChange(event.target.checked)}
+                      onBlur={field.onBlur}
+                      name={field.name}
+                      ref={field.ref}
+                      disabled={hasSignedUp}
+                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500/40"
+                    />
+                  </FormControl>
+                  <FormLabel className="text-sm font-normal text-slate-600">
+                    개인정보처리방침 동의{' '}
+                    <Link href="/privacy" className="text-primary font-medium hover:underline">
+                      (보기)
+                    </Link>
+                  </FormLabel>
+                </FormItem>
+              )}
+            />
+
+            {agreementError && (
+              <p className="text-sm font-medium text-red-500" role="alert">
+                {agreementError}
+              </p>
+            )}
           </div>
         </form>
       </Form>

@@ -29,7 +29,7 @@ export default function LoginPage({ searchParams }: Props) {
   const showReset = reset === '1' || reset === 'true';
 
   return (
-    <AuthShell>
+    <AuthShell bottomNote={null}>
       {showVerified && (
         <div className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
           이메일 인증이 완료되었습니다. 로그인해주세요.
