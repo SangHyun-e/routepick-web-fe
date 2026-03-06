@@ -7,7 +7,7 @@ import { MessageCircle, Star } from 'lucide-react';
 
 import CommentList from '@/feature/comment/components/CommentList';
 import { useComments } from '@/feature/comment/hooks/useComments';
-import { createRootComment } from '@/feature/comment/api';
+import { createRootComment, fetchCommentPosition } from '@/feature/comment/api';
 
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -54,6 +54,7 @@ export default function CommentSection({
   const [count, setCount] = useState<number>(commentCount);
   const [newCommentCount, setNewCommentCount] = useState(0);
   const [highlightedCommentId, setHighlightedCommentId] = useState<number | null>(null);
+  const [targetPageResolved, setTargetPageResolved] = useState(false);
 
   useEffect(() => {
     setCount(commentCount);
@@ -61,16 +62,64 @@ export default function CommentSection({
   }, [commentCount]);
 
   useEffect(() => {
+    setTargetPageResolved(false);
+    setHighlightedCommentId(null);
+  }, [targetCommentId]);
+
+  useEffect(() => {
+    if (!targetCommentId || targetPageResolved) {
+      return;
+    }
+
+    let mounted = true;
+    (async () => {
+      const res = await fetchCommentPosition(postId, targetCommentId, 20);
+      if (!mounted) return;
+      if (!res.ok) {
+        setTargetPageResolved(true);
+        return;
+      }
+      if (res.data.page !== page) {
+        setPage(res.data.page);
+      }
+      setTargetPageResolved(true);
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [page, postId, setPage, targetCommentId, targetPageResolved]);
+
+  useEffect(() => {
     if (!targetCommentId || loading || !data) {
       return;
     }
-    const element = document.getElementById(`comment-${targetCommentId}`);
-    if (!element) {
-      return;
-    }
-    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
     setHighlightedCommentId(targetCommentId);
   }, [data, loading, targetCommentId]);
+
+  useEffect(() => {
+    if (!highlightedCommentId) {
+      return;
+    }
+    const attemptScroll = () => {
+      const element = document.getElementById(`comment-${highlightedCommentId}`);
+      if (!element) {
+        return false;
+      }
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return true;
+    };
+
+    if (attemptScroll()) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      attemptScroll();
+    }, 200);
+
+    return () => window.clearTimeout(timer);
+  }, [data, highlightedCommentId]);
 
   useEffect(() => {
     if (!highlightedCommentId) {

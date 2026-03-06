@@ -39,7 +39,7 @@ function resolveNotificationLink(notification: NotificationResponse) {
     return '/me';
   }
   if (notification.resourceType === 'NOTICE') {
-    return '/posts';
+    return notification.resourceId ? `/posts/${notification.resourceId}` : '/posts';
   }
   if (notification.resourceType === 'ADMIN') {
     return '/me';
