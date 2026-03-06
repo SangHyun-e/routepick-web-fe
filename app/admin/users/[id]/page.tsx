@@ -14,6 +14,7 @@ import {
   fetchAdminUserStatusHistory,
   lockAdminUserRejoinRestriction,
   releaseAdminUserRejoinRestriction,
+  updateAdminUserNickname,
   updateAdminUserStatus,
 } from '@/feature/admin/user/api';
 import type {
@@ -43,6 +44,9 @@ export default function AdminUserDetailPage({ params }: PageProps) {
   const [user, setUser] = useState<AdminUserDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [actioning, setActioning] = useState(false);
+  const [nicknameInput, setNicknameInput] = useState('');
+  const [nicknameReason, setNicknameReason] = useState('');
+  const [nicknameUpdating, setNicknameUpdating] = useState(false);
   const [rejoinDialogOpen, setRejoinDialogOpen] = useState(false);
   const [rejoinLockDialogOpen, setRejoinLockDialogOpen] = useState(false);
   const [rejoinReleaseReason, setRejoinReleaseReason] = useState('');
@@ -94,6 +98,11 @@ export default function AdminUserDetailPage({ params }: PageProps) {
     }
     loadHistory();
   }, [loadHistory, userId]);
+
+  useEffect(() => {
+    if (!user) return;
+    setNicknameInput(user.nickname);
+  }, [user]);
 
   const handleStatusChange = useCallback(
     async (status: AdminUserStatus, reason?: string | null) => {
@@ -163,7 +172,52 @@ export default function AdminUserDetailPage({ params }: PageProps) {
     loadUser();
   }, [loadUser, router, userId]);
 
+  const handleNicknameUpdate = useCallback(async () => {
+    if (!user) return;
+    const trimmedNickname = nicknameInput.trim();
+    const trimmedReason = nicknameReason.trim();
+
+    if (!trimmedNickname) {
+      toast.error('닉네임을 입력하세요.');
+      return;
+    }
+    if (!trimmedReason) {
+      toast.error('변경 사유를 입력하세요.');
+      return;
+    }
+    if (trimmedNickname === user.nickname) {
+      toast.error('현재 닉네임과 동일합니다.');
+      return;
+    }
+
+    setNicknameUpdating(true);
+    const res = await updateAdminUserNickname(userId, {
+      nickname: trimmedNickname,
+      reason: trimmedReason,
+    });
+    setNicknameUpdating(false);
+
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 403) {
+        toast.error('관리자 권한이 필요합니다.');
+        router.push('/login');
+        return;
+      }
+      toast.error(res.message ?? '닉네임 변경에 실패했습니다.');
+      return;
+    }
+
+    toast.success('닉네임이 변경되었습니다.');
+    setNicknameReason('');
+    loadUser();
+  }, [loadUser, nicknameInput, nicknameReason, router, user, userId]);
+
   const historyItems = useMemo(() => historyData?.content ?? [], [historyData]);
+  const nicknameUpdatedLabel = useMemo(() => {
+    if (!user?.nicknameUpdatedAt) return '없음';
+    return formatDateTime(user.nicknameUpdatedAt);
+  }, [user]);
+  const nicknameReasonLabel = user?.nicknameChangeReason || '없음';
   const rejoinRestrictionLabel = useMemo(() => {
     if (!user?.rejoinRestrictedUntil) return '없음';
     if (user.rejoinRestrictionReleasedAt) {
@@ -193,6 +247,7 @@ export default function AdminUserDetailPage({ params }: PageProps) {
     if (Number.isNaN(untilTime)) return false;
     return untilTime <= Date.now();
   }, [user]);
+  const canUpdateNickname = Boolean(user && user.status !== 'DELETED');
 
   if (!Number.isFinite(userId)) {
     return (
@@ -244,6 +299,61 @@ export default function AdminUserDetailPage({ params }: PageProps) {
             <div className="mt-4 text-xs text-slate-400">
               인증 제공자: {user.authProvider} · 프로필 완료: {user.profileComplete ? 'Y' : 'N'}
               {user.updatedAt && <span> · 수정일: {formatDateTime(user.updatedAt)}</span>}
+            </div>
+            <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-xs text-slate-500">
+              <div className="flex flex-col gap-1">
+                <span>닉네임 변경일: {nicknameUpdatedLabel}</span>
+                <span>변경 사유: {nicknameReasonLabel}</span>
+              </div>
+              <div className="mt-3 space-y-2">
+                <div className="space-y-1">
+                  <label
+                    htmlFor="admin-nickname-input"
+                    className="text-xs font-medium text-slate-600"
+                  >
+                    새 닉네임
+                  </label>
+                  <input
+                    id="admin-nickname-input"
+                    value={nicknameInput}
+                    onChange={(event) => setNicknameInput(event.target.value)}
+                    disabled={!canUpdateNickname || nicknameUpdating}
+                    className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm disabled:cursor-not-allowed disabled:bg-slate-100"
+                    placeholder="변경할 닉네임을 입력하세요"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label
+                    htmlFor="admin-nickname-reason"
+                    className="text-xs font-medium text-slate-600"
+                  >
+                    변경 사유
+                  </label>
+                  <textarea
+                    id="admin-nickname-reason"
+                    value={nicknameReason}
+                    onChange={(event) => setNicknameReason(event.target.value)}
+                    disabled={!canUpdateNickname || nicknameUpdating}
+                    rows={3}
+                    className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm disabled:cursor-not-allowed disabled:bg-slate-100"
+                    placeholder="변경 사유를 입력하세요"
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    onClick={handleNicknameUpdate}
+                    disabled={!canUpdateNickname || nicknameUpdating}
+                    className="rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                  >
+                    {nicknameUpdating ? '변경 중...' : '닉네임 변경'}
+                  </button>
+                </div>
+                {!canUpdateNickname && (
+                  <p className="text-[11px] text-amber-600">
+                    탈퇴 처리된 사용자는 닉네임을 변경할 수 없습니다.
+                  </p>
+                )}
+              </div>
             </div>
             <div className="mt-4 space-y-2 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
               <div className="flex flex-wrap items-center justify-between gap-2">
