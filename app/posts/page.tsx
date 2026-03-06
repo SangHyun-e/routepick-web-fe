@@ -7,10 +7,12 @@ import PostList from '@/feature/post/list/PostList';
 import Pagination from '@/feature/post/list/Pagination';
 import PostSortSelect from '@/feature/post/components/PostSortSelect';
 import type { PostListItemResponse, PaginatedResponse, PostSortOption } from '@/feature/post/types';
+import type { PostStreamEvent } from '@/types/realtime';
 import { ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { bffFetch } from '@/lib/bffFetch';
+import { buildRealtimeUrl } from '@/lib/realtime';
 import type { Me } from '@/types/user';
 
 export default function Page() {
@@ -20,16 +22,21 @@ export default function Page() {
   const [meReady, setMeReady] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [sortOption, setSortOption] = useState<PostSortOption>('latest');
+  const [hasNewPost, setHasNewPost] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const searchParams = useSearchParams();
   const keywordParam = searchParams.get('keyword') ?? '';
   const [searchInput, setSearchInput] = useState(keywordParam);
   const pageSize = 20;
+
+  const shouldWatchNewPosts = !keywordParam && sortOption === 'latest';
 
   const router = useRouter();
 
   useEffect(() => {
     setSearchInput(keywordParam);
     setCurrentPage(0);
+    setHasNewPost(false);
   }, [keywordParam]);
 
   const fetchMeStatus = useCallback(async () => {
@@ -74,7 +81,36 @@ export default function Page() {
     return () => {
       mounted = false;
     };
-  }, [currentPage, keywordParam, sortOption]);
+  }, [currentPage, keywordParam, refreshKey, sortOption]);
+
+  useEffect(() => {
+    if (!shouldWatchNewPosts) {
+      setHasNewPost(false);
+      return;
+    }
+
+    const eventSource = new EventSource(buildRealtimeUrl('/posts/stream'));
+    const handleNewPost = (event: MessageEvent<string>) => {
+      try {
+        const payload = JSON.parse(event.data) as PostStreamEvent;
+        if (payload?.postId) {
+          setHasNewPost(true);
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    eventSource.addEventListener('new-post', handleNewPost as EventListener);
+    eventSource.onerror = () => {
+      eventSource.close();
+    };
+
+    return () => {
+      eventSource.removeEventListener('new-post', handleNewPost as EventListener);
+      eventSource.close();
+    };
+  }, [shouldWatchNewPosts]);
 
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
@@ -84,6 +120,14 @@ export default function Page() {
   const handleSortChange = useCallback((sort: PostSortOption) => {
     setSortOption(sort);
     setCurrentPage(0);
+    setHasNewPost(false);
+  }, []);
+
+  const handleNewPostRefresh = useCallback(() => {
+    setHasNewPost(false);
+    setCurrentPage(0);
+    setRefreshKey((prev) => prev + 1);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
   const handleWriteClick = useCallback(async () => {
@@ -206,6 +250,19 @@ export default function Page() {
         {keywordParam && (
           <div className="mb-6 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">
             &quot;{keywordParam}&quot; 검색 결과입니다.
+          </div>
+        )}
+
+        {hasNewPost && shouldWatchNewPosts && (
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            <span>새로운 글이 있습니다. 최신 글을 확인해보세요.</span>
+            <button
+              type="button"
+              onClick={handleNewPostRefresh}
+              className="rounded-lg border border-rose-200 bg-white px-3 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100"
+            >
+              새로고침
+            </button>
           </div>
         )}
 

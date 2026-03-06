@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { MessageCircle, Star } from 'lucide-react';
 
@@ -13,6 +13,8 @@ import { Button } from '@/components/ui/button';
 import Pagination from '@/feature/post/list/Pagination';
 import { CommentResponse } from '@/feature/comment/types';
 import CommentItem from '@/feature/comment/components/CommentItem';
+import type { CommentStreamEvent } from '@/types/realtime';
+import { buildRealtimeUrl } from '@/lib/realtime';
 
 interface Props {
   postId: number;
@@ -41,14 +43,56 @@ export default function CommentSection({
   });
 
   const [count, setCount] = useState<number>(commentCount);
+  const [newCommentCount, setNewCommentCount] = useState(0);
 
   useEffect(() => {
     setCount(commentCount);
+    setNewCommentCount(0);
   }, [commentCount]);
+
+  useEffect(() => {
+    if (isNotice) {
+      return;
+    }
+
+    const eventSource = new EventSource(
+      buildRealtimeUrl(`/posts/${postId}/comments/stream`),
+    );
+    const handleNewComment = (event: MessageEvent<string>) => {
+      try {
+        const payload = JSON.parse(event.data) as CommentStreamEvent;
+        if (payload?.postId !== postId) {
+          return;
+        }
+        if (payload.authorId && payload.authorId === currentUserId) {
+          return;
+        }
+        setNewCommentCount((prev) => prev + 1);
+        setCount((prev) => prev + 1);
+      } catch {
+        // ignore
+      }
+    };
+
+    eventSource.addEventListener('new-comment', handleNewComment as EventListener);
+    eventSource.onerror = () => {
+      eventSource.close();
+    };
+
+    return () => {
+      eventSource.removeEventListener('new-comment', handleNewComment as EventListener);
+      eventSource.close();
+    };
+  }, [currentUserId, isNotice, postId]);
 
   const onCountDelta = (delta: number) => {
     setCount((prev: number) => Math.max(0, prev + delta));
   };
+
+  const handleNewCommentRefresh = useCallback(async () => {
+    setNewCommentCount(0);
+    await refresh();
+  }, [refresh]);
 
   const safeBest: CommentResponse[] = useMemo(() => {
     return Array.isArray(bestComments) ? bestComments : [];
@@ -109,6 +153,19 @@ export default function CommentSection({
           {count}
         </span>
       </div>
+
+      {newCommentCount > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          <span>새로운 댓글이 {newCommentCount}개 있습니다.</span>
+          <button
+            type="button"
+            onClick={handleNewCommentRefresh}
+            className="rounded-lg border border-emerald-200 bg-white px-3 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
+          >
+            새로고침
+          </button>
+        </div>
+      )}
 
       {/* 베스트 댓글 섹션 */}
       {safeBest.length > 0 && (
