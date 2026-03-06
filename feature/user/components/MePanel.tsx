@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 'use client';
 
-import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertTriangle, ChevronDown, Eye, EyeOff } from 'lucide-react';
@@ -103,6 +103,13 @@ function formatActivityDate(value: string) {
   return `${year}.${month}.${day}`;
 }
 
+function formatDateOnly(value: Date) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return `${year}.${month}.${day}`;
+}
+
 export default function MePanel() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -117,6 +124,9 @@ export default function MePanel() {
   const [withdrawError, setWithdrawError] = useState<string | null>(null);
   const [showWithdrawPassword, setShowWithdrawPassword] = useState(false);
   const [nicknameError, setNicknameError] = useState<string | null>(null);
+  const [showNicknameConfirm, setShowNicknameConfirm] = useState(false);
+  const [pendingNickname, setPendingNickname] = useState<string | null>(null);
+  const [isNicknameUpdating, setIsNicknameUpdating] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -166,6 +176,16 @@ export default function MePanel() {
   const hasActiveItems = activeItems.length > 0;
   const showActivityError = Boolean(activeError) && !hasActiveItems;
   const isKakaoAccount = data?.authProvider === 'KAKAO';
+  const nicknameNextAvailableAt = useMemo(() => {
+    if (!data?.nicknameUpdatedAt) return null;
+    const updatedAt = new Date(data.nicknameUpdatedAt);
+    if (Number.isNaN(updatedAt.getTime())) return null;
+    const next = new Date(updatedAt);
+    next.setDate(next.getDate() + 7);
+    return next;
+  }, [data?.nicknameUpdatedAt]);
+  const isNicknameChangeLocked =
+    nicknameNextAvailableAt !== null && new Date() < nicknameNextAvailableAt;
   const nicknameForm = useForm<NicknameValues>({
     resolver: zodResolver(nicknameSchema),
     defaultValues: { nickname: '' },
@@ -528,16 +548,40 @@ export default function MePanel() {
   const handleNicknameSubmit = useCallback(
     async (values: NicknameValues) => {
       setNicknameError(null);
-      const res = await updateMyNickname(values.nickname);
-      if (res.ok) {
-        toast.success('닉네임이 변경되었습니다.');
-        await loadProfile();
+      if (isNicknameChangeLocked) {
+        const availableDate = nicknameNextAvailableAt
+          ? formatDateOnly(nicknameNextAvailableAt)
+          : null;
+        setNicknameError(
+          availableDate
+            ? `닉네임은 7일에 한 번만 변경할 수 있습니다. ${availableDate} 이후 다시 시도해주세요.`
+            : '닉네임은 7일에 한 번만 변경할 수 있습니다.',
+        );
         return;
       }
-      setNicknameError(res.message ?? '닉네임 변경에 실패했습니다.');
+      setPendingNickname(values.nickname);
+      setShowNicknameConfirm(true);
     },
-    [loadProfile],
+    [isNicknameChangeLocked, nicknameNextAvailableAt],
   );
+
+  const handleNicknameConfirm = useCallback(async () => {
+    if (!pendingNickname) return;
+    setIsNicknameUpdating(true);
+    setNicknameError(null);
+    const res = await updateMyNickname(pendingNickname);
+    setIsNicknameUpdating(false);
+    setShowNicknameConfirm(false);
+    setPendingNickname(null);
+
+    if (res.ok) {
+      toast.success('닉네임이 변경되었습니다.');
+      await loadProfile();
+      return;
+    }
+
+    setNicknameError(res.message ?? '닉네임 변경에 실패했습니다.');
+  }, [pendingNickname, loadProfile]);
 
   const handlePasswordSubmit = useCallback(
     async (values: PasswordChangeValues) => {
@@ -723,6 +767,14 @@ export default function MePanel() {
                       </FormItem>
                     )}
                   />
+                  <div className="space-y-1 text-xs text-slate-500">
+                    <p>닉네임을 변경하면 7일 동안 다시 변경할 수 없어요.</p>
+                    {isNicknameChangeLocked && nicknameNextAvailableAt ? (
+                      <p className="text-amber-600">
+                        다음 변경 가능일: {formatDateOnly(nicknameNextAvailableAt)}
+                      </p>
+                    ) : null}
+                  </div>
                   {nicknameError && (
                     <div
                       className="rounded-lg bg-red-50 p-3 text-sm text-red-700"
@@ -734,9 +786,13 @@ export default function MePanel() {
                   <Button
                     type="submit"
                     size="sm"
-                    disabled={nicknameForm.formState.isSubmitting}
+                    disabled={
+                      nicknameForm.formState.isSubmitting ||
+                      isNicknameUpdating ||
+                      isNicknameChangeLocked
+                    }
                   >
-                    {nicknameForm.formState.isSubmitting ? '변경 중...' : '닉네임 변경'}
+                    {isNicknameUpdating ? '변경 중...' : '닉네임 변경'}
                   </Button>
                 </form>
               </Form>
@@ -1154,6 +1210,34 @@ export default function MePanel() {
           </div>
         </details>
       </section>
+
+      <ConfirmDialog
+        open={showNicknameConfirm}
+        onOpenChange={(open) => {
+          setShowNicknameConfirm(open);
+          if (!open) {
+            setPendingNickname(null);
+            setIsNicknameUpdating(false);
+          }
+        }}
+        title="닉네임 변경"
+        description={
+          <div className="space-y-2">
+            <p>
+              닉네임을 <span className="font-semibold">{pendingNickname ?? ''}</span>(으)로
+              변경할까요?
+            </p>
+            <p className="text-xs text-slate-500">
+              닉네임을 변경하면 7일 동안 다시 변경할 수 없어요.
+            </p>
+          </div>
+        }
+        confirmText="예"
+        cancelText="아니오"
+        onConfirm={handleNicknameConfirm}
+        onCancel={() => setPendingNickname(null)}
+        confirmDisabled={isNicknameUpdating}
+      />
 
       <ConfirmDialog
         open={showWithdrawDialog}
