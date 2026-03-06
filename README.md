@@ -46,6 +46,11 @@ routepick-web-fe/
 
 ---
 
+## 🔐 환경 변수
+
+- `SERVER_BASE_URL`: 서버 측에서 사용할 백엔드 베이스 URL
+- `NEXT_PUBLIC_SERVER_BASE_URL`: 브라우저(EventSource 등)에서 사용할 백엔드 베이스 URL
+
 ## 🔀 브랜치 전략 & 커밋 컨벤션
 
 - 브랜치: main(배포), dev(통합), feature/\*
