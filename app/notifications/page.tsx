@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import type { PaginatedResponse } from '@/feature/post/types';
 import type { NotificationResponse, NotificationSortOption } from '@/feature/notification/types';
 import NotificationSortSelect from '@/feature/notification/components/NotificationSortSelect';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
   deleteAllNotifications,
   deleteNotification,
@@ -59,6 +60,9 @@ export default function NotificationsPage() {
   const [deletingAll, setDeletingAll] = useState(false);
   const [deletingRead, setDeletingRead] = useState(false);
   const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set());
+  const [confirmAllOpen, setConfirmAllOpen] = useState(false);
+  const [confirmReadOpen, setConfirmReadOpen] = useState(false);
+  const [confirmSingleId, setConfirmSingleId] = useState<number | null>(null);
   const [sortOption, setSortOption] = useState<NotificationSortOption>('latest');
   const [onlyUnread, setOnlyUnread] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -269,7 +273,7 @@ export default function NotificationsPage() {
             </button>
             <button
               type="button"
-              onClick={handleDeleteRead}
+              onClick={() => setConfirmReadOpen(true)}
               disabled={deletingRead || items.every((item) => !item.read)}
               className="rounded-lg border border-rose-200 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -277,7 +281,7 @@ export default function NotificationsPage() {
             </button>
             <button
               type="button"
-              onClick={handleDeleteAll}
+              onClick={() => setConfirmAllOpen(true)}
               disabled={deletingAll || items.length === 0}
               className="rounded-lg border border-rose-200 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -336,7 +340,7 @@ export default function NotificationsPage() {
                       )}
                       <button
                         type="button"
-                        onClick={() => handleDeleteNotification(item.id)}
+                        onClick={() => setConfirmSingleId(item.id)}
                         disabled={deletingIds.has(item.id)}
                         className="rounded-md border border-rose-200 px-3 py-1 text-xs text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
                       >
@@ -363,6 +367,54 @@ export default function NotificationsPage() {
           </div>
         )}
       </div>
+      <ConfirmDialog
+        open={confirmReadOpen}
+        onOpenChange={setConfirmReadOpen}
+        title="읽은 알림 삭제"
+        description="읽은 알림을 모두 삭제할까요? 삭제된 알림은 복구할 수 없습니다."
+        confirmText="삭제"
+        cancelText="취소"
+        variant="destructive"
+        confirmDisabled={deletingRead}
+        onConfirm={async () => {
+          setConfirmReadOpen(false);
+          await handleDeleteRead();
+        }}
+      />
+      <ConfirmDialog
+        open={confirmAllOpen}
+        onOpenChange={setConfirmAllOpen}
+        title="알림 전체 삭제"
+        description="모든 알림을 삭제할까요? 삭제된 알림은 복구할 수 없습니다."
+        confirmText="삭제"
+        cancelText="취소"
+        variant="destructive"
+        confirmDisabled={deletingAll}
+        onConfirm={async () => {
+          setConfirmAllOpen(false);
+          await handleDeleteAll();
+        }}
+      />
+      <ConfirmDialog
+        open={confirmSingleId !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setConfirmSingleId(null);
+          }
+        }}
+        title="알림 삭제"
+        description="선택한 알림을 삭제할까요?"
+        confirmText="삭제"
+        cancelText="취소"
+        variant="destructive"
+        confirmDisabled={confirmSingleId !== null && deletingIds.has(confirmSingleId)}
+        onConfirm={async () => {
+          if (confirmSingleId === null) return;
+          const targetId = confirmSingleId;
+          setConfirmSingleId(null);
+          await handleDeleteNotification(targetId);
+        }}
+      />
     </div>
   );
 }
