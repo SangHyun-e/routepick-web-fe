@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { MessageCircle, Star } from 'lucide-react';
 
@@ -42,13 +43,44 @@ export default function CommentSection({
     size: 20,
   });
 
+  const searchParams = useSearchParams();
+  const targetCommentId = useMemo(() => {
+    const value = searchParams.get('commentId');
+    if (!value) return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }, [searchParams]);
+
   const [count, setCount] = useState<number>(commentCount);
   const [newCommentCount, setNewCommentCount] = useState(0);
+  const [highlightedCommentId, setHighlightedCommentId] = useState<number | null>(null);
 
   useEffect(() => {
     setCount(commentCount);
     setNewCommentCount(0);
   }, [commentCount]);
+
+  useEffect(() => {
+    if (!targetCommentId || loading || !data) {
+      return;
+    }
+    const element = document.getElementById(`comment-${targetCommentId}`);
+    if (!element) {
+      return;
+    }
+    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setHighlightedCommentId(targetCommentId);
+  }, [data, loading, targetCommentId]);
+
+  useEffect(() => {
+    if (!highlightedCommentId) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      setHighlightedCommentId(null);
+    }, 3000);
+    return () => window.clearTimeout(timer);
+  }, [highlightedCommentId]);
 
   useEffect(() => {
     if (isNotice) {
@@ -191,6 +223,7 @@ export default function CommentSection({
                   currentUserId={currentUserId}
                   isAdmin={isAdmin}
                   comment={c}
+                  highlightedCommentId={highlightedCommentId}
                   onRefresh={refresh}
                   onCountDelta={() => {
                     /* ignore */
@@ -294,6 +327,7 @@ export default function CommentSection({
             loading={loading}
             onRefresh={refresh}
             onCountDelta={onCountDelta}
+            highlightedCommentId={highlightedCommentId}
           />
 
           {/* 페이지네이션 */}
