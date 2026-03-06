@@ -1,26 +1,49 @@
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
+import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from '@/lib/cookies';
+import { NextRequest, NextResponse } from 'next/server';
 
-const AUTH_COOKIE_KEY = 'routepick-auth';
-const SIGN_IN_PATH = '/auth/sign-in';
-const PROTECTED_PATHS = ['/planner', '/favorites', '/community'] as const;
+const LOGIN_PATH = '/login';
+const HOME_PATH = '/';
+const PROTECTED_PREFIXED = ['/posts/write', '/admin']; // 필요한 보호 경로만 관리
 
-const PROTECTED_MATCHERS = PROTECTED_PATHS.map((path) => `${path}/:path*`);
+function isProtected(pathname: string) {
+  return PROTECTED_PREFIXED.some((p) => pathname.startsWith(p));
+}
 
-export function middleware(request: NextRequest) {
-  const { cookies, nextUrl } = request;
+export function middleware(req: NextRequest) {
+  const { nextUrl, cookies } = req;
+  const pathname = nextUrl.pathname;
 
-  if (cookies.has(AUTH_COOKIE_KEY)) {
-    return NextResponse.next();
+  // /me는 항상 통과(페이지 내부에서 401→리프레시 처리)
+  if (pathname === '/me') return NextResponse.next();
+
+  const hasAT = Boolean(cookies.get(ACCESS_TOKEN_COOKIE)?.value);
+  const hasRT = Boolean(cookies.get(REFRESH_TOKEN_COOKIE)?.value);
+
+  // 보호 경로: AT 없으면
+  if (isProtected(pathname) && !hasAT) {
+    // RT 있으면: refresh 시도 -> 성공하면 원래 페이지로 리다이렉트
+    if (hasRT) {
+      const url = new URL('/auth/refresh-redirect', req.url);
+      url.searchParams.set('from', nextUrl.pathname + nextUrl.search);
+      return NextResponse.redirect(url);
+    }
+
+    // RT도 없으면: 로그인
+    const url = new URL(LOGIN_PATH, req.url);
+    url.searchParams.set('from', nextUrl.pathname + nextUrl.search);
+    return NextResponse.redirect(url);
   }
 
-  const signInUrl = nextUrl.clone();
-  signInUrl.pathname = SIGN_IN_PATH;
-  signInUrl.searchParams.set('redirectTo', nextUrl.pathname);
+  // 로그인 페이지 접근 시 이미 로그인 상태면 리다이렉트
+  if (pathname === LOGIN_PATH && hasAT) {
+    const from = nextUrl.searchParams.get('from');
+    const dest = from && from.startsWith('/') ? from : HOME_PATH;
+    return NextResponse.redirect(new URL(dest, req.url));
+  }
 
-  return NextResponse.redirect(signInUrl);
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: PROTECTED_MATCHERS,
+  matcher: ['/posts/write/:path*', '/admin/:path*', '/login', '/me', '/auth/refresh-redirect'],
 };
