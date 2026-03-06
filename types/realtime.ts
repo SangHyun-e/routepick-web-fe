@@ -13,3 +13,11 @@ export type CommentStreamEvent = {
   authorNickname: string | null;
   createdAt: string;
 };
+
+export type NotificationStreamEvent = {
+  notificationId: number;
+  title: string;
+  message: string;
+  unreadCount: number;
+  createdAt: string;
+};
