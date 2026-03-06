@@ -13,6 +13,8 @@ export type NotificationType =
 
 export type NotificationResourceType = 'POST' | 'COURSE' | 'ACCOUNT' | 'NOTICE' | 'ADMIN';
 
+export type NotificationSortOption = 'latest' | 'oldest';
+
 export type NotificationResponse = {
   id: number;
   type: NotificationType;

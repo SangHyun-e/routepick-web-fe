@@ -1,7 +1,7 @@
 import { bffFetch } from '@/lib/bffFetch';
 import type { ApiResult } from '@/types/http';
 import type { PaginatedResponse } from '@/feature/post/types';
-import type { NotificationResponse } from '@/feature/notification/types';
+import type { NotificationResponse, NotificationSortOption } from '@/feature/notification/types';
 
 async function readErrorMessage(res: Response, fallback: string): Promise<string> {
   try {
@@ -43,6 +43,7 @@ export async function fetchNotifications(
   page = 0,
   size = 20,
   read?: boolean,
+  sort: NotificationSortOption = 'latest',
 ): Promise<ApiResult<PaginatedResponse<NotificationResponse>>> {
   const params = new URLSearchParams();
   params.set('page', String(page));
@@ -50,6 +51,9 @@ export async function fetchNotifications(
   if (read !== undefined) {
     params.set('read', String(read));
   }
+
+  const sortParam = sort === 'oldest' ? 'createdAt,asc' : 'createdAt,desc';
+  params.append('sort', sortParam);
 
   const res = await bffFetch(`/api/proxy/notifications?${params.toString()}`, {
     cache: 'no-store',

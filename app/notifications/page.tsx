@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 
 import type { PaginatedResponse } from '@/feature/post/types';
-import type { NotificationResponse } from '@/feature/notification/types';
+import type { NotificationResponse, NotificationSortOption } from '@/feature/notification/types';
+import NotificationSortSelect from '@/feature/notification/components/NotificationSortSelect';
 import {
   fetchNotifications,
   markAllNotificationsRead,
@@ -47,31 +48,39 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [markingAll, setMarkingAll] = useState(false);
+  const [sortOption, setSortOption] = useState<NotificationSortOption>('latest');
 
-  const loadNotifications = useCallback(async (page = 0, append = false) => {
-    if (append) {
-      setLoadingMore(true);
-    } else {
-      setLoading(true);
-    }
+  const loadNotifications = useCallback(
+    async (page = 0, append = false) => {
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+      }
 
-    const res = await fetchNotifications(page, 20);
-    if (!res.ok) {
-      toast.error(res.message ?? '알림을 불러오지 못했습니다.');
+      const res = await fetchNotifications(page, 20, undefined, sortOption);
+      if (!res.ok) {
+        toast.error(res.message ?? '알림을 불러오지 못했습니다.');
+        setLoading(false);
+        setLoadingMore(false);
+        return;
+      }
+
+      setData(res.data);
+      setItems((prev) => (append ? [...prev, ...res.data.content] : res.data.content));
       setLoading(false);
       setLoadingMore(false);
-      return;
-    }
-
-    setData(res.data);
-    setItems((prev) => (append ? [...prev, ...res.data.content] : res.data.content));
-    setLoading(false);
-    setLoadingMore(false);
-  }, []);
+    },
+    [sortOption],
+  );
 
   useEffect(() => {
     loadNotifications();
   }, [loadNotifications]);
+
+  const handleSortChange = useCallback((nextSort: NotificationSortOption) => {
+    setSortOption(nextSort);
+  }, []);
 
   const handleMarkRead = async (notificationId: number) => {
     const res = await markNotificationRead(notificationId);
@@ -108,14 +117,17 @@ export default function NotificationsPage() {
             <h1 className="text-2xl font-bold text-slate-900">알림</h1>
             <p className="text-sm text-slate-500">최근 알림을 확인하세요.</p>
           </div>
-          <button
-            type="button"
-            onClick={handleMarkAll}
-            disabled={markingAll || items.length === 0}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {markingAll ? '처리 중...' : '전체 읽음 처리'}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <NotificationSortSelect value={sortOption} onChange={handleSortChange} />
+            <button
+              type="button"
+              onClick={handleMarkAll}
+              disabled={markingAll || items.length === 0}
+              className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {markingAll ? '처리 중...' : '전체 읽음 처리'}
+            </button>
+          </div>
         </div>
 
         {loading ? (
