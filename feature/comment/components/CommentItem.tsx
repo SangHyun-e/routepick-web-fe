@@ -281,6 +281,11 @@ export default function CommentItem({
   const editedTitle: string = isEdited
     ? `수정: ${new Date(comment.updatedAt as string).toLocaleString()}`
     : '';
+  const replyTargetLabel = useMemo(() => {
+    if (!isReply) return null;
+    if (!comment.replyTargetNickname) return null;
+    return `↳ @${comment.replyTargetNickname}에게 답글`;
+  }, [comment.replyTargetNickname, isReply]);
 
   return (
     <div className={isReply ? 'ml-6' : ''}>
@@ -390,6 +395,10 @@ export default function CommentItem({
             )}
           </div>
         </div>
+
+        {replyTargetLabel && (
+          <p className="mb-2 text-xs text-slate-500">{replyTargetLabel}</p>
+        )}
 
         {/* Content / Edit */}
         {isDeleted ? (
