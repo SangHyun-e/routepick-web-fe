@@ -27,7 +27,9 @@ async function readErrorMessage(res: Response, fallback: string): Promise<string
  * - 배포/프록시 환경 대응: x-forwarded-* 우선
  */
 function getRequestOriginFromHeaders(h: Headers): string {
-  const host = h.get('x-forwarded-host') ?? h.get('host') ?? 'localhost:3000'; // 최후 fallback (로컬 dev에서만 의미)
+  const fallbackOrigin = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.SITE_URL;
+  const fallbackHost = fallbackOrigin ? new URL(fallbackOrigin).host : '';
+  const host = h.get('x-forwarded-host') ?? h.get('host') ?? fallbackHost;
 
   const proto = h.get('x-forwarded-proto') ?? 'http';
   return `${proto}://${host}`;

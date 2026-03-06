@@ -7,8 +7,7 @@ function makeAbsolute(input: string | Request | URL): string | Request | URL {
   if (input.startsWith('http://') || input.startsWith('https://')) return input;
   if (typeof window !== 'undefined') return input;
 
-  const origin =
-    process.env.NEXT_PUBLIC_SITE_URL ?? process.env.SITE_URL ?? 'http://localhost:3000';
+  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.SITE_URL ?? '';
   const path = input.startsWith('/') ? input : `/${input}`;
   return origin + path;
 }
