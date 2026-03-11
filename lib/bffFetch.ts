@@ -2,14 +2,27 @@
 let refreshPromise: Promise<Response> | null = null;
 const REFRESH_URL = '/api/auth/refresh';
 
-function makeAbsolute(input: string | Request | URL): string | Request | URL {
+async function getServerOrigin(): Promise<string> {
+  if (typeof window !== 'undefined') return '';
+  const envOrigin = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.SITE_URL ?? '';
+  if (envOrigin) return envOrigin;
+
+  const mod = await import('next/headers');
+  const h = mod.headers();
+  const host = h.get('x-forwarded-host') ?? h.get('host');
+  if (!host) return '';
+  const proto = h.get('x-forwarded-proto') ?? 'http';
+  return `${proto}://${host}`;
+}
+
+async function makeAbsolute(input: string | Request | URL): Promise<string | Request | URL> {
   if (typeof input !== 'string') return input;
   if (input.startsWith('http://') || input.startsWith('https://')) return input;
   if (typeof window !== 'undefined') return input;
 
-  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.SITE_URL ?? '';
+  const origin = await getServerOrigin();
   const path = input.startsWith('/') ? input : `/${input}`;
-  return origin + path;
+  return origin ? origin + path : path;
 }
 
 async function getServerCookieHeader(): Promise<string> {
@@ -33,7 +46,7 @@ function mergeHeaders(
 
 async function callRefresh() {
   if (!refreshPromise) {
-    const refreshUrl = makeAbsolute(REFRESH_URL);
+    const refreshUrl = await makeAbsolute(REFRESH_URL);
     refreshPromise = fetch(refreshUrl, {
       method: 'POST',
       credentials: 'include',
@@ -52,7 +65,7 @@ async function callRefresh() {
  * - 서버/클라이언트 양쪽에서 동작
  */
 export async function bffFetch(input: string | Request | URL, init: RequestInit = {}) {
-  const absInput = makeAbsolute(input);
+  const absInput = await makeAbsolute(input);
   const url = typeof absInput === 'string' ? absInput : (absInput as Request).url;
   const isRefresh = url.includes('/api/auth/refresh');
 
