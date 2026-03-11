@@ -9,14 +9,24 @@ import type {
   CourseRecommendationResponse,
   CourseTheme,
 } from '@/feature/course/types';
+import { searchPlaces } from '@/feature/place/api';
+import type { KakaoPlaceDocument } from '@/feature/place/types';
 import { toast } from 'sonner';
 
-const THEME_OPTIONS: CourseTheme[] = ['야경', '바다', '산', '카페', '맛집'];
+const THEME_OPTIONS: CourseTheme[] = ['야경', '바다', '산', '카페', '맛집', '와인딩'];
 
 export default function DrivePage() {
   const [originInput, setOriginInput] = useState('');
   const [destinationInput, setDestinationInput] = useState('');
   const [themeInput, setThemeInput] = useState<CourseTheme>('야경');
+  const [originResults, setOriginResults] = useState<KakaoPlaceDocument[]>([]);
+  const [originLoading, setOriginLoading] = useState(false);
+  const [originError, setOriginError] = useState<string | null>(null);
+  const [originSelected, setOriginSelected] = useState<KakaoPlaceDocument | null>(null);
+  const [destinationResults, setDestinationResults] = useState<KakaoPlaceDocument[]>([]);
+  const [destinationLoading, setDestinationLoading] = useState(false);
+  const [destinationError, setDestinationError] = useState<string | null>(null);
+  const [destinationSelected, setDestinationSelected] = useState<KakaoPlaceDocument | null>(null);
   const [recommendation, setRecommendation] = useState<CourseRecommendationResponse | null>(null);
   const [recommendLoading, setRecommendLoading] = useState(false);
   const [recommendError, setRecommendError] = useState<string | null>(null);
@@ -25,6 +35,58 @@ export default function DrivePage() {
   const [curationLoading, setCurationLoading] = useState(false);
   const [curationError, setCurationError] = useState<string | null>(null);
   const [curationRequiresLogin, setCurationRequiresLogin] = useState(false);
+
+  const handleOriginSearch = useCallback(async () => {
+    const keyword = originInput.trim();
+    if (!keyword) {
+      setOriginError('출발지를 입력한 뒤 검색해주세요.');
+      return;
+    }
+    setOriginLoading(true);
+    setOriginError(null);
+    const result = await searchPlaces(keyword);
+    setOriginLoading(false);
+    if (!result.ok) {
+      setOriginResults([]);
+      setOriginError(result.message ?? '출발지 검색에 실패했습니다.');
+      return;
+    }
+    setOriginResults(result.data.documents ?? []);
+  }, [originInput]);
+
+  const handleDestinationSearch = useCallback(async () => {
+    const keyword = destinationInput.trim();
+    if (!keyword) {
+      setDestinationError('도착지를 입력한 뒤 검색해주세요.');
+      return;
+    }
+    setDestinationLoading(true);
+    setDestinationError(null);
+    const result = await searchPlaces(keyword);
+    setDestinationLoading(false);
+    if (!result.ok) {
+      setDestinationResults([]);
+      setDestinationError(result.message ?? '도착지 검색에 실패했습니다.');
+      return;
+    }
+    setDestinationResults(result.data.documents ?? []);
+  }, [destinationInput]);
+
+  const handleOriginSelect = useCallback((place: KakaoPlaceDocument) => {
+    const label = place.roadAddressName || place.addressName || place.placeName;
+    setOriginInput(label);
+    setOriginSelected(place);
+    setOriginResults([]);
+    setOriginError(null);
+  }, []);
+
+  const handleDestinationSelect = useCallback((place: KakaoPlaceDocument) => {
+    const label = place.roadAddressName || place.addressName || place.placeName;
+    setDestinationInput(label);
+    setDestinationSelected(place);
+    setDestinationResults([]);
+    setDestinationError(null);
+  }, []);
 
   const handleRecommend = useCallback(async () => {
     const origin = originInput.trim();
@@ -63,14 +125,24 @@ export default function DrivePage() {
     setRecommendLoading(false);
   }, [destinationInput, originInput, themeInput]);
 
-  const handleRecommendKeyDown = useCallback(
+  const handleOriginKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
       if (event.key === 'Enter') {
         event.preventDefault();
-        handleRecommend();
+        handleOriginSearch();
       }
     },
-    [handleRecommend],
+    [handleOriginSearch],
+  );
+
+  const handleDestinationKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        handleDestinationSearch();
+      }
+    },
+    [handleDestinationSearch],
   );
 
   const handleSaveRecommendation = useCallback(async () => {
@@ -152,21 +224,99 @@ export default function DrivePage() {
             </p>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-4">
-            <input
-              value={originInput}
-              onChange={(event) => setOriginInput(event.target.value)}
-              onKeyDown={handleRecommendKeyDown}
-              placeholder="출발지 (예: 서울 강남역)"
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm transition outline-none focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
-            />
-            <input
-              value={destinationInput}
-              onChange={(event) => setDestinationInput(event.target.value)}
-              onKeyDown={handleRecommendKeyDown}
-              placeholder="도착지 (예: 양평 두물머리)"
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm transition outline-none focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
-            />
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <input
+                  value={originInput}
+                  onChange={(event) => {
+                    setOriginInput(event.target.value);
+                    setOriginSelected(null);
+                  }}
+                  onKeyDown={handleOriginKeyDown}
+                  placeholder="출발지 (예: 서울 강남역)"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm transition outline-none focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
+                />
+                <button
+                  type="button"
+                  onClick={handleOriginSearch}
+                  disabled={originLoading}
+                  className="inline-flex shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 disabled:cursor-not-allowed disabled:text-slate-400"
+                >
+                  {originLoading ? '검색 중...' : '검색'}
+                </button>
+              </div>
+              {originSelected ? (
+                <p className="text-xs text-slate-500">선택됨: {originSelected.placeName}</p>
+              ) : null}
+              {originError ? <p className="text-xs text-rose-500">{originError}</p> : null}
+              {originResults.length > 0 ? (
+                <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-3 text-sm">
+                  {originResults.slice(0, 5).map((place) => (
+                    <button
+                      key={place.id}
+                      type="button"
+                      onClick={() => handleOriginSelect(place)}
+                      className="w-full rounded-lg px-2 py-1.5 text-left transition hover:bg-slate-50"
+                    >
+                      <p className="font-medium text-slate-900">{place.placeName}</p>
+                      <p className="text-xs text-slate-500">
+                        {place.roadAddressName || place.addressName}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <input
+                  value={destinationInput}
+                  onChange={(event) => {
+                    setDestinationInput(event.target.value);
+                    setDestinationSelected(null);
+                  }}
+                  onKeyDown={handleDestinationKeyDown}
+                  placeholder="도착지 (예: 양평 두물머리)"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm transition outline-none focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
+                />
+                <button
+                  type="button"
+                  onClick={handleDestinationSearch}
+                  disabled={destinationLoading}
+                  className="inline-flex shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 disabled:cursor-not-allowed disabled:text-slate-400"
+                >
+                  {destinationLoading ? '검색 중...' : '검색'}
+                </button>
+              </div>
+              {destinationSelected ? (
+                <p className="text-xs text-slate-500">선택됨: {destinationSelected.placeName}</p>
+              ) : null}
+              {destinationError ? (
+                <p className="text-xs text-rose-500">{destinationError}</p>
+              ) : null}
+              {destinationResults.length > 0 ? (
+                <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-3 text-sm">
+                  {destinationResults.slice(0, 5).map((place) => (
+                    <button
+                      key={place.id}
+                      type="button"
+                      onClick={() => handleDestinationSelect(place)}
+                      className="w-full rounded-lg px-2 py-1.5 text-left transition hover:bg-slate-50"
+                    >
+                      <p className="font-medium text-slate-900">{place.placeName}</p>
+                      <p className="text-xs text-slate-500">
+                        {place.roadAddressName || place.addressName}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
             <select
               value={themeInput}
               onChange={(event) => setThemeInput(event.target.value as CourseTheme)}
