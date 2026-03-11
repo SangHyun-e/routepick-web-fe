@@ -1,4 +1,4 @@
-export type CourseTheme = '야경' | '바다' | '산' | '카페' | '맛집';
+export type CourseTheme = '야경' | '바다' | '산' | '카페' | '맛집' | '와인딩';
 
 export interface CourseRecommendationRequest {
   origin: string;
