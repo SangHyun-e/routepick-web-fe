@@ -31,7 +31,7 @@ import { PASSWORD_POLICY_MESSAGE, PASSWORD_POLICY_REGEX } from '@/feature/auth/s
 import type { MyCommentListItem } from '@/feature/comment/types';
 import type { PostListItemResponse } from '@/feature/post/types';
 import type { CourseRecommendationSaveResponse } from '@/feature/course/types';
-import { fetchSavedRecommendations } from '@/feature/course/api';
+import { deleteSavedRecommendation, fetchSavedRecommendations } from '@/feature/course/api';
 import {
   activateMyPost,
   changeMyPassword,
@@ -149,6 +149,8 @@ export default function MePanel() {
     useState<ActivityState<CourseRecommendationSaveResponse>>(
       createActivityState<CourseRecommendationSaveResponse>(),
     );
+  const [savedCourseDeleteId, setSavedCourseDeleteId] = useState<number | null>(null);
+  const [savedCourseDeleting, setSavedCourseDeleting] = useState(false);
   const isMountedRef = useRef(true);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const activityEmptyMessage =
@@ -176,6 +178,10 @@ export default function MePanel() {
   const hasActiveItems = activeItems.length > 0;
   const showActivityError = Boolean(activeError) && !hasActiveItems;
   const isKakaoAccount = data?.authProvider === 'KAKAO';
+  const savedCourseToDelete = useMemo(
+    () => activitySavedCourses.items.find((course) => course.id === savedCourseDeleteId),
+    [activitySavedCourses.items, savedCourseDeleteId],
+  );
   const nicknameNextAvailableAt = useMemo(() => {
     if (!data?.nicknameUpdatedAt) return null;
     const updatedAt = new Date(data.nicknameUpdatedAt);
@@ -449,6 +455,33 @@ export default function MePanel() {
     }
     void loadSavedCoursesPage(activitySavedCourses.page + 1, false);
   }, [activitySavedCourses, loadSavedCoursesPage]);
+
+  const handleDeleteSavedCourse = useCallback(async () => {
+    if (!savedCourseDeleteId) return;
+    if (savedCourseDeleting) return;
+    setSavedCourseDeleting(true);
+
+    const result = await deleteSavedRecommendation(savedCourseDeleteId);
+    if (!result.ok) {
+      setSavedCourseDeleting(false);
+      if (result.status === 401 || result.status === 403) {
+        toast.error('로그인이 필요합니다. 다시 로그인해주세요.');
+        router.push('/login?from=/me');
+        return;
+      }
+      toast.error(result.message ?? '추천 코스 삭제에 실패했습니다.');
+      return;
+    }
+
+    setActivitySavedCourses((prev) => {
+      const nextItems = prev.items.filter((course) => course.id !== savedCourseDeleteId);
+      const nextTotal = prev.total !== null ? Math.max(0, prev.total - 1) : prev.total;
+      return { ...prev, items: nextItems, total: nextTotal };
+    });
+    setSavedCourseDeleting(false);
+    setSavedCourseDeleteId(null);
+    toast.success('저장한 추천 코스를 삭제했습니다.');
+  }, [router, savedCourseDeleteId, savedCourseDeleting]);
 
   const handlePostStatusChange = useCallback(
     async (postId: number, action: 'hide' | 'activate') => {
@@ -1128,9 +1161,19 @@ export default function MePanel() {
                 {activitySavedCourses.items.map((course) => (
                   <li key={course.id} className="rounded-lg border border-slate-200 bg-white p-4">
                     <div className="flex flex-col gap-2">
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                        <span>{course.theme}</span>
-                        <span>{formatActivityDate(course.createdAt)}</span>
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span>{course.theme}</span>
+                          <span>{formatActivityDate(course.createdAt)}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setSavedCourseDeleteId(course.id)}
+                          disabled={savedCourseDeleting && savedCourseDeleteId === course.id}
+                          className="rounded-md border border-rose-200 px-2 py-1 text-[11px] font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-50"
+                        >
+                          삭제
+                        </button>
                       </div>
                       <p className="text-sm font-semibold text-slate-900">
                         {course.routeSummary}
@@ -1210,6 +1253,30 @@ export default function MePanel() {
           </div>
         </details>
       </section>
+
+      <ConfirmDialog
+        open={savedCourseDeleteId !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSavedCourseDeleteId(null);
+            setSavedCourseDeleting(false);
+          }
+        }}
+        title="추천 코스 삭제"
+        description={
+          <div className="space-y-2">
+            <p>저장한 추천 코스를 삭제할까요?</p>
+            {savedCourseToDelete && (
+              <p className="text-xs text-slate-500">{savedCourseToDelete.routeSummary}</p>
+            )}
+          </div>
+        }
+        confirmText="삭제"
+        cancelText="취소"
+        onConfirm={handleDeleteSavedCourse}
+        confirmDisabled={savedCourseDeleting}
+        variant="destructive"
+      />
 
       <ConfirmDialog
         open={showNicknameConfirm}
