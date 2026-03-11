@@ -1,5 +1,6 @@
 import { bffFetch } from '@/lib/bffFetch';
 import type { ApiResult } from '@/types/http';
+import type { AdminDashboardResponse } from '@/feature/admin/dashboard/types';
 import type { AdminCommentListItem } from '@/feature/comment/types';
 import type { PaginatedResponse, PostListItemResponse } from '@/feature/post/types';
 
@@ -52,6 +53,22 @@ export async function fetchAdminPosts(
   }
 
   const data = (await res.json()) as PaginatedResponse<PostListItemResponse>;
+  return { ok: true, data };
+}
+
+export async function fetchAdminDashboard(): Promise<ApiResult<AdminDashboardResponse>> {
+  const res = await bffFetch('/api/proxy/admin/dashboard', { cache: 'no-store' });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    return {
+      ok: false,
+      status: res.status,
+      message: err?.message ?? '관리자 대시보드를 불러오지 못했습니다.',
+    };
+  }
+
+  const data = (await res.json()) as AdminDashboardResponse;
   return { ok: true, data };
 }
 
