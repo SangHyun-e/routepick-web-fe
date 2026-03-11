@@ -5,14 +5,18 @@ const REFRESH_URL = '/api/auth/refresh';
 async function getServerOrigin(): Promise<string> {
   if (typeof window !== 'undefined') return '';
   const envOrigin = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.SITE_URL ?? '';
-  if (envOrigin) return envOrigin;
 
   const mod = await import('next/headers');
   const h = mod.headers();
   const host = h.get('x-forwarded-host') ?? h.get('host');
-  if (!host) return '';
-  const proto = h.get('x-forwarded-proto') ?? 'http';
-  return `${proto}://${host}`;
+  const fallbackProto = envOrigin ? new URL(envOrigin).protocol.replace(':', '') : 'http';
+  const proto = h.get('x-forwarded-proto') ?? fallbackProto;
+
+  if (host) {
+    return `${proto}://${host}`;
+  }
+
+  return envOrigin;
 }
 
 async function makeAbsolute(input: string | Request | URL): Promise<string | Request | URL> {
