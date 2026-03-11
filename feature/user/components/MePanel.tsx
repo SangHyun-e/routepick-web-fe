@@ -734,29 +734,15 @@ export default function MePanel() {
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-slate-900">관리자 도구</h3>
           <p className="mt-2 text-sm text-slate-600">
-            게시글·댓글·유저 관리 페이지로 이동할 수 있습니다.
+            관리자 대시보드에서 최신 현황을 확인할 수 있습니다.
           </p>
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-            <Button
-              onClick={() => router.push('/admin/posts')}
-              variant="outline"
-              className="rounded-xl border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100"
-            >
-              게시글 관리로 이동
-            </Button>
+          <div className="mt-4">
             <Button
               variant="outline"
-              onClick={() => router.push('/admin/comments')}
+              onClick={() => router.push('/admin')}
               className="rounded-xl border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100"
             >
-              댓글 관리로 이동
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => router.push('/admin/users')}
-              className="rounded-xl border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100"
-            >
-              유저 관리로 이동
+              관리자 대시보드로 이동
             </Button>
           </div>
         </section>
