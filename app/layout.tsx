@@ -10,9 +10,39 @@ import Footer from '@/components/layout/Footer';
 
 const inter = Inter({ subsets: ['latin'] });
 
+const SITE_URL = 'https://routepick.site';
+const DEFAULT_TITLE = 'RoutePick | 드라이브 코스 공유 커뮤니티';
+const DEFAULT_DESCRIPTION =
+  '드라이브 코스를 공유하고 새로운 루트를 발견하는 커뮤니티 서비스 RoutePick';
+
 export const metadata: Metadata = {
-  title: 'RoutePick',
-  description: '커뮤니티 기반 드라이브/루트 추천 서비스',
+  metadataBase: new URL(SITE_URL),
+  title: DEFAULT_TITLE,
+  description: DEFAULT_DESCRIPTION,
+  alternates: {
+    canonical: SITE_URL,
+  },
+  openGraph: {
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
+    url: SITE_URL,
+    siteName: 'RoutePick',
+    images: [
+      {
+        url: `${SITE_URL}/brand-logo.svg`,
+        width: 1200,
+        height: 630,
+        alt: 'RoutePick',
+      },
+    ],
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
+    images: [`${SITE_URL}/brand-logo.svg`],
+  },
   icons: {
     icon: [
       { url: '/favicon.svg', type: 'image/svg+xml' },
