@@ -5,12 +5,26 @@ interface PostDetailContentProps {
   post: PostResponse;
 }
 
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function hasHtmlTag(value: string) {
+  return /<\/?[a-z][\s\S]*>/i.test(value);
+}
+
 export default function PostDetailContent({ post }: PostDetailContentProps) {
   const hasCoordinates: boolean = post.latitude != null && post.longitude != null;
   const hasTags: boolean = Array.isArray(post.tags) && post.tags.length > 0;
-  const htmlContent = post.content?.includes('<')
-    ? post.content
-    : post.content?.replace(/\n/g, '<br />');
+  const rawContent = post.content ?? '';
+  const htmlContent = hasHtmlTag(rawContent)
+    ? rawContent
+    : escapeHtml(rawContent).replace(/\r?\n/g, '<br />');
 
   return (
     <div className="py-8">

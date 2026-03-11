@@ -124,3 +124,16 @@ export async function fetchSavedRecommendations(
   const data = normalizePage<CourseRecommendationSaveResponse>(raw);
   return { ok: true, data };
 }
+
+export async function deleteSavedRecommendation(id: number): Promise<ApiResult<null>> {
+  const res = await bffFetch(`/api/proxy/courses/saved/${id}`, {
+    method: 'DELETE',
+  });
+
+  if (!res.ok) {
+    const message = await readErrorMessage(res, '저장된 추천 코스 삭제에 실패했습니다.');
+    return { ok: false, status: res.status, message };
+  }
+
+  return { ok: true, data: null };
+}
