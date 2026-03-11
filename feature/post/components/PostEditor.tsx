@@ -82,6 +82,19 @@ type ColorOption = {
 
 const COLOR_DEFAULT = 'default';
 
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function hasHtmlTag(value: string) {
+  return /<\/?[a-z][\s\S]*>/i.test(value);
+}
+
 function normalizeUrl(raw: string) {
   const trimmed = raw.trim();
   if (!trimmed) return '';
@@ -244,10 +257,13 @@ export default function PostEditor({
     };
   }, [editor]);
 
-  const previewHtml = value?.trim() ?? '';
-  const formattedHtml = previewHtml.includes('<')
-    ? previewHtml
-    : previewHtml.replace(/\n/g, '<br />');
+  const rawContent = value?.trim() ?? '';
+  const normalizedContent = rawContent
+    .replace(/\r?\n/g, '<br />')
+    .replace(/<\/p>\s*<p>/g, '</p><br /><p>');
+  const formattedHtml = hasHtmlTag(rawContent)
+    ? normalizedContent
+    : escapeHtml(rawContent).replace(/\r?\n/g, '<br />');
   const previewText = formattedHtml.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
   const hasPreview = previewText.length > 0;
   const previewTags = previewMeta?.tags ?? [];
