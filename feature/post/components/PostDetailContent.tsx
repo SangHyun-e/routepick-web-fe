@@ -22,8 +22,11 @@ export default function PostDetailContent({ post }: PostDetailContentProps) {
   const hasCoordinates: boolean = post.latitude != null && post.longitude != null;
   const hasTags: boolean = Array.isArray(post.tags) && post.tags.length > 0;
   const rawContent = post.content ?? '';
+  const normalizedContent = rawContent
+    .replace(/\r?\n/g, '<br />')
+    .replace(/<\/p>\s*<p>/g, '</p><br /><p>');
   const htmlContent = hasHtmlTag(rawContent)
-    ? rawContent
+    ? normalizedContent
     : escapeHtml(rawContent).replace(/\r?\n/g, '<br />');
 
   return (
