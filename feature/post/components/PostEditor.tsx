@@ -139,7 +139,7 @@ export default function PostEditor({
     editorProps: {
       attributes: {
         class:
-          'prose prose-slate max-w-none min-h-[240px] px-4 py-3 focus:outline-none',
+          'prose prose-slate max-w-none min-h-[240px] px-4 py-3 focus:outline-none prose-p:my-0 prose-p:leading-[1.6]',
       },
     },
     onUpdate: ({ editor: current }) => {
@@ -629,7 +629,7 @@ export default function PostEditor({
           <div className="py-8">
             <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
               <div
-                className="prose prose-slate max-w-none"
+                className="prose prose-slate max-w-none prose-p:my-0 prose-p:leading-[1.6]"
                 dangerouslySetInnerHTML={{ __html: formattedHtml }}
               />
               {(hasCoordinates || hasTags) && (
