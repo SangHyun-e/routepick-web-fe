@@ -13,7 +13,7 @@ import { searchPlaces } from '@/feature/place/api';
 import type { KakaoPlaceDocument } from '@/feature/place/types';
 import { toast } from 'sonner';
 
-const THEME_OPTIONS: CourseTheme[] = ['야경', '바다', '산', '카페', '맛집', '와인딩'];
+const THEME_OPTIONS: CourseTheme[] = ['야경', '바다', '산', '카페', '맛집', '와인딩', '해안길'];
 
 export default function DrivePage() {
   const [originInput, setOriginInput] = useState('');
