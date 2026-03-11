@@ -193,6 +193,7 @@ export default function DrivePage() {
       routeSummary: recommendation.routeSummary,
       explanation: recommendation.explanation,
       stops: recommendation.stops,
+      extraStops: 2,
     });
 
     if (result.ok) {
@@ -201,13 +202,13 @@ export default function DrivePage() {
       if (result.status === 401) {
         setCuration(null);
         setCurationRequiresLogin(true);
-        setCurationError('로그인 후 크루저 큐레이션을 이용해주세요.');
+        setCurationError('로그인 후 AI 추천 더보기를 이용해주세요.');
         toast.error('로그인이 필요합니다. 로그인 후 다시 시도해주세요.');
         setCurationLoading(false);
         return;
       }
       setCuration(null);
-      setCurationError(result.message ?? '크루저 큐레이션을 불러오지 못했습니다.');
+      setCurationError(result.message ?? 'AI 추천 더보기를 불러오지 못했습니다.');
     }
 
     setCurationLoading(false);
@@ -373,7 +374,7 @@ export default function DrivePage() {
                   disabled={curationLoading}
                   className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-slate-300 disabled:cursor-not-allowed disabled:text-slate-400"
                 >
-                  {curationLoading ? '크루저 작성 중...' : '크루저 큐레이션'}
+                  {curationLoading ? 'AI 추천 생성 중...' : 'AI 추천 더보기'}
                 </button>
               </div>
             </div>
@@ -425,7 +426,7 @@ export default function DrivePage() {
               <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4">
                 <div className="space-y-1">
                   <p className="text-xs font-semibold tracking-wide text-slate-400 uppercase">
-                    크루저 큐레이션
+                    AI 추천 더보기
                   </p>
                   <h3 className="text-lg font-semibold text-slate-900">{curation.course_title}</h3>
                   <p className="text-sm text-slate-600">{curation.vibe_summary}</p>
@@ -454,6 +455,36 @@ export default function DrivePage() {
                     ))}
                   </ul>
                 </div>
+
+                {curation.extra_stops && curation.extra_stops.length > 0 ? (
+                  <div className="space-y-2 rounded-lg border border-slate-100 bg-slate-50 p-3 text-xs text-slate-600">
+                    <p className="text-xs font-semibold text-slate-500">AI 추가 추천</p>
+                    <div className="grid gap-3 md:grid-cols-3">
+                      {curation.extra_stops.map((stop) => (
+                        <div
+                          key={`${stop.name}-${stop.x}-${stop.y}`}
+                          className="flex h-full flex-col justify-between rounded-lg border border-slate-200 bg-white p-3"
+                        >
+                          <div>
+                            <p className="text-sm font-semibold text-slate-900">{stop.name}</p>
+                            <p className="mt-1 text-[11px] text-slate-500">{stop.category}</p>
+                            <p className="mt-2 text-[11px] text-slate-600">{stop.address}</p>
+                          </div>
+                          <div className="mt-3 flex items-center gap-2">
+                            <a
+                              href={`https://map.kakao.com/link/search/${encodeURIComponent(stop.name)}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex flex-1 items-center justify-center rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-medium text-slate-600 transition hover:border-slate-300"
+                            >
+                              지도 보기
+                            </a>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </section>

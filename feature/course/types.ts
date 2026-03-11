@@ -36,6 +36,10 @@ export interface CourseRecommendationSaveResponse extends CourseRecommendationSa
   createdAt: string;
 }
 
+export interface CourseCurationRequest extends CourseRecommendationSaveRequest {
+  extraStops?: number;
+}
+
 export interface CourseCurationResponse {
   course_title: string;
   vibe_summary: string;
@@ -50,4 +54,5 @@ export interface CourseCurationResponse {
     best_time: string;
   };
   curator_tips: string[];
+  extra_stops?: CourseStop[];
 }
