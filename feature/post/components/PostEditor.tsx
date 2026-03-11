@@ -82,6 +82,19 @@ type ColorOption = {
 
 const COLOR_DEFAULT = 'default';
 
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function hasHtmlTag(value: string) {
+  return /<\/?[a-z][\s\S]*>/i.test(value);
+}
+
 function normalizeUrl(raw: string) {
   const trimmed = raw.trim();
   if (!trimmed) return '';
@@ -126,7 +139,7 @@ export default function PostEditor({
     editorProps: {
       attributes: {
         class:
-          'prose prose-slate max-w-none min-h-[240px] px-4 py-3 focus:outline-none',
+          'post-editor-content prose prose-slate max-w-none min-h-[240px] px-4 py-3 focus:outline-none prose-p:my-0 prose-p:leading-[1.6]',
       },
     },
     onUpdate: ({ editor: current }) => {
@@ -244,10 +257,10 @@ export default function PostEditor({
     };
   }, [editor]);
 
-  const previewHtml = value?.trim() ?? '';
-  const formattedHtml = previewHtml.includes('<')
-    ? previewHtml
-    : previewHtml.replace(/\n/g, '<br />');
+  const rawContent = value?.trim() ?? '';
+  const formattedHtml = hasHtmlTag(rawContent)
+    ? rawContent
+    : escapeHtml(rawContent).replace(/\r?\n/g, '<br />');
   const previewText = formattedHtml.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
   const hasPreview = previewText.length > 0;
   const previewTags = previewMeta?.tags ?? [];
@@ -613,7 +626,7 @@ export default function PostEditor({
           <div className="py-8">
             <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
               <div
-                className="prose prose-slate max-w-none"
+                className="post-editor-content prose prose-slate max-w-none prose-p:my-0 prose-p:leading-[1.6]"
                 dangerouslySetInnerHTML={{ __html: formattedHtml }}
               />
               {(hasCoordinates || hasTags) && (
