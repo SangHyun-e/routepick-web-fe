@@ -30,7 +30,7 @@ export default function PostDetailContent({ post }: PostDetailContentProps) {
     <div className="py-8">
       <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
         <div
-          className="prose prose-slate max-w-none"
+          className="prose prose-slate max-w-none whitespace-pre-wrap break-words prose-p:whitespace-pre-wrap"
           dangerouslySetInnerHTML={{ __html: htmlContent ?? '' }}
         />
 
