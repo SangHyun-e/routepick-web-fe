@@ -22,7 +22,9 @@ export default function PostDetailContent({ post }: PostDetailContentProps) {
   const hasCoordinates: boolean = post.latitude != null && post.longitude != null;
   const hasTags: boolean = Array.isArray(post.tags) && post.tags.length > 0;
   const rawContent = post.content ?? '';
-  const normalizedContent = rawContent.replace(/\r?\n/g, '<br />');
+  const normalizedContent = rawContent
+    .replace(/\r?\n/g, '<br />')
+    .replace(/<\/p>\s*<p>/g, '</p><br /><p>');
   const htmlContent = hasHtmlTag(rawContent)
     ? normalizedContent
     : escapeHtml(rawContent).replace(/\r?\n/g, '<br />');
@@ -31,7 +33,7 @@ export default function PostDetailContent({ post }: PostDetailContentProps) {
     <div className="py-8">
       <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
         <div
-          className="prose prose-slate max-w-none whitespace-pre-wrap break-words prose-p:whitespace-pre-wrap prose-p:my-2 prose-p:leading-6"
+          className="prose prose-slate max-w-none whitespace-pre-wrap break-words prose-p:whitespace-pre-wrap prose-p:my-0 prose-p:leading-6"
           dangerouslySetInnerHTML={{ __html: htmlContent ?? '' }}
         />
 
