@@ -511,9 +511,6 @@ export default function DrivePage() {
                   </button>
                 ))}
               </div>
-              <p className="text-[11px] text-slate-400">
-                분좋카는 분위기 좋은 카페 위주로 추천해요.
-              </p>
             </div>
 
             <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -631,6 +628,28 @@ export default function DrivePage() {
                 </div>
               ))}
             </div>
+
+            {recommendation.relaxation?.relaxed ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                <p className="font-semibold">{recommendation.relaxation.message}</p>
+                {recommendation.relaxation.conditions.length > 0 ? (
+                  <div className="mt-2 space-y-1 text-xs text-amber-900">
+                    {recommendation.relaxation.conditions.map((condition) => (
+                      <p key={`${condition.category}-${condition.value}`}>
+                        {condition.relaxed ? '✖' : '✔'} {condition.category}: {condition.value}
+                        {condition.relaxed ? ' (완화)' : ''}
+                      </p>
+                    ))}
+                    {recommendation.relaxation.searchRadiusRelaxed ? (
+                      <p>
+                        ✖ 검색 반경:{' '}
+                        {recommendation.relaxation.searchRadiusMeters.toLocaleString()}m (확대)
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
 
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm whitespace-pre-line text-slate-600">
               {recommendation.explanation}
