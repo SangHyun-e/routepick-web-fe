@@ -124,15 +124,21 @@ export default function DrivePage() {
     [],
   );
 
-  const chipClass = useCallback(
-    (selected: boolean) =>
-      `rounded-full border px-3 py-1 text-xs font-medium transition ${
-        selected
-          ? 'border-slate-900 bg-slate-900 text-white'
-          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
-      }`,
-    [],
-  );
+  const chipClass = useCallback((selected: boolean) => {
+    const base =
+      'inline-flex h-8 items-center justify-center rounded-full border px-3.5 text-xs font-semibold transition';
+    return selected
+      ? `${base} border-slate-900 bg-slate-900 text-white shadow-sm`
+      : `${base} border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50`;
+  }, []);
+
+  const autoChipClass = useCallback((selected: boolean) => {
+    const base =
+      'inline-flex h-9 items-center justify-center rounded-full border px-4 text-xs font-semibold transition';
+    return selected
+      ? `${base} border-slate-900 bg-slate-900 text-white shadow-sm`
+      : `${base} border-dashed border-slate-300 bg-slate-50 text-slate-700 hover:border-slate-400`;
+  }, []);
 
   const handleOriginSearch = useCallback(async () => {
     const keyword = originInput.trim();
@@ -339,8 +345,8 @@ export default function DrivePage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <main className="mx-auto max-w-4xl space-y-6 px-6 py-10">
-        <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <main className="mx-auto max-w-5xl space-y-8 px-6 py-10">
+        <section className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="space-y-1">
             <h1 className="text-2xl font-semibold text-slate-900">드라이브 코스 추천</h1>
             <p className="text-sm text-slate-500">
@@ -348,8 +354,9 @@ export default function DrivePage() {
             </p>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
+              <p className="text-xs font-semibold text-slate-500">출발지</p>
               <div className="flex gap-2">
                 <input
                   value={originInput}
@@ -359,29 +366,29 @@ export default function DrivePage() {
                   }}
                   onKeyDown={handleOriginKeyDown}
                   placeholder="출발지 (예: 서울 강남역)"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm transition outline-none focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm transition outline-none focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
                 />
                 <button
                   type="button"
                   onClick={handleOriginSearch}
                   disabled={originLoading}
-                  className="inline-flex shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 disabled:cursor-not-allowed disabled:text-slate-400"
+                  className="inline-flex h-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition hover:border-slate-300 disabled:cursor-not-allowed disabled:text-slate-400"
                 >
                   {originLoading ? '검색 중...' : '검색'}
                 </button>
               </div>
               {originSelected ? (
-                <p className="text-xs text-slate-500">선택됨: {originSelected.placeName}</p>
+                <p className="text-[11px] text-slate-500">선택됨: {originSelected.placeName}</p>
               ) : null}
               {originError ? <p className="text-xs text-rose-500">{originError}</p> : null}
               {originResults.length > 0 ? (
-                <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-3 text-sm">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-2 text-sm">
                   {originResults.slice(0, 5).map((place) => (
                     <button
                       key={place.id}
                       type="button"
                       onClick={() => handleOriginSelect(place)}
-                      className="w-full rounded-lg px-2 py-1.5 text-left transition hover:bg-slate-50"
+                      className="w-full rounded-lg px-3 py-2 text-left transition hover:bg-white"
                     >
                       <p className="font-medium text-slate-900">{place.placeName}</p>
                       <p className="text-xs text-slate-500">
@@ -394,6 +401,7 @@ export default function DrivePage() {
             </div>
 
             <div className="space-y-2">
+              <p className="text-xs font-semibold text-slate-500">도착지</p>
               <div className="flex gap-2">
                 <input
                   value={destinationInput}
@@ -403,31 +411,33 @@ export default function DrivePage() {
                   }}
                   onKeyDown={handleDestinationKeyDown}
                   placeholder="도착지 (예: 양평 두물머리)"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm transition outline-none focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm transition outline-none focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
                 />
                 <button
                   type="button"
                   onClick={handleDestinationSearch}
                   disabled={destinationLoading}
-                  className="inline-flex shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 disabled:cursor-not-allowed disabled:text-slate-400"
+                  className="inline-flex h-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition hover:border-slate-300 disabled:cursor-not-allowed disabled:text-slate-400"
                 >
                   {destinationLoading ? '검색 중...' : '검색'}
                 </button>
               </div>
               {destinationSelected ? (
-                <p className="text-xs text-slate-500">선택됨: {destinationSelected.placeName}</p>
+                <p className="text-[11px] text-slate-500">
+                  선택됨: {destinationSelected.placeName}
+                </p>
               ) : null}
               {destinationError ? (
                 <p className="text-xs text-rose-500">{destinationError}</p>
               ) : null}
               {destinationResults.length > 0 ? (
-                <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-3 text-sm">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-2 text-sm">
                   {destinationResults.slice(0, 5).map((place) => (
                     <button
                       key={place.id}
                       type="button"
                       onClick={() => handleDestinationSelect(place)}
-                      className="w-full rounded-lg px-2 py-1.5 text-left transition hover:bg-slate-50"
+                      className="w-full rounded-lg px-3 py-2 text-left transition hover:bg-white"
                     >
                       <p className="font-medium text-slate-900">{place.placeName}</p>
                       <p className="text-xs text-slate-500">
@@ -439,15 +449,27 @@ export default function DrivePage() {
               ) : null}
             </div>
           </div>
+        </section>
 
-          <div className="space-y-4">
+        <section className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">추천 옵션</h2>
+              <p className="text-sm text-slate-500">분위기와 들를 곳, 길 스타일을 조합해보세요.</p>
+            </div>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">
+              {preferenceSummary}
+            </span>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <div className="space-y-2">
               <p className="text-xs font-semibold text-slate-500">서비스 추천</p>
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={handleAutoRecommendToggle}
-                  className={chipClass(autoRecommend)}
+                  className={autoChipClass(autoRecommend)}
                 >
                   전부 맡길게요
                 </button>
@@ -456,97 +478,104 @@ export default function DrivePage() {
                 아무 조건을 고르지 않으면 서비스 추천이 적용됩니다.
               </p>
             </div>
+          </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="space-y-2">
-                <p className="text-xs font-semibold text-slate-500">분위기</p>
-                <div className="flex flex-wrap gap-2">
-                  {MOOD_OPTIONS.map((mood) => (
-                    <button
-                      key={mood}
-                      type="button"
-                      onClick={() => toggleSelection(mood, setSelectedMoods)}
-                      className={chipClass(selectedMoods.includes(mood))}
-                    >
-                      {mood}
-                    </button>
-                  ))}
-                </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-semibold text-slate-500">분위기</p>
+              <div className="flex flex-wrap gap-2">
+                {MOOD_OPTIONS.map((mood) => (
+                  <button
+                    key={mood}
+                    type="button"
+                    onClick={() => toggleSelection(mood, setSelectedMoods)}
+                    className={chipClass(selectedMoods.includes(mood))}
+                  >
+                    {mood}
+                  </button>
+                ))}
               </div>
+            </div>
 
-              <div className="space-y-2">
-                <p className="text-xs font-semibold text-slate-500">들를 곳</p>
-                <div className="flex flex-wrap gap-2">
-                  {STOP_TYPE_OPTIONS.map((stop) => (
-                    <button
-                      key={stop}
-                      type="button"
-                      onClick={() => toggleSelection(stop, setSelectedStopTypes)}
-                      className={chipClass(selectedStopTypes.includes(stop))}
-                    >
-                      {stop}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[11px] text-slate-400">
-                  분좋카는 분위기 좋은 카페 위주로 추천해요.
-                </p>
+            <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-semibold text-slate-500">들를 곳</p>
+              <div className="flex flex-wrap gap-2">
+                {STOP_TYPE_OPTIONS.map((stop) => (
+                  <button
+                    key={stop}
+                    type="button"
+                    onClick={() => toggleSelection(stop, setSelectedStopTypes)}
+                    className={chipClass(selectedStopTypes.includes(stop))}
+                  >
+                    {stop}
+                  </button>
+                ))}
               </div>
+              <p className="text-[11px] text-slate-400">
+                분좋카는 분위기 좋은 카페 위주로 추천해요.
+              </p>
+            </div>
 
-              <div className="space-y-2">
-                <p className="text-xs font-semibold text-slate-500">길 스타일</p>
-                <div className="flex flex-wrap gap-2">
-                  {ROUTE_STYLE_OPTIONS.map((style) => (
-                    <button
-                      key={style}
-                      type="button"
-                      onClick={() => toggleSelection(style, setSelectedRouteStyles)}
-                      className={chipClass(selectedRouteStyles.includes(style))}
-                    >
-                      {style === '무난한' ? '무난한 코스' : style}
-                    </button>
-                  ))}
-                </div>
+            <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-semibold text-slate-500">길 스타일</p>
+              <div className="flex flex-wrap gap-2">
+                {ROUTE_STYLE_OPTIONS.map((style) => (
+                  <button
+                    key={style}
+                    type="button"
+                    onClick={() => toggleSelection(style, setSelectedRouteStyles)}
+                    className={chipClass(selectedRouteStyles.includes(style))}
+                  >
+                    {style === '무난한' ? '무난한 코스' : style}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2">
-            <select
-              value={maxStopsInput}
-              onChange={(event) => setMaxStopsInput(Number(event.target.value) as StopCountOption)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm transition outline-none focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
-            >
-              {STOP_COUNT_OPTIONS.map((count) => (
-                <option key={count} value={count}>
-                  {count === 2
-                    ? '정차 2곳 (짧게)'
-                    : count === 3
-                      ? '정차 3곳 (기본)'
-                      : '정차 4곳 (길게)'}
-                </option>
-              ))}
-            </select>
+          <div className="flex flex-col gap-3 md:flex-row md:items-end">
+            <div className="flex-1 space-y-2">
+              <p className="text-xs font-semibold text-slate-500">정차 수</p>
+              <select
+                value={maxStopsInput}
+                onChange={(event) =>
+                  setMaxStopsInput(Number(event.target.value) as StopCountOption)
+                }
+                className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm transition outline-none focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
+              >
+                {STOP_COUNT_OPTIONS.map((count) => (
+                  <option key={count} value={count}>
+                    {count === 2
+                      ? '정차 2곳 (짧게)'
+                      : count === 3
+                        ? '정차 3곳 (기본)'
+                        : '정차 4곳 (길게)'}
+                  </option>
+                ))}
+              </select>
+            </div>
             <button
               type="button"
               onClick={handleRecommend}
               disabled={recommendLoading}
-              className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+              className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-900 px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
             >
               {recommendLoading ? '추천 중...' : '코스 추천'}
             </button>
           </div>
 
-          <p className="text-xs text-slate-500">정차 수가 많을수록 코스 길이가 길어집니다.</p>
+          <p className="text-[11px] text-slate-400">정차 수가 많을수록 코스 길이가 길어집니다.</p>
           {recommendError ? <p className="text-sm text-rose-500">{recommendError}</p> : null}
         </section>
 
         {recommendation ? (
-          <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="text-sm font-semibold text-slate-700">추천 경로</p>
-                <p className="text-sm text-slate-500">{recommendation.routeSummary}</p>
+          <section className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-slate-500">추천 경로</p>
+                <p className="text-base font-semibold text-slate-900">
+                  {recommendation.routeSummary}
+                </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <a
@@ -555,7 +584,7 @@ export default function DrivePage() {
                   )}&eName=${encodeURIComponent(destinationInput.trim())}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-slate-300"
+                  className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:border-slate-300"
                 >
                   지도 링크
                 </a>
@@ -563,7 +592,7 @@ export default function DrivePage() {
                   type="button"
                   onClick={handleSaveRecommendation}
                   disabled={recommendSaving}
-                  className="inline-flex items-center justify-center rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+                  className="inline-flex h-9 items-center justify-center rounded-lg bg-slate-900 px-3 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
                 >
                   {recommendSaving ? '저장 중...' : '코스로 저장'}
                 </button>
@@ -571,30 +600,30 @@ export default function DrivePage() {
                   type="button"
                   onClick={handleCuration}
                   disabled={curationLoading}
-                  className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-slate-300 disabled:cursor-not-allowed disabled:text-slate-400"
+                  className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:border-slate-300 disabled:cursor-not-allowed disabled:text-slate-400"
                 >
                   {curationLoading ? 'AI 추천 생성 중...' : 'AI 추천 더보기'}
                 </button>
               </div>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-3">
               {recommendation.stops.map((stop) => (
                 <div
                   key={`${stop.name}-${stop.x}-${stop.y}`}
-                  className="flex h-full flex-col justify-between rounded-xl border border-slate-200 bg-slate-50 p-4"
+                  className="flex h-full flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
                 >
-                  <div>
+                  <div className="space-y-2">
                     <p className="text-sm font-semibold text-slate-900">{stop.name}</p>
-                    <p className="mt-1 text-xs text-slate-500">{stop.category}</p>
-                    <p className="mt-2 text-xs text-slate-600">{stop.address}</p>
+                    <p className="text-xs text-slate-500">{stop.category}</p>
+                    <p className="text-xs text-slate-600">{stop.address}</p>
                   </div>
-                  <div className="mt-4 flex items-center gap-2">
+                  <div className="mt-4">
                     <a
                       href={`https://map.kakao.com/link/search/${encodeURIComponent(stop.name)}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex flex-1 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-slate-300"
+                      className="inline-flex h-8 w-full items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 transition hover:border-slate-300"
                     >
                       지도 보기
                     </a>
@@ -603,7 +632,7 @@ export default function DrivePage() {
               ))}
             </div>
 
-            <div className="rounded-lg bg-slate-50 p-3 text-sm whitespace-pre-line text-slate-600">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm whitespace-pre-line text-slate-600">
               {recommendation.explanation}
             </div>
 
@@ -622,7 +651,7 @@ export default function DrivePage() {
             ) : null}
 
             {curation ? (
-              <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4">
+              <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="space-y-1">
                   <p className="text-xs font-semibold tracking-wide text-slate-400 uppercase">
                     AI 추천 더보기
@@ -664,17 +693,17 @@ export default function DrivePage() {
                           key={`${stop.name}-${stop.x}-${stop.y}`}
                           className="flex h-full flex-col justify-between rounded-lg border border-slate-200 bg-white p-3"
                         >
-                          <div>
+                          <div className="space-y-2">
                             <p className="text-sm font-semibold text-slate-900">{stop.name}</p>
-                            <p className="mt-1 text-[11px] text-slate-500">{stop.category}</p>
-                            <p className="mt-2 text-[11px] text-slate-600">{stop.address}</p>
+                            <p className="text-[11px] text-slate-500">{stop.category}</p>
+                            <p className="text-[11px] text-slate-600">{stop.address}</p>
                           </div>
-                          <div className="mt-3 flex items-center gap-2">
+                          <div className="mt-3">
                             <a
                               href={`https://map.kakao.com/link/search/${encodeURIComponent(stop.name)}`}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex flex-1 items-center justify-center rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-medium text-slate-600 transition hover:border-slate-300"
+                              className="inline-flex h-8 w-full items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-700 transition hover:border-slate-300"
                             >
                               지도 보기
                             </a>
