@@ -14,6 +14,8 @@ import type { KakaoPlaceDocument } from '@/feature/place/types';
 import { toast } from 'sonner';
 
 const THEME_OPTIONS: CourseTheme[] = ['야경', '바다', '산', '카페', '맛집', '와인딩', '해안길'];
+const STOP_OPTIONS = [2, 3, 4] as const;
+type StopOption = (typeof STOP_OPTIONS)[number];
 
 export default function DrivePage() {
   const [originInput, setOriginInput] = useState('');
@@ -31,6 +33,7 @@ export default function DrivePage() {
   const [recommendLoading, setRecommendLoading] = useState(false);
   const [recommendError, setRecommendError] = useState<string | null>(null);
   const [recommendSaving, setRecommendSaving] = useState(false);
+  const [maxStopsInput, setMaxStopsInput] = useState<StopOption>(3);
   const [curation, setCuration] = useState<CourseCurationResponse | null>(null);
   const [curationLoading, setCurationLoading] = useState(false);
   const [curationError, setCurationError] = useState<string | null>(null);
@@ -107,7 +110,7 @@ export default function DrivePage() {
       origin,
       destination,
       theme: themeInput,
-      maxStops: 3,
+      maxStops: maxStopsInput,
       maxDetourKm: 10,
     });
 
@@ -123,7 +126,7 @@ export default function DrivePage() {
     }
 
     setRecommendLoading(false);
-  }, [destinationInput, originInput, themeInput]);
+  }, [destinationInput, maxStopsInput, originInput, themeInput]);
 
   const handleOriginKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
@@ -317,7 +320,7 @@ export default function DrivePage() {
             </div>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-3">
             <select
               value={themeInput}
               onChange={(event) => setThemeInput(event.target.value as CourseTheme)}
@@ -326,6 +329,17 @@ export default function DrivePage() {
               {THEME_OPTIONS.map((theme) => (
                 <option key={theme} value={theme}>
                   {theme}
+                </option>
+              ))}
+            </select>
+            <select
+              value={maxStopsInput}
+              onChange={(event) => setMaxStopsInput(Number(event.target.value) as StopOption)}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm transition outline-none focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
+            >
+              {STOP_OPTIONS.map((count) => (
+                <option key={count} value={count}>
+                  정차 {count}곳
                 </option>
               ))}
             </select>
