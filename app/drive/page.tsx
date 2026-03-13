@@ -1,26 +1,41 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useState, type KeyboardEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type Dispatch,
+  type KeyboardEvent,
+  type SetStateAction,
+} from 'react';
 
 import { curateCourse, recommendCourse, saveRecommendation } from '@/feature/course/api';
 import type {
   CourseCurationResponse,
   CourseRecommendationResponse,
-  CourseTheme,
+  DriveMood,
+  DriveRouteStyle,
+  DriveStopType,
 } from '@/feature/course/types';
 import { searchPlaces } from '@/feature/place/api';
 import type { KakaoPlaceDocument } from '@/feature/place/types';
 import { toast } from 'sonner';
 
-const THEME_OPTIONS: CourseTheme[] = ['야경', '바다', '산', '카페', '맛집', '와인딩', '해안길'];
-const STOP_OPTIONS = [2, 3, 4] as const;
-type StopOption = (typeof STOP_OPTIONS)[number];
+const MOOD_OPTIONS: DriveMood[] = ['야경', '감성', '힐링', '한적한'];
+const STOP_TYPE_OPTIONS: DriveStopType[] = ['분좋카', '맛집', '전망대', '산책'];
+const ROUTE_STYLE_OPTIONS: DriveRouteStyle[] = ['해안길', '산길', '와인딩', '무난한'];
+const STOP_COUNT_OPTIONS = [2, 3, 4] as const;
+type StopCountOption = (typeof STOP_COUNT_OPTIONS)[number];
 
 export default function DrivePage() {
   const [originInput, setOriginInput] = useState('');
   const [destinationInput, setDestinationInput] = useState('');
-  const [themeInput, setThemeInput] = useState<CourseTheme>('야경');
+  const [selectedMoods, setSelectedMoods] = useState<DriveMood[]>([]);
+  const [selectedStopTypes, setSelectedStopTypes] = useState<DriveStopType[]>([]);
+  const [selectedRouteStyles, setSelectedRouteStyles] = useState<DriveRouteStyle[]>([]);
+  const [autoRecommend, setAutoRecommend] = useState(true);
   const [originResults, setOriginResults] = useState<KakaoPlaceDocument[]>([]);
   const [originLoading, setOriginLoading] = useState(false);
   const [originError, setOriginError] = useState<string | null>(null);
@@ -33,11 +48,91 @@ export default function DrivePage() {
   const [recommendLoading, setRecommendLoading] = useState(false);
   const [recommendError, setRecommendError] = useState<string | null>(null);
   const [recommendSaving, setRecommendSaving] = useState(false);
-  const [maxStopsInput, setMaxStopsInput] = useState<StopOption>(3);
+  const [maxStopsInput, setMaxStopsInput] = useState<StopCountOption>(3);
   const [curation, setCuration] = useState<CourseCurationResponse | null>(null);
   const [curationLoading, setCurationLoading] = useState(false);
   const [curationError, setCurationError] = useState<string | null>(null);
   const [curationRequiresLogin, setCurationRequiresLogin] = useState(false);
+
+  const preferenceSummary = useMemo(() => {
+    if (autoRecommend) {
+      return '서비스 추천';
+    }
+
+    const parts: string[] = [];
+    if (selectedMoods.length > 0) {
+      parts.push(`분위기: ${selectedMoods.join(', ')}`);
+    }
+    if (selectedStopTypes.length > 0) {
+      parts.push(`들를 곳: ${selectedStopTypes.join(', ')}`);
+    }
+    if (selectedRouteStyles.length > 0) {
+      parts.push(`길 스타일: ${selectedRouteStyles.join(', ')}`);
+    }
+
+    return parts.length === 0 ? '서비스 추천' : parts.join(' | ');
+  }, [autoRecommend, selectedMoods, selectedRouteStyles, selectedStopTypes]);
+
+  const saveThemeLabel = useMemo(() => {
+    if (autoRecommend) {
+      return '서비스 추천';
+    }
+
+    const labels = [
+      ...selectedMoods,
+      ...selectedStopTypes,
+      ...selectedRouteStyles.map((style) => (style === '무난한' ? '무난한' : style)),
+    ];
+
+    if (labels.length === 0) {
+      return '서비스 추천';
+    }
+
+    const summary = labels.join('/');
+    return summary.length > 20 ? summary.slice(0, 20) : summary;
+  }, [autoRecommend, selectedMoods, selectedRouteStyles, selectedStopTypes]);
+
+  useEffect(() => {
+    if (
+      selectedMoods.length === 0 &&
+      selectedStopTypes.length === 0 &&
+      selectedRouteStyles.length === 0
+    ) {
+      setAutoRecommend(true);
+    }
+  }, [selectedMoods, selectedRouteStyles, selectedStopTypes]);
+
+  const handleAutoRecommendToggle = useCallback(() => {
+    setAutoRecommend((prev) => {
+      const next = !prev;
+      if (next) {
+        setSelectedMoods([]);
+        setSelectedStopTypes([]);
+        setSelectedRouteStyles([]);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleSelection = useCallback(
+    <T extends string>(value: T, setter: Dispatch<SetStateAction<T[]>>) => {
+      setAutoRecommend(false);
+      setter((prev) =>
+        prev.includes(value) ? prev.filter((item) => item !== value) : [...prev, value],
+      );
+    },
+    [],
+  );
+
+  const chipClass = useCallback(
+    (selected: boolean) =>
+      `rounded-full border px-3 py-1 text-xs font-medium transition ${
+        selected
+          ? 'border-slate-900 bg-slate-900 text-white'
+          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+      }`,
+    [],
+  );
 
   const handleOriginSearch = useCallback(async () => {
     const keyword = originInput.trim();
@@ -109,7 +204,10 @@ export default function DrivePage() {
     const result = await recommendCourse({
       origin,
       destination,
-      theme: themeInput,
+      moods: selectedMoods,
+      stopTypes: selectedStopTypes,
+      routeStyles: selectedRouteStyles,
+      autoRecommend,
       maxStops: maxStopsInput,
       maxDetourKm: 10,
     });
@@ -126,7 +224,15 @@ export default function DrivePage() {
     }
 
     setRecommendLoading(false);
-  }, [destinationInput, maxStopsInput, originInput, themeInput]);
+  }, [
+    autoRecommend,
+    destinationInput,
+    maxStopsInput,
+    originInput,
+    selectedMoods,
+    selectedRouteStyles,
+    selectedStopTypes,
+  ]);
 
   const handleOriginKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
@@ -159,7 +265,7 @@ export default function DrivePage() {
     const result = await saveRecommendation({
       origin: originInput.trim(),
       destination: destinationInput.trim(),
-      theme: themeInput,
+      theme: saveThemeLabel,
       routeSummary: recommendation.routeSummary,
       explanation: recommendation.explanation,
       stops: recommendation.stops,
@@ -176,7 +282,7 @@ export default function DrivePage() {
     }
 
     toast.success('추천 코스를 저장했습니다.');
-  }, [destinationInput, originInput, recommendation, recommendSaving, themeInput]);
+  }, [destinationInput, originInput, recommendation, recommendSaving, saveThemeLabel]);
 
   const handleCuration = useCallback(async () => {
     if (!recommendation) {
@@ -192,7 +298,11 @@ export default function DrivePage() {
     const result = await curateCourse({
       origin: originInput.trim(),
       destination: destinationInput.trim(),
-      theme: themeInput,
+      preferenceSummary,
+      moods: selectedMoods,
+      stopTypes: selectedStopTypes,
+      routeStyles: selectedRouteStyles,
+      autoRecommend,
       routeSummary: recommendation.routeSummary,
       explanation: recommendation.explanation,
       stops: recommendation.stops,
@@ -215,7 +325,17 @@ export default function DrivePage() {
     }
 
     setCurationLoading(false);
-  }, [curationLoading, destinationInput, originInput, recommendation, themeInput]);
+  }, [
+    autoRecommend,
+    curationLoading,
+    destinationInput,
+    originInput,
+    preferenceSummary,
+    recommendation,
+    selectedMoods,
+    selectedRouteStyles,
+    selectedStopTypes,
+  ]);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -224,7 +344,7 @@ export default function DrivePage() {
           <div className="space-y-1">
             <h1 className="text-2xl font-semibold text-slate-900">드라이브 코스 추천</h1>
             <p className="text-sm text-slate-500">
-              출발지와 도착지를 입력하면 테마에 맞는 코스를 제안해요.
+              출발지와 도착지를 입력하면 조건에 맞는 코스를 제안해요.
             </p>
           </div>
 
@@ -320,24 +440,84 @@ export default function DrivePage() {
             </div>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-3">
-            <select
-              value={themeInput}
-              onChange={(event) => setThemeInput(event.target.value as CourseTheme)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm transition outline-none focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
-            >
-              {THEME_OPTIONS.map((theme) => (
-                <option key={theme} value={theme}>
-                  {theme}
-                </option>
-              ))}
-            </select>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-slate-500">서비스 추천</p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={handleAutoRecommendToggle}
+                  className={chipClass(autoRecommend)}
+                >
+                  전부 맡길게요
+                </button>
+              </div>
+              <p className="text-[11px] text-slate-500">
+                아무 조건을 고르지 않으면 서비스 추천이 적용됩니다.
+              </p>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-slate-500">분위기</p>
+                <div className="flex flex-wrap gap-2">
+                  {MOOD_OPTIONS.map((mood) => (
+                    <button
+                      key={mood}
+                      type="button"
+                      onClick={() => toggleSelection(mood, setSelectedMoods)}
+                      className={chipClass(selectedMoods.includes(mood))}
+                    >
+                      {mood}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-slate-500">들를 곳</p>
+                <div className="flex flex-wrap gap-2">
+                  {STOP_TYPE_OPTIONS.map((stop) => (
+                    <button
+                      key={stop}
+                      type="button"
+                      onClick={() => toggleSelection(stop, setSelectedStopTypes)}
+                      className={chipClass(selectedStopTypes.includes(stop))}
+                    >
+                      {stop}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  분좋카는 분위기 좋은 카페 위주로 추천해요.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-slate-500">길 스타일</p>
+                <div className="flex flex-wrap gap-2">
+                  {ROUTE_STYLE_OPTIONS.map((style) => (
+                    <button
+                      key={style}
+                      type="button"
+                      onClick={() => toggleSelection(style, setSelectedRouteStyles)}
+                      className={chipClass(selectedRouteStyles.includes(style))}
+                    >
+                      {style === '무난한' ? '무난한 코스' : style}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
             <select
               value={maxStopsInput}
-              onChange={(event) => setMaxStopsInput(Number(event.target.value) as StopOption)}
+              onChange={(event) => setMaxStopsInput(Number(event.target.value) as StopCountOption)}
               className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm transition outline-none focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
             >
-              {STOP_OPTIONS.map((count) => (
+              {STOP_COUNT_OPTIONS.map((count) => (
                 <option key={count} value={count}>
                   {count === 2
                     ? '정차 2곳 (짧게)'
