@@ -28,6 +28,38 @@ const STOP_TYPE_OPTIONS: DriveStopType[] = ['분좋카', '맛집', '전망대', 
 const ROUTE_STYLE_OPTIONS: DriveRouteStyle[] = ['해안길', '산길', '와인딩', '무난한'];
 const STOP_COUNT_OPTIONS = [2, 3, 4] as const;
 type StopCountOption = (typeof STOP_COUNT_OPTIONS)[number];
+const CURATION_DAILY_LIMIT = 5;
+const CURATION_USAGE_KEY = 'routepick:curation-usage';
+
+type CurationUsage = { date: string; count: number };
+
+const getTodayKey = () => new Date().toLocaleDateString('en-CA');
+
+const readCurationUsage = (): CurationUsage => {
+  const today = getTodayKey();
+  if (typeof window === 'undefined') {
+    return { date: today, count: 0 };
+  }
+
+  const raw = window.localStorage.getItem(CURATION_USAGE_KEY);
+  if (!raw) {
+    return { date: today, count: 0 };
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<CurationUsage>;
+    if (parsed.date !== today) {
+      return { date: today, count: 0 };
+    }
+    const count = Number(parsed.count ?? 0);
+    return {
+      date: today,
+      count: Math.min(CURATION_DAILY_LIMIT, Math.max(0, Number.isFinite(count) ? count : 0)),
+    };
+  } catch {
+    return { date: today, count: 0 };
+  }
+};
 
 export default function DrivePage() {
   const [originInput, setOriginInput] = useState('');
@@ -53,6 +85,21 @@ export default function DrivePage() {
   const [curationLoading, setCurationLoading] = useState(false);
   const [curationError, setCurationError] = useState<string | null>(null);
   const [curationRequiresLogin, setCurationRequiresLogin] = useState(false);
+  const [curationUsage, setCurationUsage] = useState<CurationUsage>({ date: '', count: 0 });
+
+  const curationLimitMessage = useMemo(
+    () => `AI 추천 더보기는 하루 ${CURATION_DAILY_LIMIT}번까지 사용 가능합니다.`,
+    [],
+  );
+
+  const updateCurationUsage = useCallback((count: number) => {
+    const normalized = Math.min(CURATION_DAILY_LIMIT, Math.max(0, count));
+    const next = { date: getTodayKey(), count: normalized };
+    setCurationUsage(next);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(CURATION_USAGE_KEY, JSON.stringify(next));
+    }
+  }, []);
 
   const preferenceSummary = useMemo(() => {
     if (autoRecommend) {
@@ -101,6 +148,10 @@ export default function DrivePage() {
       setAutoRecommend(true);
     }
   }, [selectedMoods, selectedRouteStyles, selectedStopTypes]);
+
+  useEffect(() => {
+    setCurationUsage(readCurationUsage());
+  }, []);
 
   const handleAutoRecommendToggle = useCallback(() => {
     setAutoRecommend((prev) => {
@@ -297,6 +348,15 @@ export default function DrivePage() {
     }
     if (curationLoading) return;
 
+    const latestUsage = readCurationUsage();
+    setCurationUsage(latestUsage);
+    if (latestUsage.count >= CURATION_DAILY_LIMIT) {
+      const message = `${curationLimitMessage} 내일 다시 이용해주세요.`;
+      setCurationError(message);
+      toast.error(message);
+      return;
+    }
+
     setCurationLoading(true);
     setCurationError(null);
     setCurationRequiresLogin(false);
@@ -317,12 +377,22 @@ export default function DrivePage() {
 
     if (result.ok) {
       setCuration(result.data);
+      updateCurationUsage(latestUsage.count + 1);
     } else {
       if (result.status === 401) {
         setCuration(null);
         setCurationRequiresLogin(true);
         setCurationError('로그인 후 AI 추천 더보기를 이용해주세요.');
         toast.error('로그인이 필요합니다. 로그인 후 다시 시도해주세요.');
+        setCurationLoading(false);
+        return;
+      }
+      if (result.status === 429) {
+        const message = `${curationLimitMessage} 내일 다시 이용해주세요.`;
+        updateCurationUsage(CURATION_DAILY_LIMIT);
+        setCuration(null);
+        setCurationError(message);
+        toast.error(message);
         setCurationLoading(false);
         return;
       }
@@ -341,6 +411,8 @@ export default function DrivePage() {
     selectedMoods,
     selectedRouteStyles,
     selectedStopTypes,
+    curationLimitMessage,
+    updateCurationUsage,
   ]);
 
   return (
@@ -601,7 +673,11 @@ export default function DrivePage() {
                 >
                   {curationLoading ? 'AI 추천 생성 중...' : 'AI 추천 더보기'}
                 </button>
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] text-slate-600">
+                  오늘 {curationUsage.count}/{CURATION_DAILY_LIMIT}
+                </span>
               </div>
+              <p className="text-[11px] text-slate-500">{curationLimitMessage}</p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-3">
