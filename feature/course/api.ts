@@ -1,6 +1,7 @@
 import { bffFetch } from '@/lib/bffFetch';
 import type { ApiResult } from '@/types/http';
 import type {
+  CourseCurationRequest,
   CourseCurationResponse,
   CourseRecommendationRequest,
   CourseRecommendationResponse,
@@ -66,7 +67,7 @@ export async function saveRecommendation(
 }
 
 export async function curateCourse(
-  payload: CourseRecommendationSaveRequest,
+  payload: CourseCurationRequest,
 ): Promise<ApiResult<CourseCurationResponse>> {
   const res = await bffFetch('/api/proxy/courses/curation', {
     method: 'POST',
@@ -75,7 +76,7 @@ export async function curateCourse(
   });
 
   if (!res.ok) {
-    const message = await readErrorMessage(res, '크루저 큐레이션에 실패했습니다.');
+    const message = await readErrorMessage(res, 'AI 추천 더보기에 실패했습니다.');
     return { ok: false, status: res.status, message };
   }
 

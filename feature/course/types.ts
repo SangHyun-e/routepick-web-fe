@@ -1,10 +1,15 @@
-export type CourseTheme = '야경' | '바다' | '산' | '카페' | '맛집' | '와인딩' | '해안길';
+export type DriveMood = '야경' | '감성' | '힐링' | '한적한';
+export type DriveStopType = '분좋카' | '맛집' | '전망대' | '산책';
+export type DriveRouteStyle = '해안길' | '산길' | '와인딩' | '무난한';
 
 export interface CourseRecommendationRequest {
   origin: string;
   destination: string;
-  theme: CourseTheme;
-  maxStops?: number;
+  moods?: DriveMood[];
+  stopTypes?: DriveStopType[];
+  routeStyles?: DriveRouteStyle[];
+  autoRecommend?: boolean;
+  maxStops?: 2 | 3 | 4;
   maxDetourKm?: number;
 }
 
@@ -20,12 +25,27 @@ export interface CourseRecommendationResponse {
   stops: CourseStop[];
   routeSummary: string;
   explanation: string;
+  relaxation: CourseRecommendationRelaxation;
+}
+
+export interface CourseRecommendationConditionStatus {
+  category: string;
+  value: string;
+  relaxed: boolean;
+}
+
+export interface CourseRecommendationRelaxation {
+  relaxed: boolean;
+  message: string;
+  conditions: CourseRecommendationConditionStatus[];
+  searchRadiusMeters: number;
+  searchRadiusRelaxed: boolean;
 }
 
 export interface CourseRecommendationSaveRequest {
   origin: string;
   destination: string;
-  theme: CourseTheme;
+  theme: string;
   routeSummary: string;
   explanation: string;
   stops: CourseStop[];
@@ -34,6 +54,20 @@ export interface CourseRecommendationSaveRequest {
 export interface CourseRecommendationSaveResponse extends CourseRecommendationSaveRequest {
   id: number;
   createdAt: string;
+}
+
+export interface CourseCurationRequest {
+  origin: string;
+  destination: string;
+  preferenceSummary?: string;
+  moods?: DriveMood[];
+  stopTypes?: DriveStopType[];
+  routeStyles?: DriveRouteStyle[];
+  autoRecommend?: boolean;
+  routeSummary: string;
+  explanation: string;
+  stops: CourseStop[];
+  extraStops?: number;
 }
 
 export interface CourseCurationResponse {
@@ -50,4 +84,5 @@ export interface CourseCurationResponse {
     best_time: string;
   };
   curator_tips: string[];
+  extra_stops?: CourseStop[];
 }

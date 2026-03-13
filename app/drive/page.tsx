@@ -1,24 +1,73 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useState, type KeyboardEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type Dispatch,
+  type KeyboardEvent,
+  type SetStateAction,
+} from 'react';
 
 import { curateCourse, recommendCourse, saveRecommendation } from '@/feature/course/api';
 import type {
   CourseCurationResponse,
   CourseRecommendationResponse,
-  CourseTheme,
+  DriveMood,
+  DriveRouteStyle,
+  DriveStopType,
 } from '@/feature/course/types';
 import { searchPlaces } from '@/feature/place/api';
 import type { KakaoPlaceDocument } from '@/feature/place/types';
 import { toast } from 'sonner';
 
-const THEME_OPTIONS: CourseTheme[] = ['야경', '바다', '산', '카페', '맛집', '와인딩', '해안길'];
+const MOOD_OPTIONS: DriveMood[] = ['야경', '감성', '힐링', '한적한'];
+const STOP_TYPE_OPTIONS: DriveStopType[] = ['분좋카', '맛집', '전망대', '산책'];
+const ROUTE_STYLE_OPTIONS: DriveRouteStyle[] = ['해안길', '산길', '와인딩', '무난한'];
+const STOP_COUNT_OPTIONS = [2, 3, 4] as const;
+type StopCountOption = (typeof STOP_COUNT_OPTIONS)[number];
+const CURATION_DAILY_LIMIT = 5;
+const CURATION_USAGE_KEY = 'routepick:curation-usage';
+
+type CurationUsage = { date: string; count: number };
+
+const getTodayKey = () => new Date().toLocaleDateString('en-CA');
+
+const readCurationUsage = (): CurationUsage => {
+  const today = getTodayKey();
+  if (typeof window === 'undefined') {
+    return { date: today, count: 0 };
+  }
+
+  const raw = window.localStorage.getItem(CURATION_USAGE_KEY);
+  if (!raw) {
+    return { date: today, count: 0 };
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<CurationUsage>;
+    if (parsed.date !== today) {
+      return { date: today, count: 0 };
+    }
+    const count = Number(parsed.count ?? 0);
+    return {
+      date: today,
+      count: Math.min(CURATION_DAILY_LIMIT, Math.max(0, Number.isFinite(count) ? count : 0)),
+    };
+  } catch {
+    return { date: today, count: 0 };
+  }
+};
 
 export default function DrivePage() {
   const [originInput, setOriginInput] = useState('');
   const [destinationInput, setDestinationInput] = useState('');
-  const [themeInput, setThemeInput] = useState<CourseTheme>('야경');
+  const [selectedMoods, setSelectedMoods] = useState<DriveMood[]>([]);
+  const [selectedStopTypes, setSelectedStopTypes] = useState<DriveStopType[]>([]);
+  const [selectedRouteStyles, setSelectedRouteStyles] = useState<DriveRouteStyle[]>([]);
+  const [autoRecommend, setAutoRecommend] = useState(true);
   const [originResults, setOriginResults] = useState<KakaoPlaceDocument[]>([]);
   const [originLoading, setOriginLoading] = useState(false);
   const [originError, setOriginError] = useState<string | null>(null);
@@ -31,10 +80,116 @@ export default function DrivePage() {
   const [recommendLoading, setRecommendLoading] = useState(false);
   const [recommendError, setRecommendError] = useState<string | null>(null);
   const [recommendSaving, setRecommendSaving] = useState(false);
+  const [maxStopsInput, setMaxStopsInput] = useState<StopCountOption>(3);
   const [curation, setCuration] = useState<CourseCurationResponse | null>(null);
   const [curationLoading, setCurationLoading] = useState(false);
   const [curationError, setCurationError] = useState<string | null>(null);
   const [curationRequiresLogin, setCurationRequiresLogin] = useState(false);
+  const [curationUsage, setCurationUsage] = useState<CurationUsage>({ date: '', count: 0 });
+
+  const curationLimitMessage = useMemo(
+    () => `AI 추천 더보기는 하루 ${CURATION_DAILY_LIMIT}번까지 사용 가능합니다.`,
+    [],
+  );
+
+  const updateCurationUsage = useCallback((count: number) => {
+    const normalized = Math.min(CURATION_DAILY_LIMIT, Math.max(0, count));
+    const next = { date: getTodayKey(), count: normalized };
+    setCurationUsage(next);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(CURATION_USAGE_KEY, JSON.stringify(next));
+    }
+  }, []);
+
+  const preferenceSummary = useMemo(() => {
+    if (autoRecommend) {
+      return '서비스 추천';
+    }
+
+    const parts: string[] = [];
+    if (selectedMoods.length > 0) {
+      parts.push(`분위기: ${selectedMoods.join(', ')}`);
+    }
+    if (selectedStopTypes.length > 0) {
+      parts.push(`들를 곳: ${selectedStopTypes.join(', ')}`);
+    }
+    if (selectedRouteStyles.length > 0) {
+      parts.push(`길 스타일: ${selectedRouteStyles.join(', ')}`);
+    }
+
+    return parts.length === 0 ? '서비스 추천' : parts.join(' | ');
+  }, [autoRecommend, selectedMoods, selectedRouteStyles, selectedStopTypes]);
+
+  const saveThemeLabel = useMemo(() => {
+    if (autoRecommend) {
+      return '서비스 추천';
+    }
+
+    const labels = [
+      ...selectedMoods,
+      ...selectedStopTypes,
+      ...selectedRouteStyles.map((style) => (style === '무난한' ? '무난한' : style)),
+    ];
+
+    if (labels.length === 0) {
+      return '서비스 추천';
+    }
+
+    const summary = labels.join('/');
+    return summary.length > 20 ? summary.slice(0, 20) : summary;
+  }, [autoRecommend, selectedMoods, selectedRouteStyles, selectedStopTypes]);
+
+  useEffect(() => {
+    if (
+      selectedMoods.length === 0 &&
+      selectedStopTypes.length === 0 &&
+      selectedRouteStyles.length === 0
+    ) {
+      setAutoRecommend(true);
+    }
+  }, [selectedMoods, selectedRouteStyles, selectedStopTypes]);
+
+  useEffect(() => {
+    setCurationUsage(readCurationUsage());
+  }, []);
+
+  const handleAutoRecommendToggle = useCallback(() => {
+    setAutoRecommend((prev) => {
+      const next = !prev;
+      if (next) {
+        setSelectedMoods([]);
+        setSelectedStopTypes([]);
+        setSelectedRouteStyles([]);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleSelection = useCallback(
+    <T extends string>(value: T, setter: Dispatch<SetStateAction<T[]>>) => {
+      setAutoRecommend(false);
+      setter((prev) =>
+        prev.includes(value) ? prev.filter((item) => item !== value) : [...prev, value],
+      );
+    },
+    [],
+  );
+
+  const chipClass = useCallback((selected: boolean) => {
+    const base =
+      'inline-flex h-8 items-center justify-center rounded-full border px-3.5 text-xs font-semibold transition';
+    return selected
+      ? `${base} border-slate-900 bg-slate-900 text-white shadow-sm`
+      : `${base} border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50`;
+  }, []);
+
+  const autoChipClass = useCallback((selected: boolean) => {
+    const base =
+      'inline-flex h-9 items-center justify-center rounded-full border px-4 text-xs font-semibold transition';
+    return selected
+      ? `${base} border-slate-900 bg-slate-900 text-white shadow-sm`
+      : `${base} border-dashed border-slate-300 bg-slate-50 text-slate-700 hover:border-slate-400`;
+  }, []);
 
   const handleOriginSearch = useCallback(async () => {
     const keyword = originInput.trim();
@@ -106,8 +261,11 @@ export default function DrivePage() {
     const result = await recommendCourse({
       origin,
       destination,
-      theme: themeInput,
-      maxStops: 3,
+      moods: selectedMoods,
+      stopTypes: selectedStopTypes,
+      routeStyles: selectedRouteStyles,
+      autoRecommend,
+      maxStops: maxStopsInput,
       maxDetourKm: 10,
     });
 
@@ -123,7 +281,15 @@ export default function DrivePage() {
     }
 
     setRecommendLoading(false);
-  }, [destinationInput, originInput, themeInput]);
+  }, [
+    autoRecommend,
+    destinationInput,
+    maxStopsInput,
+    originInput,
+    selectedMoods,
+    selectedRouteStyles,
+    selectedStopTypes,
+  ]);
 
   const handleOriginKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
@@ -156,7 +322,7 @@ export default function DrivePage() {
     const result = await saveRecommendation({
       origin: originInput.trim(),
       destination: destinationInput.trim(),
-      theme: themeInput,
+      theme: saveThemeLabel,
       routeSummary: recommendation.routeSummary,
       explanation: recommendation.explanation,
       stops: recommendation.stops,
@@ -173,7 +339,7 @@ export default function DrivePage() {
     }
 
     toast.success('추천 코스를 저장했습니다.');
-  }, [destinationInput, originInput, recommendation, recommendSaving, themeInput]);
+  }, [destinationInput, originInput, recommendation, recommendSaving, saveThemeLabel]);
 
   const handleCuration = useCallback(async () => {
     if (!recommendation) {
@@ -182,6 +348,15 @@ export default function DrivePage() {
     }
     if (curationLoading) return;
 
+    const latestUsage = readCurationUsage();
+    setCurationUsage(latestUsage);
+    if (latestUsage.count >= CURATION_DAILY_LIMIT) {
+      const message = `${curationLimitMessage} 내일 다시 이용해주세요.`;
+      setCurationError(message);
+      toast.error(message);
+      return;
+    }
+
     setCurationLoading(true);
     setCurationError(null);
     setCurationRequiresLogin(false);
@@ -189,43 +364,71 @@ export default function DrivePage() {
     const result = await curateCourse({
       origin: originInput.trim(),
       destination: destinationInput.trim(),
-      theme: themeInput,
+      preferenceSummary,
+      moods: selectedMoods,
+      stopTypes: selectedStopTypes,
+      routeStyles: selectedRouteStyles,
+      autoRecommend,
       routeSummary: recommendation.routeSummary,
       explanation: recommendation.explanation,
       stops: recommendation.stops,
+      extraStops: 2,
     });
 
     if (result.ok) {
       setCuration(result.data);
+      updateCurationUsage(latestUsage.count + 1);
     } else {
       if (result.status === 401) {
         setCuration(null);
         setCurationRequiresLogin(true);
-        setCurationError('로그인 후 크루저 큐레이션을 이용해주세요.');
+        setCurationError('로그인 후 AI 추천 더보기를 이용해주세요.');
         toast.error('로그인이 필요합니다. 로그인 후 다시 시도해주세요.');
         setCurationLoading(false);
         return;
       }
+      if (result.status === 429) {
+        const message = `${curationLimitMessage} 내일 다시 이용해주세요.`;
+        updateCurationUsage(CURATION_DAILY_LIMIT);
+        setCuration(null);
+        setCurationError(message);
+        toast.error(message);
+        setCurationLoading(false);
+        return;
+      }
       setCuration(null);
-      setCurationError(result.message ?? '크루저 큐레이션을 불러오지 못했습니다.');
+      setCurationError(result.message ?? 'AI 추천 더보기를 불러오지 못했습니다.');
     }
 
     setCurationLoading(false);
-  }, [curationLoading, destinationInput, originInput, recommendation, themeInput]);
+  }, [
+    autoRecommend,
+    curationLoading,
+    destinationInput,
+    originInput,
+    preferenceSummary,
+    recommendation,
+    selectedMoods,
+    selectedRouteStyles,
+    selectedStopTypes,
+    curationLimitMessage,
+    updateCurationUsage,
+  ]);
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <main className="mx-auto max-w-4xl space-y-6 px-6 py-10">
-        <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <main className="mx-auto max-w-5xl space-y-8 px-6 py-10">
+        <section className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="space-y-1">
             <h1 className="text-2xl font-semibold text-slate-900">드라이브 코스 추천</h1>
             <p className="text-sm text-slate-500">
-              출발지와 도착지를 입력하면 테마에 맞는 코스를 제안해요.
+              출발지와 도착지를 입력하면 조건에 맞는 코스를 제안해요.
             </p>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
+              <p className="text-xs font-semibold text-slate-500">출발지</p>
               <div className="flex gap-2">
                 <input
                   value={originInput}
@@ -235,29 +438,29 @@ export default function DrivePage() {
                   }}
                   onKeyDown={handleOriginKeyDown}
                   placeholder="출발지 (예: 서울 강남역)"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm transition outline-none focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm transition outline-none focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
                 />
                 <button
                   type="button"
                   onClick={handleOriginSearch}
                   disabled={originLoading}
-                  className="inline-flex shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 disabled:cursor-not-allowed disabled:text-slate-400"
+                  className="inline-flex h-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition hover:border-slate-300 disabled:cursor-not-allowed disabled:text-slate-400"
                 >
                   {originLoading ? '검색 중...' : '검색'}
                 </button>
               </div>
               {originSelected ? (
-                <p className="text-xs text-slate-500">선택됨: {originSelected.placeName}</p>
+                <p className="text-[11px] text-slate-500">선택됨: {originSelected.placeName}</p>
               ) : null}
               {originError ? <p className="text-xs text-rose-500">{originError}</p> : null}
               {originResults.length > 0 ? (
-                <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-3 text-sm">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-2 text-sm">
                   {originResults.slice(0, 5).map((place) => (
                     <button
                       key={place.id}
                       type="button"
                       onClick={() => handleOriginSelect(place)}
-                      className="w-full rounded-lg px-2 py-1.5 text-left transition hover:bg-slate-50"
+                      className="w-full rounded-lg px-3 py-2 text-left transition hover:bg-white"
                     >
                       <p className="font-medium text-slate-900">{place.placeName}</p>
                       <p className="text-xs text-slate-500">
@@ -270,6 +473,7 @@ export default function DrivePage() {
             </div>
 
             <div className="space-y-2">
+              <p className="text-xs font-semibold text-slate-500">도착지</p>
               <div className="flex gap-2">
                 <input
                   value={destinationInput}
@@ -279,31 +483,33 @@ export default function DrivePage() {
                   }}
                   onKeyDown={handleDestinationKeyDown}
                   placeholder="도착지 (예: 양평 두물머리)"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm transition outline-none focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm transition outline-none focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
                 />
                 <button
                   type="button"
                   onClick={handleDestinationSearch}
                   disabled={destinationLoading}
-                  className="inline-flex shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 disabled:cursor-not-allowed disabled:text-slate-400"
+                  className="inline-flex h-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition hover:border-slate-300 disabled:cursor-not-allowed disabled:text-slate-400"
                 >
                   {destinationLoading ? '검색 중...' : '검색'}
                 </button>
               </div>
               {destinationSelected ? (
-                <p className="text-xs text-slate-500">선택됨: {destinationSelected.placeName}</p>
+                <p className="text-[11px] text-slate-500">
+                  선택됨: {destinationSelected.placeName}
+                </p>
               ) : null}
               {destinationError ? (
                 <p className="text-xs text-rose-500">{destinationError}</p>
               ) : null}
               {destinationResults.length > 0 ? (
-                <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-3 text-sm">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-2 text-sm">
                   {destinationResults.slice(0, 5).map((place) => (
                     <button
                       key={place.id}
                       type="button"
                       onClick={() => handleDestinationSelect(place)}
-                      className="w-full rounded-lg px-2 py-1.5 text-left transition hover:bg-slate-50"
+                      className="w-full rounded-lg px-3 py-2 text-left transition hover:bg-white"
                     >
                       <p className="font-medium text-slate-900">{place.placeName}</p>
                       <p className="text-xs text-slate-500">
@@ -315,38 +521,130 @@ export default function DrivePage() {
               ) : null}
             </div>
           </div>
+        </section>
 
-          <div className="grid gap-3 md:grid-cols-2">
-            <select
-              value={themeInput}
-              onChange={(event) => setThemeInput(event.target.value as CourseTheme)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm transition outline-none focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
-            >
-              {THEME_OPTIONS.map((theme) => (
-                <option key={theme} value={theme}>
-                  {theme}
-                </option>
-              ))}
-            </select>
+        <section className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">추천 옵션</h2>
+              <p className="text-sm text-slate-500">분위기와 들를 곳, 길 스타일을 조합해보세요.</p>
+            </div>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">
+              {preferenceSummary}
+            </span>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-slate-500">서비스 추천</p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={handleAutoRecommendToggle}
+                  className={autoChipClass(autoRecommend)}
+                >
+                  전부 맡길게요
+                </button>
+              </div>
+              <p className="text-[11px] text-slate-500">
+                아무 조건을 고르지 않으면 서비스 추천이 적용됩니다.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-semibold text-slate-500">분위기</p>
+              <div className="flex flex-wrap gap-2">
+                {MOOD_OPTIONS.map((mood) => (
+                  <button
+                    key={mood}
+                    type="button"
+                    onClick={() => toggleSelection(mood, setSelectedMoods)}
+                    className={chipClass(selectedMoods.includes(mood))}
+                  >
+                    {mood}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-semibold text-slate-500">들를 곳</p>
+              <div className="flex flex-wrap gap-2">
+                {STOP_TYPE_OPTIONS.map((stop) => (
+                  <button
+                    key={stop}
+                    type="button"
+                    onClick={() => toggleSelection(stop, setSelectedStopTypes)}
+                    className={chipClass(selectedStopTypes.includes(stop))}
+                  >
+                    {stop}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-semibold text-slate-500">길 스타일</p>
+              <div className="flex flex-wrap gap-2">
+                {ROUTE_STYLE_OPTIONS.map((style) => (
+                  <button
+                    key={style}
+                    type="button"
+                    onClick={() => toggleSelection(style, setSelectedRouteStyles)}
+                    className={chipClass(selectedRouteStyles.includes(style))}
+                  >
+                    {style === '무난한' ? '무난한 코스' : style}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3 md:flex-row md:items-end">
+            <div className="flex-1 space-y-2">
+              <p className="text-xs font-semibold text-slate-500">정차 수</p>
+              <select
+                value={maxStopsInput}
+                onChange={(event) =>
+                  setMaxStopsInput(Number(event.target.value) as StopCountOption)
+                }
+                className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm transition outline-none focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
+              >
+                {STOP_COUNT_OPTIONS.map((count) => (
+                  <option key={count} value={count}>
+                    {count === 2
+                      ? '정차 2곳 (짧게)'
+                      : count === 3
+                        ? '정차 3곳 (기본)'
+                        : '정차 4곳 (길게)'}
+                  </option>
+                ))}
+              </select>
+            </div>
             <button
               type="button"
               onClick={handleRecommend}
               disabled={recommendLoading}
-              className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+              className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-900 px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
             >
               {recommendLoading ? '추천 중...' : '코스 추천'}
             </button>
           </div>
 
+          <p className="text-[11px] text-slate-400">정차 수가 많을수록 코스 길이가 길어집니다.</p>
           {recommendError ? <p className="text-sm text-rose-500">{recommendError}</p> : null}
         </section>
 
         {recommendation ? (
-          <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="text-sm font-semibold text-slate-700">추천 경로</p>
-                <p className="text-sm text-slate-500">{recommendation.routeSummary}</p>
+          <section className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-slate-500">추천 경로</p>
+                <p className="text-base font-semibold text-slate-900">
+                  {recommendation.routeSummary}
+                </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <a
@@ -355,7 +653,7 @@ export default function DrivePage() {
                   )}&eName=${encodeURIComponent(destinationInput.trim())}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-slate-300"
+                  className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:border-slate-300"
                 >
                   지도 링크
                 </a>
@@ -363,7 +661,7 @@ export default function DrivePage() {
                   type="button"
                   onClick={handleSaveRecommendation}
                   disabled={recommendSaving}
-                  className="inline-flex items-center justify-center rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+                  className="inline-flex h-9 items-center justify-center rounded-lg bg-slate-900 px-3 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
                 >
                   {recommendSaving ? '저장 중...' : '코스로 저장'}
                 </button>
@@ -371,30 +669,34 @@ export default function DrivePage() {
                   type="button"
                   onClick={handleCuration}
                   disabled={curationLoading}
-                  className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-slate-300 disabled:cursor-not-allowed disabled:text-slate-400"
+                  className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:border-slate-300 disabled:cursor-not-allowed disabled:text-slate-400"
                 >
-                  {curationLoading ? '크루저 작성 중...' : '크루저 큐레이션'}
+                  {curationLoading ? 'AI 추천 생성 중...' : 'AI 추천 더보기'}
                 </button>
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] text-slate-600">
+                  오늘 {curationUsage.count}/{CURATION_DAILY_LIMIT}
+                </span>
               </div>
+              <p className="text-[11px] text-slate-500">{curationLimitMessage}</p>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-3">
               {recommendation.stops.map((stop) => (
                 <div
                   key={`${stop.name}-${stop.x}-${stop.y}`}
-                  className="flex h-full flex-col justify-between rounded-xl border border-slate-200 bg-slate-50 p-4"
+                  className="flex h-full flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
                 >
-                  <div>
+                  <div className="space-y-2">
                     <p className="text-sm font-semibold text-slate-900">{stop.name}</p>
-                    <p className="mt-1 text-xs text-slate-500">{stop.category}</p>
-                    <p className="mt-2 text-xs text-slate-600">{stop.address}</p>
+                    <p className="text-xs text-slate-500">{stop.category}</p>
+                    <p className="text-xs text-slate-600">{stop.address}</p>
                   </div>
-                  <div className="mt-4 flex items-center gap-2">
+                  <div className="mt-4">
                     <a
                       href={`https://map.kakao.com/link/search/${encodeURIComponent(stop.name)}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex flex-1 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-slate-300"
+                      className="inline-flex h-8 w-full items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 transition hover:border-slate-300"
                     >
                       지도 보기
                     </a>
@@ -403,7 +705,29 @@ export default function DrivePage() {
               ))}
             </div>
 
-            <div className="rounded-lg bg-slate-50 p-3 text-sm whitespace-pre-line text-slate-600">
+            {recommendation.relaxation?.relaxed ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                <p className="font-semibold">{recommendation.relaxation.message}</p>
+                {recommendation.relaxation.conditions.length > 0 ? (
+                  <div className="mt-2 space-y-1 text-xs text-amber-900">
+                    {recommendation.relaxation.conditions.map((condition) => (
+                      <p key={`${condition.category}-${condition.value}`}>
+                        {condition.relaxed ? '✖' : '✔'} {condition.category}: {condition.value}
+                        {condition.relaxed ? ' (완화)' : ''}
+                      </p>
+                    ))}
+                    {recommendation.relaxation.searchRadiusRelaxed ? (
+                      <p>
+                        ✖ 검색 반경:{' '}
+                        {recommendation.relaxation.searchRadiusMeters.toLocaleString()}m (확대)
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm whitespace-pre-line text-slate-600">
               {recommendation.explanation}
             </div>
 
@@ -422,10 +746,10 @@ export default function DrivePage() {
             ) : null}
 
             {curation ? (
-              <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4">
+              <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="space-y-1">
                   <p className="text-xs font-semibold tracking-wide text-slate-400 uppercase">
-                    크루저 큐레이션
+                    AI 추천 더보기
                   </p>
                   <h3 className="text-lg font-semibold text-slate-900">{curation.course_title}</h3>
                   <p className="text-sm text-slate-600">{curation.vibe_summary}</p>
@@ -454,6 +778,36 @@ export default function DrivePage() {
                     ))}
                   </ul>
                 </div>
+
+                {curation.extra_stops && curation.extra_stops.length > 0 ? (
+                  <div className="space-y-2 rounded-lg border border-slate-100 bg-slate-50 p-3 text-xs text-slate-600">
+                    <p className="text-xs font-semibold text-slate-500">AI 추가 추천</p>
+                    <div className="grid gap-3 md:grid-cols-3">
+                      {curation.extra_stops.map((stop) => (
+                        <div
+                          key={`${stop.name}-${stop.x}-${stop.y}`}
+                          className="flex h-full flex-col justify-between rounded-lg border border-slate-200 bg-white p-3"
+                        >
+                          <div className="space-y-2">
+                            <p className="text-sm font-semibold text-slate-900">{stop.name}</p>
+                            <p className="text-[11px] text-slate-500">{stop.category}</p>
+                            <p className="text-[11px] text-slate-600">{stop.address}</p>
+                          </div>
+                          <div className="mt-3">
+                            <a
+                              href={`https://map.kakao.com/link/search/${encodeURIComponent(stop.name)}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex h-8 w-full items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-700 transition hover:border-slate-300"
+                            >
+                              지도 보기
+                            </a>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </section>
