@@ -4,7 +4,7 @@ export interface CourseRecommendationRequest {
   origin: string;
   destination: string;
   theme: CourseTheme;
-  maxStops?: number;
+  maxStops?: 2 | 3 | 4;
   maxDetourKm?: number;
 }
 
