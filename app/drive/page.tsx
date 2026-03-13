@@ -339,7 +339,11 @@ export default function DrivePage() {
             >
               {STOP_OPTIONS.map((count) => (
                 <option key={count} value={count}>
-                  정차 {count}곳
+                  {count === 2
+                    ? '정차 2곳 (짧게)'
+                    : count === 3
+                      ? '정차 3곳 (기본)'
+                      : '정차 4곳 (길게)'}
                 </option>
               ))}
             </select>
@@ -353,6 +357,7 @@ export default function DrivePage() {
             </button>
           </div>
 
+          <p className="text-xs text-slate-500">정차 수가 많을수록 코스 길이가 길어집니다.</p>
           {recommendError ? <p className="text-sm text-rose-500">{recommendError}</p> : null}
         </section>
 
