@@ -25,6 +25,21 @@ export interface CourseRecommendationResponse {
   stops: CourseStop[];
   routeSummary: string;
   explanation: string;
+  relaxation: CourseRecommendationRelaxation;
+}
+
+export interface CourseRecommendationConditionStatus {
+  category: string;
+  value: string;
+  relaxed: boolean;
+}
+
+export interface CourseRecommendationRelaxation {
+  relaxed: boolean;
+  message: string;
+  conditions: CourseRecommendationConditionStatus[];
+  searchRadiusMeters: number;
+  searchRadiusRelaxed: boolean;
 }
 
 export interface CourseRecommendationSaveRequest {
