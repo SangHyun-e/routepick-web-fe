@@ -1,9 +1,14 @@
-export type CourseTheme = '야경' | '바다' | '산' | '카페' | '맛집' | '와인딩' | '해안길';
+export type DriveMood = '야경' | '감성' | '힐링' | '한적한';
+export type DriveStopType = '분좋카' | '맛집' | '전망대' | '산책';
+export type DriveRouteStyle = '해안길' | '산길' | '와인딩' | '무난한';
 
 export interface CourseRecommendationRequest {
   origin: string;
   destination: string;
-  theme: CourseTheme;
+  moods?: DriveMood[];
+  stopTypes?: DriveStopType[];
+  routeStyles?: DriveRouteStyle[];
+  autoRecommend?: boolean;
   maxStops?: 2 | 3 | 4;
   maxDetourKm?: number;
 }
@@ -25,7 +30,7 @@ export interface CourseRecommendationResponse {
 export interface CourseRecommendationSaveRequest {
   origin: string;
   destination: string;
-  theme: CourseTheme;
+  theme: string;
   routeSummary: string;
   explanation: string;
   stops: CourseStop[];
@@ -36,7 +41,17 @@ export interface CourseRecommendationSaveResponse extends CourseRecommendationSa
   createdAt: string;
 }
 
-export interface CourseCurationRequest extends CourseRecommendationSaveRequest {
+export interface CourseCurationRequest {
+  origin: string;
+  destination: string;
+  preferenceSummary?: string;
+  moods?: DriveMood[];
+  stopTypes?: DriveStopType[];
+  routeStyles?: DriveRouteStyle[];
+  autoRecommend?: boolean;
+  routeSummary: string;
+  explanation: string;
+  stops: CourseStop[];
   extraStops?: number;
 }
 
