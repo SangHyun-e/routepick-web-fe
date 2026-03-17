@@ -73,3 +73,9 @@ export type CourseExplainResponse = {
   reason: string;
   remainingCount: number;
 };
+
+export type NearbyParkingItem = {
+  name: string;
+  address: string;
+  distanceMeters: number;
+};
