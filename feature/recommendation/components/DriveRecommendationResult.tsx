@@ -157,7 +157,7 @@ export default function DriveRecommendationResult() {
   if (error) {
     return (
       <section className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-red-500 shadow-sm">
-        코스를 불러오지 못했습니다
+        {error}
       </section>
     );
   }

@@ -44,7 +44,7 @@ function useDriveRecommendationsState(): DriveRecommendationState {
     if (!result.ok) {
       setCourses([]);
       setRecommendedStops([]);
-      setError('코스를 불러오지 못했습니다');
+      setError(result.message);
       setLoading(false);
       return;
     }

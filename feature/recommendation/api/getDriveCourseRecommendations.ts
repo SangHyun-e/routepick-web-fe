@@ -4,9 +4,10 @@ import type { RecommendationQueryParams, RecommendationResponse } from '../types
 
 type ApiErrorBody = { message?: string };
 
-const DEFAULT_ERROR_MESSAGE = '코스를 불러오지 못했습니다';
+const SERVER_ERROR_MESSAGE = '코스를 불러오지 못했습니다.';
+const CLIENT_ERROR_MESSAGE = '추천 요청을 처리하지 못했습니다.';
 
-async function readErrorMessage(res: Response): Promise<string> {
+async function readErrorMessage(res: Response, fallback: string): Promise<string> {
   try {
     const body = (await res.clone().json()) as ApiErrorBody | null;
     if (body?.message) {
@@ -16,7 +17,7 @@ async function readErrorMessage(res: Response): Promise<string> {
     // ignore
   }
 
-  return DEFAULT_ERROR_MESSAGE;
+  return fallback;
 }
 
 export async function getDriveCourseRecommendations(
@@ -50,7 +51,10 @@ export async function getDriveCourseRecommendations(
   );
 
   if (!res.ok) {
-    const message = await readErrorMessage(res);
+    if (res.status >= 500) {
+      return { ok: false, status: res.status, message: SERVER_ERROR_MESSAGE };
+    }
+    const message = await readErrorMessage(res, CLIENT_ERROR_MESSAGE);
     return { ok: false, status: res.status, message };
   }
 

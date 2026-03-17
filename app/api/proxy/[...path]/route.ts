@@ -106,6 +106,7 @@ async function refreshOnce(): Promise<{
 async function handle(method: string, req: NextRequest, params: { path?: string[] }) {
   const pathOnly = joinPath(params.path ?? []);
   let pathWithSearch = withSearch(pathOnly, req);
+  const skipAuth = pathOnly === '/api/recommendations/drive-courses';
 
   // ✅ 조회수 중복 방지 플래그
   let shouldSetViewCookie = false;
@@ -152,7 +153,7 @@ async function handle(method: string, req: NextRequest, params: { path?: string[
   };
 
   // 1차 호출
-  let res = await be(pathWithSearch, init);
+  let res = await be(pathWithSearch, { ...init, skipAuth });
 
   // 로그인 성공 처리
   if (pathOnly === '/auth/login' && res.ok) {
@@ -172,14 +173,14 @@ async function handle(method: string, req: NextRequest, params: { path?: string[
   }
 
   // 401 → refresh 1회
-  if (res.status === 401) {
+  if (res.status === 401 && !skipAuth) {
     const r = await refreshOnce();
     if (!r.ok) return makeProxyResponse(res);
 
     const h2 = new Headers(init.headers || {});
     if (r.access) h2.set('Authorization', `Bearer ${r.access}`);
 
-    res = await be(pathWithSearch, { ...init, headers: h2 });
+    res = await be(pathWithSearch, { ...init, headers: h2, skipAuth });
 
     const final = new NextResponse(await readBodySafely(res), {
       status: res.status,
