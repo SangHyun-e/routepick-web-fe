@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 import DriveCourseList from './DriveCourseList';
 import DriveRecommendationMap from './DriveRecommendationMap';
@@ -9,6 +10,7 @@ import { fetchMe } from '@/feature/user/api';
 import { useDriveRecommendations } from '../hooks/useDriveRecommendations';
 import type { RecommendedStop } from '../types/recommendation';
 import {
+  buildStopKey,
   formatDistance,
   formatDuration,
   formatThemeLabel,
@@ -16,14 +18,26 @@ import {
 } from '../utils/driveRecommendationFormat';
 
 export default function DriveRecommendationResult() {
-  const { courses, recommendedStops, loading, error, lastQuery, fetchRecommendations } =
-    useDriveRecommendations();
+  const {
+    courses,
+    recommendedStops,
+    loading,
+    error,
+    lastQuery,
+    fetchRecommendations,
+    setDestinationSelection,
+  } = useDriveRecommendations();
   const [selectedCourseIndex, setSelectedCourseIndex] = useState(0);
   const [selectedStopName, setSelectedStopName] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [remainingCount, setRemainingCount] = useState<number | null>(null);
+  const [destinationNotice, setDestinationNotice] = useState<string | null>(null);
+  const [destinationSettingKey, setDestinationSettingKey] = useState<string | null>(null);
+  const resultTopRef = useRef<HTMLDivElement | null>(null);
+  const noticeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isEmpty = courses.length === 0;
+  const isRefreshing = loading && courses.length > 0;
 
   useEffect(() => {
     if (courses.length === 0) {
@@ -32,8 +46,15 @@ export default function DriveRecommendationResult() {
       return;
     }
     setSelectedCourseIndex(0);
-    setSelectedStopName(null);
   }, [courses]);
+
+  useEffect(() => {
+    return () => {
+      if (noticeTimeoutRef.current) {
+        clearTimeout(noticeTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -136,17 +157,39 @@ export default function DriveRecommendationResult() {
         return;
       }
 
-      await fetchRecommendations({
+      const stopKey = buildStopKey(stop);
+      setSelectedStopName(stop.name);
+      setDestinationSettingKey(stopKey);
+
+      const success = await fetchRecommendations({
         ...lastQuery,
         destinationLat: stop.lat,
         destinationLng: stop.lng,
       });
-      setSelectedStopName(stop.name);
+
+      if (!success) {
+        setDestinationSettingKey(null);
+        return;
+      }
+
+      const message = `${stop.name}을 도착지로 설정하고 새 코스를 추천했어요.`;
+      setDestinationSelection({ name: stop.name, lat: stop.lat, lng: stop.lng });
+      setDestinationNotice(message);
+      toast.success(message);
+      setDestinationSettingKey(null);
+      resultTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      if (noticeTimeoutRef.current) {
+        clearTimeout(noticeTimeoutRef.current);
+      }
+      noticeTimeoutRef.current = setTimeout(() => {
+        setDestinationNotice(null);
+      }, 4000);
     },
-    [fetchRecommendations, lastQuery],
+    [fetchRecommendations, lastQuery, setDestinationSelection],
   );
 
-  if (loading) {
+  if (loading && courses.length === 0) {
     return (
       <section className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
         추천 코스를 불러오는 중입니다...
@@ -163,7 +206,17 @@ export default function DriveRecommendationResult() {
   }
 
   return (
-    <section className="space-y-6 sm:space-y-8">
+    <section ref={resultTopRef} className="space-y-6 sm:space-y-8">
+      {destinationNotice ? (
+        <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+          {destinationNotice}
+        </div>
+      ) : null}
+      {isRefreshing ? (
+        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
+          도착지를 반영해 새 코스를 추천하는 중입니다...
+        </div>
+      ) : null}
       {!isEmpty && (
         <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -235,7 +288,8 @@ export default function DriveRecommendationResult() {
           selectedStops={selectedStops}
           selectedStopName={selectedStopName}
           variant={isEmpty ? 'empty' : 'default'}
-          loading={loading}
+          loading={isRefreshing}
+          destinationSettingKey={destinationSettingKey}
           onSelectStop={handleSelectStop}
           onUseStopAsDestination={lastQuery ? handleUseStopAsDestination : undefined}
         />

@@ -11,7 +11,14 @@ import {
 } from '@/feature/recommendation/hooks/useDriveRecommendations';
 
 function DriveRecommendationContent() {
-  const { courses, lastQuery, fetchRecommendations, loading, error } = useDriveRecommendations();
+  const {
+    courses,
+    lastQuery,
+    fetchRecommendations,
+    loading,
+    error,
+    setDestinationSelection,
+  } = useDriveRecommendations();
 
   const hasDestination = useMemo(() => {
     if (!lastQuery) {
@@ -41,12 +48,15 @@ function DriveRecommendationContent() {
     if (!lastQuery) {
       return;
     }
-    await fetchRecommendations({
+    const success = await fetchRecommendations({
       ...lastQuery,
       destinationLat: undefined,
       destinationLng: undefined,
     });
-  }, [fetchRecommendations, lastQuery]);
+    if (success) {
+      setDestinationSelection(null);
+    }
+  }, [fetchRecommendations, lastQuery, setDestinationSelection]);
 
   const handleRefresh = useCallback(async () => {
     if (!lastQuery) {

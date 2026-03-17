@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import PlaceSearchInput from './PlaceSearchInput';
 import RecommendationOptions from './RecommendationOptions';
@@ -16,7 +16,8 @@ const parseNumber = (value: string): number | undefined => {
 };
 
 export default function RecommendationSearchForm() {
-  const { fetchRecommendations, loading } = useDriveRecommendations();
+  const { fetchRecommendations, loading, destinationSelection, setDestinationSelection } =
+    useDriveRecommendations();
   const [originQuery, setOriginQuery] = useState('');
   const [selectedOrigin, setSelectedOrigin] = useState<Place | null>(null);
   const [destinationQuery, setDestinationQuery] = useState('');
@@ -29,6 +30,35 @@ export default function RecommendationSearchForm() {
 
   const parsedDuration = useMemo(() => parseNumber(durationMinutes), [durationMinutes]);
   const parsedMaxStops = useMemo(() => parseNumber(maxStops), [maxStops]);
+
+  useEffect(() => {
+    if (!destinationSelection) {
+      if (selectedDestination && destinationQuery === selectedDestination.name) {
+        setSelectedDestination(null);
+        setDestinationQuery('');
+      }
+      return;
+    }
+
+    if (
+      selectedDestination &&
+      selectedDestination.name === destinationSelection.name &&
+      selectedDestination.lat === destinationSelection.lat &&
+      selectedDestination.lng === destinationSelection.lng
+    ) {
+      return;
+    }
+
+    const nextDestination: Place = {
+      id: 'recommendation-destination',
+      name: destinationSelection.name,
+      address: '추천 경유지',
+      lat: destinationSelection.lat,
+      lng: destinationSelection.lng,
+    };
+    setSelectedDestination(nextDestination);
+    setDestinationQuery(destinationSelection.name);
+  }, [destinationSelection, destinationQuery, selectedDestination]);
 
   const handleOriginQueryChange = useCallback(
     (value: string) => {
@@ -47,9 +77,18 @@ export default function RecommendationSearchForm() {
       setFormError(null);
       if (selectedDestination && value !== selectedDestination.name) {
         setSelectedDestination(null);
+        setDestinationSelection(null);
       }
     },
-    [selectedDestination],
+    [selectedDestination, setDestinationSelection],
+  );
+
+  const handleSelectDestination = useCallback(
+    (place: Place) => {
+      setSelectedDestination(place);
+      setDestinationSelection({ name: place.name, lat: place.lat, lng: place.lng });
+    },
+    [setDestinationSelection],
   );
 
   const handleUseCurrentLocation = useCallback(() => {
@@ -158,9 +197,14 @@ export default function RecommendationSearchForm() {
             query={destinationQuery}
             selectedPlace={selectedDestination}
             onQueryChange={handleDestinationQueryChange}
-            onSelectPlace={setSelectedDestination}
+            onSelectPlace={handleSelectDestination}
             selectedLabel="선택된 도착지"
           />
+          {destinationSelection ? (
+            <p className="text-xs text-slate-500">
+              현재 도착지: {destinationSelection.name}
+            </p>
+          ) : null}
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
