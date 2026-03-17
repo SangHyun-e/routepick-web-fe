@@ -205,10 +205,14 @@ export default function DriveCourseCard({
               ? '오늘 AI 설명은 모두 사용했어요'
               : explainLoading
                   ? '설명 불러오는 중...'
-                  : `자세히 설명 보기 (남은 ${remainingLabel}회)`}
+                  : 'AI 코스 해설 보기'}
           </Button>
         )}
       </div>
+
+      {isLoggedIn && !limitExceeded && !explainLoading ? (
+        <p className="mt-1 text-xs text-slate-400">오늘 {remainingLabel}회 더 볼 수 있어요</p>
+      ) : null}
 
       {(explainLoading || explainError || explainResult) && (
         <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
