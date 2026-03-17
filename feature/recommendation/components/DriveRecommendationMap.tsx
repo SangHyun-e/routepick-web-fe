@@ -153,6 +153,14 @@ export default function DriveRecommendationMap({
     return points;
   }, [origin, destination, originLabel, destinationLabel, recommendedStops, selectedStops, selectedStopName]);
 
+  const selectedPosition = useMemo(() => {
+    if (!selectedStopName) {
+      return null;
+    }
+    const selectedPoint = markerPoints.find((point) => point.label === selectedStopName);
+    return selectedPoint?.position ?? null;
+  }, [markerPoints, selectedStopName]);
+
   useEffect(() => {
     if (!KAKAO_MAP_APP_KEY) {
       setMapStatus('error');
@@ -280,6 +288,16 @@ export default function DriveRecommendationMap({
     }
   }, [mapStatus, markerPoints]);
 
+  useEffect(() => {
+    if (!selectedPosition || mapStatus !== 'ready' || !mapRef.current || !window.kakao?.maps) {
+      return;
+    }
+
+    const map = mapRef.current;
+    const center = new window.kakao.maps.LatLng(selectedPosition.lat, selectedPosition.lng);
+    map.panTo(center);
+  }, [mapStatus, selectedPosition]);
+
   const hasCoordinates = markerPoints.length > 0;
   const statusMessage = mapStatus === 'error'
     ? '지도를 불러오지 못했어요. 잠시 후 다시 시도해주세요.'
@@ -289,7 +307,11 @@ export default function DriveRecommendationMap({
 
   const highlightMessage = selectedStopName
     ? `선택 스팟: ${selectedStopName}`
-    : `선택 코스 경유지 ${selectedStops.length}곳 강조`;
+    : selectedStops.length > 0
+        ? `선택 코스 경유지 ${selectedStops.length}곳 강조`
+        : recommendedStops.length > 0
+            ? '추천 스팟을 확인해 보세요'
+            : '표시할 장소가 없어요';
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
