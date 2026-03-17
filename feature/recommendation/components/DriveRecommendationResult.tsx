@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import DriveCourseList from './DriveCourseList';
-import DriveRecommendationEmpty from './DriveRecommendationEmpty';
 import DriveRecommendationMap from './DriveRecommendationMap';
 import RecommendedStopsPanel from './RecommendedStopsPanel';
 import { useDriveRecommendations } from '../hooks/useDriveRecommendations';
+import type { RecommendedStop } from '../types/recommendation';
 import {
   formatDistance,
   formatDuration,
@@ -15,15 +15,12 @@ import {
 } from '../utils/driveRecommendationFormat';
 
 export default function DriveRecommendationResult() {
-  const {
-    courses,
-    recommendedStops,
-    loading,
-    error,
-    lastQuery,
-  } = useDriveRecommendations();
+  const { courses, recommendedStops, loading, error, lastQuery, fetchRecommendations } =
+    useDriveRecommendations();
   const [selectedCourseIndex, setSelectedCourseIndex] = useState(0);
   const [selectedStopName, setSelectedStopName] = useState<string | null>(null);
+
+  const isEmpty = courses.length === 0;
 
   useEffect(() => {
     if (courses.length === 0) {
@@ -35,18 +32,27 @@ export default function DriveRecommendationResult() {
     setSelectedStopName(null);
   }, [courses]);
 
-  const selectedCourse = courses[selectedCourseIndex] ?? courses[0];
-  const selectedStops = selectedCourse?.stops ?? [];
+  const selectedCourse = useMemo(() => {
+    if (courses.length === 0) {
+      return null;
+    }
+    return courses[selectedCourseIndex] ?? courses[0] ?? null;
+  }, [courses, selectedCourseIndex]);
 
-  const selectedSummary = selectedCourse
-    ? {
-        themeLabel: formatThemeLabel(selectedCourse.theme),
-        distance: formatDistance(selectedCourse.totalDistanceKm),
-        duration: formatDuration(selectedCourse.totalDurationMinutes),
-        stopCount: selectedCourse.stops.length,
-        stopSummary: summarizeStops(selectedCourse.stops, 3),
-      }
-    : null;
+  const selectedStops = useMemo(() => selectedCourse?.stops ?? [], [selectedCourse]);
+
+  const selectedSummary = useMemo(() => {
+    if (!selectedCourse) {
+      return null;
+    }
+    return {
+      themeLabel: formatThemeLabel(selectedCourse.theme),
+      distance: formatDistance(selectedCourse.totalDistanceKm),
+      duration: formatDuration(selectedCourse.totalDurationMinutes),
+      stopCount: selectedCourse.stops.length,
+      stopSummary: summarizeStops(selectedCourse.stops, 3),
+    };
+  }, [selectedCourse]);
 
   const originLabel = useMemo(() => {
     if (!lastQuery) {
@@ -79,8 +85,10 @@ export default function DriveRecommendationResult() {
     if (!lastQuery) {
       return null;
     }
-    if (typeof lastQuery.destinationLat !== 'number'
-      || typeof lastQuery.destinationLng !== 'number') {
+    if (
+      typeof lastQuery.destinationLat !== 'number' ||
+      typeof lastQuery.destinationLng !== 'number'
+    ) {
       return null;
     }
     if (!Number.isFinite(lastQuery.destinationLat) || !Number.isFinite(lastQuery.destinationLng)) {
@@ -88,6 +96,31 @@ export default function DriveRecommendationResult() {
     }
     return { lat: lastQuery.destinationLat, lng: lastQuery.destinationLng };
   }, [lastQuery]);
+
+  const handleSelectCourse = useCallback((index: number) => {
+    setSelectedCourseIndex(index);
+    setSelectedStopName(null);
+  }, []);
+
+  const handleSelectStop = useCallback((stop: RecommendedStop) => {
+    setSelectedStopName(stop.name);
+  }, []);
+
+  const handleUseStopAsDestination = useCallback(
+    async (stop: RecommendedStop) => {
+      if (!lastQuery) {
+        return;
+      }
+
+      await fetchRecommendations({
+        ...lastQuery,
+        destinationLat: stop.lat,
+        destinationLng: stop.lng,
+      });
+      setSelectedStopName(stop.name);
+    },
+    [fetchRecommendations, lastQuery],
+  );
 
   if (loading) {
     return (
@@ -105,72 +138,65 @@ export default function DriveRecommendationResult() {
     );
   }
 
-  if (courses.length === 0) {
-    return <DriveRecommendationEmpty />;
-  }
-
-  const handleSelectCourse = (index: number) => {
-    setSelectedCourseIndex(index);
-    setSelectedStopName(null);
-  };
-
   return (
     <section className="space-y-6 sm:space-y-8">
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="space-y-1">
-            <h2 className="text-lg font-semibold text-slate-900">추천 코스</h2>
-            <p className="text-sm text-slate-600">
-              {selectedSummary
-                ? `${selectedSummary.themeLabel} 분위기에 맞춘 코스를 준비했어요.`
-                : '드라이브에 어울리는 코스를 골라봤어요.'}
-            </p>
-          </div>
-          <div className="text-right text-xs text-slate-500">
-            <p className="font-semibold text-slate-900">
-              {courses.length === 1 ? '1개 코스 준비됨' : `${courses.length}개 코스`}
-            </p>
-            <p>현재 {selectedCourseIndex + 1}번째 코스</p>
-          </div>
-        </div>
-
-        {selectedSummary && (
-          <div className="mt-4 grid gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm text-slate-600 sm:grid-cols-3">
-            <div>
-              <p className="text-xs text-slate-400">총 거리</p>
-              <p className="font-semibold text-slate-900">{selectedSummary.distance}</p>
+      {!isEmpty && (
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="space-y-1">
+              <h2 className="text-lg font-semibold text-slate-900">추천 코스</h2>
+              <p className="text-sm text-slate-600">
+                {selectedSummary
+                  ? `${selectedSummary.themeLabel} 분위기에 맞춘 코스를 준비했어요.`
+                  : '드라이브에 어울리는 코스를 골라봤어요.'}
+              </p>
             </div>
-            <div>
-              <p className="text-xs text-slate-400">예상 소요</p>
-              <p className="font-semibold text-slate-900">{selectedSummary.duration}</p>
-            </div>
-            <div>
-              <p className="text-xs text-slate-400">핵심 경유지</p>
-              <p className="font-semibold text-slate-900">{selectedSummary.stopSummary}</p>
-              <p className="text-xs text-slate-500">총 {selectedSummary.stopCount}곳</p>
+            <div className="text-right text-xs text-slate-500">
+              <p className="font-semibold text-slate-900">
+                {courses.length === 1 ? '1개 코스 준비됨' : `${courses.length}개 코스`}
+              </p>
+              <p>현재 {selectedCourseIndex + 1}번째 코스</p>
             </div>
           </div>
-        )}
 
-        <p className="mt-3 text-xs text-slate-500">
-          코스를 선택하면 지도와 경유지 패널이 함께 강조됩니다.
-        </p>
+          {selectedSummary && (
+            <div className="mt-4 grid gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm text-slate-600 sm:grid-cols-3">
+              <div>
+                <p className="text-xs text-slate-400">총 거리</p>
+                <p className="font-semibold text-slate-900">{selectedSummary.distance}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400">예상 소요</p>
+                <p className="font-semibold text-slate-900">{selectedSummary.duration}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400">핵심 경유지</p>
+                <p className="font-semibold text-slate-900">{selectedSummary.stopSummary}</p>
+                <p className="text-xs text-slate-500">총 {selectedSummary.stopCount}곳</p>
+              </div>
+            </div>
+          )}
 
-        <div className="mt-4">
-          <DriveCourseList
-            courses={courses}
-            selectedIndex={selectedCourseIndex}
-            onSelect={handleSelectCourse}
-          />
-        </div>
-      </section>
+          <p className="mt-3 text-xs text-slate-500">
+            코스를 선택하면 지도와 경유지 패널이 함께 강조됩니다.
+          </p>
+
+          <div className="mt-4">
+            <DriveCourseList
+              courses={courses}
+              selectedIndex={selectedCourseIndex}
+              onSelect={handleSelectCourse}
+            />
+          </div>
+        </section>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <DriveRecommendationMap
           originLabel={originLabel}
           destinationLabel={destinationLabel}
           origin={origin}
-          destination={destination}
+          destination={isEmpty ? null : destination}
           recommendedStops={recommendedStops}
           selectedStops={selectedStops}
           selectedStopName={selectedStopName}
@@ -179,7 +205,10 @@ export default function DriveRecommendationResult() {
           stops={recommendedStops}
           selectedStops={selectedStops}
           selectedStopName={selectedStopName}
-          onSelectStop={setSelectedStopName}
+          variant={isEmpty ? 'empty' : 'default'}
+          loading={loading}
+          onSelectStop={handleSelectStop}
+          onUseStopAsDestination={lastQuery ? handleUseStopAsDestination : undefined}
         />
       </div>
     </section>

@@ -1,5 +1,9 @@
 'use client';
 
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
 import type { CourseStop, RecommendedStop } from '../types/recommendation';
 import { buildStopKey, limitTags } from '../utils/driveRecommendationFormat';
 
@@ -7,92 +11,110 @@ type RecommendedStopsPanelProps = {
   stops: RecommendedStop[];
   selectedStops: CourseStop[];
   selectedStopName: string | null;
-  onSelectStop: (name: string) => void;
+  variant?: 'default' | 'empty';
+  loading?: boolean;
+  onSelectStop: (stop: RecommendedStop) => void;
+  onUseStopAsDestination?: (stop: RecommendedStop) => void;
 };
 
 export default function RecommendedStopsPanel({
   stops,
   selectedStops,
   selectedStopName,
+  variant = 'default',
+  loading,
   onSelectStop,
+  onUseStopAsDestination,
 }: RecommendedStopsPanelProps) {
   const selectedNames = new Set(selectedStops.map((stop) => stop.name));
+  const isEmptyVariant = variant === 'empty';
+  const title = isEmptyVariant ? '이런 장소는 어떠세요?' : '추천 경유지';
+  const subtitle = isEmptyVariant
+    ? `추천 스팟 ${stops.length}곳을 준비했어요.`
+    : `추천 ${stops.length}곳 · 선택 코스 ${selectedStops.length}곳`;
 
   if (stops.length === 0) {
     return (
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-500 shadow-sm">
-        지도에 표시할 경유지가 아직 없어요.
-      </section>
+      <Card className="rounded-2xl border-slate-200">
+        <CardContent className="p-5 text-sm text-slate-500">
+          지도에 표시할 추천 장소가 아직 없어요.
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-      <h3 className="text-base font-semibold text-slate-900">추천 경유지</h3>
-      <p className="mt-1 text-xs text-slate-500">
-        추천 {stops.length}곳 · 선택 코스 {selectedStops.length}곳
-      </p>
-
-      <ul className="mt-4 grid gap-3">
+    <Card className="rounded-2xl border-slate-200">
+      <CardHeader className="space-y-1 p-5">
+        <CardTitle className="text-base text-slate-900">{title}</CardTitle>
+        <p className="text-xs text-slate-500">{subtitle}</p>
+      </CardHeader>
+      <CardContent className="grid gap-3 p-5 pt-0">
         {stops.map((stop) => {
           const tags = limitTags(stop.tags, 3);
           const isSelectedStop = stop.name === selectedStopName;
           const isCourseStop = selectedNames.has(stop.name);
-          const highlighted = isCourseStop || isSelectedStop;
+          const highlighted = isSelectedStop || isCourseStop;
           const typeLabel = stop.type || '드라이브 스팟';
-          const highlightClass = isSelectedStop
-            ? 'border-blue-600 bg-blue-50 shadow-md ring-2 ring-blue-200'
+          const cardClass = isSelectedStop
+            ? 'border-blue-500 bg-blue-50'
             : isCourseStop
-                ? 'border-blue-400 bg-blue-50/60'
-                : 'border-slate-200 hover:border-slate-300';
-          const tagClass = isSelectedStop
-            ? 'bg-blue-100 text-blue-700'
-            : isCourseStop
-                ? 'bg-blue-50 text-blue-700'
-                : 'bg-slate-100 text-slate-600';
-          const typeClass = highlighted ? 'text-blue-700' : 'text-slate-500';
+                ? 'border-blue-200 bg-blue-50/60'
+                : 'border-slate-200 bg-white hover:border-slate-300';
+          const tagVariant = highlighted ? 'default' : 'secondary';
+
           return (
-            <li key={buildStopKey(stop)}>
-              <button
-                type="button"
-                onClick={() => onSelectStop(stop.name)}
-                className={`w-full rounded-xl border px-4 py-3 text-left transition ${highlightClass}`}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">{stop.name}</p>
-                    <p className={`text-xs ${typeClass}`}>{typeLabel}</p>
+            <Card key={buildStopKey(stop)} className={`rounded-xl border ${cardClass}`}>
+              <CardContent className="space-y-3 p-4">
+                <button
+                  type="button"
+                  onClick={() => onSelectStop(stop)}
+                  className="w-full text-left"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">{stop.name}</p>
+                      <p className="text-xs text-slate-500">{typeLabel}</p>
+                    </div>
+                    {highlighted && (
+                      <Badge variant="outline" className="text-[10px]">
+                        {isSelectedStop ? '선택 스팟' : '선택 코스'}
+                      </Badge>
+                    )}
                   </div>
-                  {highlighted && (
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                      isSelectedStop
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-blue-50 text-blue-700'
-                    }`}>
-                      {isSelectedStop ? '선택 스팟' : '선택 코스'}
-                    </span>
-                  )}
-                </div>
+                </button>
                 {tags.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {tags.map((tag) => (
-                      <span
-                        key={`${stop.name}-${tag}`}
-                        className={`rounded-full px-2 py-0.5 text-[10px] ${tagClass}`}
-                      >
+                      <Badge key={`${stop.name}-${tag}`} variant={tagVariant}>
                         {tag}
-                      </span>
+                      </Badge>
                     ))}
                   </div>
                 )}
-                {typeof stop.stayMinutes === 'number' && stop.stayMinutes > 0 && (
-                  <p className="mt-2 text-xs text-slate-500">체류 약 {stop.stayMinutes}분</p>
-                )}
-              </button>
-            </li>
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+                  {typeof stop.stayMinutes === 'number' && stop.stayMinutes > 0 ? (
+                    <span>체류 약 {stop.stayMinutes}분</span>
+                  ) : (
+                    <span>지도에서 위치를 확인해 보세요.</span>
+                  )}
+                  {onUseStopAsDestination ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => onUseStopAsDestination(stop)}
+                      disabled={loading}
+                    >
+                      이곳으로 추천받기
+                    </Button>
+                  ) : null}
+                </div>
+              </CardContent>
+            </Card>
           );
         })}
-      </ul>
-    </section>
+      </CardContent>
+    </Card>
   );
 }
