@@ -188,31 +188,29 @@ export default function DriveCourseCard({
         </div>
       </button>
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         {!isLoggedIn ? (
-          <Button type="button" variant="outline" size="sm" onClick={handleLogin}>
+          <Button type="button" variant="outline" onClick={handleLogin}>
             로그인하고 설명 보기
           </Button>
         ) : (
           <Button
             type="button"
-            variant="secondary"
-            size="sm"
             onClick={handleExplain}
             disabled={limitExceeded || explainLoading}
+            className="rounded-lg px-4 py-2"
           >
             {limitExceeded
               ? '오늘 AI 설명은 모두 사용했어요'
               : explainLoading
-                  ? '설명 불러오는 중...'
+                  ? '설명 생성 중...'
                   : 'AI 코스 해설 보기'}
           </Button>
         )}
+        {isLoggedIn && !limitExceeded && !explainLoading ? (
+          <span className="text-xs text-slate-400">오늘 AI 해설 {remainingLabel}회 남았어요</span>
+        ) : null}
       </div>
-
-      {isLoggedIn && !limitExceeded && !explainLoading ? (
-        <p className="mt-1 text-xs text-slate-400">오늘 {remainingLabel}회 더 볼 수 있어요</p>
-      ) : null}
 
       {(explainLoading || explainError || explainResult) && (
         <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
