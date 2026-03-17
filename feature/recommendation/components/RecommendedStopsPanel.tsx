@@ -16,6 +16,7 @@ type RecommendedStopsPanelProps = {
   selectedStopName: string | null;
   variant?: 'default' | 'empty';
   loading?: boolean;
+  destinationSettingKey?: string | null;
   onSelectStop: (stop: RecommendedStop) => void;
   onUseStopAsDestination?: (stop: RecommendedStop) => void;
 };
@@ -34,6 +35,7 @@ export default function RecommendedStopsPanel({
   selectedStopName,
   variant = 'default',
   loading,
+  destinationSettingKey,
   onSelectStop,
   onUseStopAsDestination,
 }: RecommendedStopsPanelProps) {
@@ -123,9 +125,15 @@ export default function RecommendedStopsPanel({
           const highlighted = isSelectedStop || isCourseStop;
           const typeLabel = stop.type || '드라이브 스팟';
           const parkingKey = buildStopKey(stop);
+          const destinationKey = buildStopKey(stop);
           const parkingState = parkingByStop[parkingKey];
           const parkingOpen = parkingState?.open ?? false;
           const parkingLoading = parkingState?.loading ?? false;
+          const isSettingDestination = destinationSettingKey === destinationKey;
+          const destinationButtonLabel = isSettingDestination
+            ? '도착지 설정 중...'
+            : '이곳을 도착지로 설정';
+          const destinationButtonDisabled = Boolean(destinationSettingKey) || loading;
           const cardClass = isSelectedStop
             ? 'border-blue-500 bg-blue-50'
             : isCourseStop
@@ -177,9 +185,9 @@ export default function RecommendedStopsPanel({
                       size="sm"
                       variant="secondary"
                       onClick={() => onUseStopAsDestination(stop)}
-                      disabled={loading}
+                      disabled={destinationButtonDisabled}
                     >
-                      이곳으로 추천받기
+                      {destinationButtonLabel}
                     </Button>
                   ) : null}
                   <Button

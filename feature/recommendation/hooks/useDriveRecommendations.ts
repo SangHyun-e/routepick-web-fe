@@ -17,13 +17,21 @@ import type {
   RecommendedStop,
 } from '../types/recommendation';
 
+export type DestinationSelection = {
+  name: string;
+  lat: number;
+  lng: number;
+};
+
 type DriveRecommendationState = {
   loading: boolean;
   error: string | null;
   courses: CourseSummary[];
   recommendedStops: RecommendedStop[];
   lastQuery: RecommendationQueryParams | null;
-  fetchRecommendations: (params: RecommendationQueryParams) => Promise<void>;
+  fetchRecommendations: (params: RecommendationQueryParams) => Promise<boolean>;
+  destinationSelection: DestinationSelection | null;
+  setDestinationSelection: (selection: DestinationSelection | null) => void;
 };
 
 const DriveRecommendationsContext = createContext<DriveRecommendationState | null>(null);
@@ -34,6 +42,8 @@ function useDriveRecommendationsState(): DriveRecommendationState {
   const [courses, setCourses] = useState<CourseSummary[]>([]);
   const [recommendedStops, setRecommendedStops] = useState<RecommendedStop[]>([]);
   const [lastQuery, setLastQuery] = useState<RecommendationQueryParams | null>(null);
+  const [destinationSelection, setDestinationSelection] =
+    useState<DestinationSelection | null>(null);
 
   const fetchRecommendations = useCallback(async (params: RecommendationQueryParams) => {
     setLoading(true);
@@ -46,12 +56,13 @@ function useDriveRecommendationsState(): DriveRecommendationState {
       setRecommendedStops([]);
       setError(result.message);
       setLoading(false);
-      return;
+      return false;
     }
 
     setCourses(result.data.courses ?? []);
     setRecommendedStops(result.data.recommendedStops ?? []);
     setLoading(false);
+    return true;
   }, []);
 
   return useMemo(
@@ -62,8 +73,19 @@ function useDriveRecommendationsState(): DriveRecommendationState {
       recommendedStops,
       lastQuery,
       fetchRecommendations,
+      destinationSelection,
+      setDestinationSelection,
     }),
-    [loading, error, courses, recommendedStops, lastQuery, fetchRecommendations],
+    [
+      loading,
+      error,
+      courses,
+      recommendedStops,
+      lastQuery,
+      fetchRecommendations,
+      destinationSelection,
+      setDestinationSelection,
+    ],
   );
 }
 
