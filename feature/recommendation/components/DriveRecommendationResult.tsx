@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import DriveCourseList from './DriveCourseList';
 import DriveRecommendationMap from './DriveRecommendationMap';
 import RecommendedStopsPanel from './RecommendedStopsPanel';
+import { fetchMe } from '@/feature/user/api';
 import { useDriveRecommendations } from '../hooks/useDriveRecommendations';
 import type { RecommendedStop } from '../types/recommendation';
 import {
@@ -19,6 +20,8 @@ export default function DriveRecommendationResult() {
     useDriveRecommendations();
   const [selectedCourseIndex, setSelectedCourseIndex] = useState(0);
   const [selectedStopName, setSelectedStopName] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [remainingCount, setRemainingCount] = useState<number | null>(null);
 
   const isEmpty = courses.length === 0;
 
@@ -31,6 +34,27 @@ export default function DriveRecommendationResult() {
     setSelectedCourseIndex(0);
     setSelectedStopName(null);
   }, [courses]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const result = await fetchMe();
+      if (!mounted) {
+        return;
+      }
+      if (result.ok) {
+        setCurrentUserId(result.data.id);
+        setRemainingCount((prev) => prev ?? 3);
+        return;
+      }
+      setCurrentUserId(null);
+      setRemainingCount(null);
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const selectedCourse = useMemo(() => {
     if (courses.length === 0) {
@@ -186,6 +210,11 @@ export default function DriveRecommendationResult() {
               courses={courses}
               selectedIndex={selectedCourseIndex}
               onSelect={handleSelectCourse}
+              isLoggedIn={currentUserId !== null}
+              remainingCount={remainingCount}
+              onRemainingChange={setRemainingCount}
+              originLabel={originLabel}
+              destinationLabel={destinationLabel}
             />
           </div>
         </section>

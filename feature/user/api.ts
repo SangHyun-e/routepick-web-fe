@@ -2,6 +2,7 @@ import { bffFetch } from '@/lib/bffFetch';
 import type { MyCommentListItem } from '@/feature/comment/types';
 import type { PaginatedResponse, PostListItemResponse } from '@/feature/post/types';
 import type { ApiResult } from '@/types/http';
+import type { Me } from '@/types/user';
 
 function normalizePage<T>(raw: unknown): PaginatedResponse<T> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -69,6 +70,18 @@ export async function fetchMyPosts(
 
   const raw = await res.json().catch(() => ({}));
   const data = normalizePage<PostListItemResponse>(raw);
+  return { ok: true, data };
+}
+
+export async function fetchMe(): Promise<ApiResult<Me>> {
+  const res = await bffFetch('/api/proxy/users/me', { cache: 'no-store' });
+
+  if (!res.ok) {
+    const message = await readErrorMessage(res, '사용자 정보를 불러오지 못했습니다.');
+    return { ok: false, status: res.status, message };
+  }
+
+  const data = (await res.json()) as Me;
   return { ok: true, data };
 }
 
