@@ -46,6 +46,7 @@ export interface CourseRecommendationSaveRequest {
   origin: string;
   destination: string;
   theme: string;
+  totalDurationMinutes?: number | null;
   routeSummary: string;
   explanation: string;
   stops: CourseStop[];
@@ -54,35 +55,4 @@ export interface CourseRecommendationSaveRequest {
 export interface CourseRecommendationSaveResponse extends CourseRecommendationSaveRequest {
   id: number;
   createdAt: string;
-}
-
-export interface CourseCurationRequest {
-  origin: string;
-  destination: string;
-  preferenceSummary?: string;
-  moods?: DriveMood[];
-  stopTypes?: DriveStopType[];
-  routeStyles?: DriveRouteStyle[];
-  autoRecommend?: boolean;
-  routeSummary: string;
-  explanation: string;
-  stops: CourseStop[];
-  extraStops?: number;
-}
-
-export interface CourseCurationResponse {
-  course_title: string;
-  vibe_summary: string;
-  route_details: {
-    start: string;
-    stopover: string;
-    destination: string;
-  };
-  drive_info: {
-    duration: string;
-    difficulty: string;
-    best_time: string;
-  };
-  curator_tips: string[];
-  extra_stops?: CourseStop[];
 }

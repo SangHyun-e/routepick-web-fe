@@ -66,3 +66,10 @@ export type RecommendationQueryParams = {
   destinationLat?: number;
   destinationLng?: number;
 };
+
+export type CourseExplainResponse = {
+  title: string;
+  description: string;
+  reason: string;
+  remainingCount: number;
+};

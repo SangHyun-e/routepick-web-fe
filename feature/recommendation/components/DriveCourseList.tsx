@@ -7,12 +7,22 @@ type DriveCourseListProps = {
   courses: CourseSummary[];
   selectedIndex: number;
   onSelect: (index: number) => void;
+  isLoggedIn: boolean;
+  remainingCount: number | null;
+  onRemainingChange: (remainingCount: number) => void;
+  originLabel: string;
+  destinationLabel: string;
 };
 
 export default function DriveCourseList({
   courses,
   selectedIndex,
   onSelect,
+  isLoggedIn,
+  remainingCount,
+  onRemainingChange,
+  originLabel,
+  destinationLabel,
 }: DriveCourseListProps) {
   return (
     <div className="grid gap-3 sm:gap-4">
@@ -22,6 +32,11 @@ export default function DriveCourseList({
           course={course}
           selected={index === selectedIndex}
           onSelect={() => onSelect(index)}
+          isLoggedIn={isLoggedIn}
+          remainingCount={remainingCount}
+          onRemainingChange={onRemainingChange}
+          originLabel={originLabel}
+          destinationLabel={destinationLabel}
         />
       ))}
     </div>
