@@ -1,10 +1,13 @@
 'use client';
 
+import { useCallback, useState } from 'react';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-import type { CourseStop, RecommendedStop } from '../types/recommendation';
+import { getNearbyParking } from '../api/getNearbyParking';
+import type { CourseStop, NearbyParkingItem, RecommendedStop } from '../types/recommendation';
 import { buildStopKey, limitTags } from '../utils/driveRecommendationFormat';
 
 type RecommendedStopsPanelProps = {
@@ -17,6 +20,14 @@ type RecommendedStopsPanelProps = {
   onUseStopAsDestination?: (stop: RecommendedStop) => void;
 };
 
+type ParkingState = {
+  open: boolean;
+  loading: boolean;
+  loaded: boolean;
+  items: NearbyParkingItem[];
+  error: string | null;
+};
+
 export default function RecommendedStopsPanel({
   stops,
   selectedStops,
@@ -26,12 +37,67 @@ export default function RecommendedStopsPanel({
   onSelectStop,
   onUseStopAsDestination,
 }: RecommendedStopsPanelProps) {
+  const [parkingByStop, setParkingByStop] = useState<Record<string, ParkingState>>({});
   const selectedNames = new Set(selectedStops.map((stop) => stop.name));
   const isEmptyVariant = variant === 'empty';
   const title = isEmptyVariant ? '이런 장소는 어떠세요?' : '추천 경유지';
   const subtitle = isEmptyVariant
     ? `추천 스팟 ${stops.length}곳을 준비했어요.`
     : `추천 ${stops.length}곳 · 선택 코스 ${selectedStops.length}곳`;
+
+  const handleToggleParking = useCallback(
+    async (stop: RecommendedStop) => {
+      const key = buildStopKey(stop);
+      const current = parkingByStop[key];
+
+      if (current?.open) {
+        setParkingByStop((prev) => ({
+          ...prev,
+          [key]: { ...current, open: false },
+        }));
+        return;
+      }
+
+      if (current?.loaded) {
+        setParkingByStop((prev) => ({
+          ...prev,
+          [key]: { ...current, open: true },
+        }));
+        return;
+      }
+
+      setParkingByStop((prev) => ({
+        ...prev,
+        [key]: {
+          open: true,
+          loading: true,
+          loaded: false,
+          items: [],
+          error: null,
+        },
+      }));
+
+      const result = await getNearbyParking(stop.lat, stop.lng);
+      setParkingByStop((prev) => ({
+        ...prev,
+        [key]: {
+          open: true,
+          loading: false,
+          loaded: true,
+          items: result.ok ? result.data : [],
+          error: result.ok ? null : result.message ?? '근처 주차장 정보를 불러오지 못했어요.',
+        },
+      }));
+    },
+    [parkingByStop],
+  );
+
+  const formatDistance = useCallback((distanceMeters: number) => {
+    if (!Number.isFinite(distanceMeters) || distanceMeters <= 0) {
+      return '거리 정보 없음';
+    }
+    return `${Math.round(distanceMeters)}m`;
+  }, []);
 
   if (stops.length === 0) {
     return (
@@ -56,12 +122,17 @@ export default function RecommendedStopsPanel({
           const isCourseStop = selectedNames.has(stop.name);
           const highlighted = isSelectedStop || isCourseStop;
           const typeLabel = stop.type || '드라이브 스팟';
+          const parkingKey = buildStopKey(stop);
+          const parkingState = parkingByStop[parkingKey];
+          const parkingOpen = parkingState?.open ?? false;
+          const parkingLoading = parkingState?.loading ?? false;
           const cardClass = isSelectedStop
             ? 'border-blue-500 bg-blue-50'
             : isCourseStop
                 ? 'border-blue-200 bg-blue-50/60'
                 : 'border-slate-200 bg-white hover:border-slate-300';
           const tagVariant = highlighted ? 'default' : 'secondary';
+          const parkingButtonLabel = parkingOpen ? '주차장 닫기' : '근처 주차장 보기';
 
           return (
             <Card key={buildStopKey(stop)} className={`rounded-xl border ${cardClass}`}>
@@ -98,6 +169,8 @@ export default function RecommendedStopsPanel({
                   ) : (
                     <span>지도에서 위치를 확인해 보세요.</span>
                   )}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
                   {onUseStopAsDestination ? (
                     <Button
                       type="button"
@@ -109,7 +182,46 @@ export default function RecommendedStopsPanel({
                       이곳으로 추천받기
                     </Button>
                   ) : null}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleToggleParking(stop)}
+                    disabled={parkingLoading}
+                  >
+                    {parkingLoading ? '불러오는 중...' : parkingButtonLabel}
+                  </Button>
                 </div>
+                {parkingOpen && (
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                    {parkingLoading ? (
+                      <p>근처 주차장 정보를 불러오는 중...</p>
+                    ) : parkingState?.error ? (
+                      <p className="text-slate-500">근처 주차장 정보를 찾지 못했어요.</p>
+                    ) : parkingState?.items.length ? (
+                      <ul className="space-y-2">
+                        {parkingState.items.map((parking) => (
+                          <li key={`${parking.name}-${parking.address}`}>
+                            <p className="text-sm font-semibold text-slate-900">
+                              {parking.name}
+                            </p>
+                            <p className="text-xs text-slate-500">{parking.address}</p>
+                            <p className="text-xs text-slate-500">
+                              {formatDistance(parking.distanceMeters)}
+                            </p>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-slate-500">근처 주차장 정보를 찾지 못했어요.</p>
+                    )}
+                    {!parkingLoading && (
+                      <p className="mt-2 text-[10px] text-slate-400">
+                        주차 위치 정보는 참고용이에요.
+                      </p>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           );
