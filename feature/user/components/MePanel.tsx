@@ -1162,12 +1162,12 @@ export default function MePanel() {
                         </button>
                       </div>
                       <p className="text-sm font-semibold text-slate-900">
-                        {course.routeSummary}
+                        {course.title}
                       </p>
                       <div className="flex flex-wrap gap-2 text-xs text-slate-600">
-                        {course.stops.map((stop) => (
+                        {course.selectedStops.map((stop) => (
                           <span
-                            key={`${course.id}-${stop.name}-${stop.x}`}
+                            key={`${course.id}-${stop.name}-${stop.lat}`}
                             className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5"
                           >
                             {stop.name}
@@ -1175,7 +1175,7 @@ export default function MePanel() {
                         ))}
                       </div>
                       <p className="text-xs text-slate-500 whitespace-pre-line">
-                        {course.explanation}
+                        {course.explainText || course.description}
                       </p>
                     </div>
                   </li>
@@ -1253,7 +1253,7 @@ export default function MePanel() {
           <div className="space-y-2">
             <p>저장한 추천 코스를 삭제할까요?</p>
             {savedCourseToDelete && (
-              <p className="text-xs text-slate-500">{savedCourseToDelete.routeSummary}</p>
+              <p className="text-xs text-slate-500">{savedCourseToDelete.title}</p>
             )}
           </div>
         }

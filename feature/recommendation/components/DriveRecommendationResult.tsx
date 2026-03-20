@@ -394,8 +394,6 @@ export default function DriveRecommendationResult() {
               isLoggedIn={currentUserId !== null}
               remainingCount={remainingCount}
               onRemainingChange={setRemainingCount}
-              originLabel={originLabel}
-              destinationLabel={destinationLabel}
             />
           </div>
         </section>

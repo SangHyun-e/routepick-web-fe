@@ -10,8 +10,6 @@ type DriveCourseListProps = {
   isLoggedIn: boolean;
   remainingCount: number | null;
   onRemainingChange: (remainingCount: number) => void;
-  originLabel: string;
-  destinationLabel: string;
 };
 
 export default function DriveCourseList({
@@ -21,8 +19,6 @@ export default function DriveCourseList({
   isLoggedIn,
   remainingCount,
   onRemainingChange,
-  originLabel,
-  destinationLabel,
 }: DriveCourseListProps) {
   return (
     <div className="grid gap-3 sm:gap-4">
@@ -35,8 +31,6 @@ export default function DriveCourseList({
           isLoggedIn={isLoggedIn}
           remainingCount={remainingCount}
           onRemainingChange={onRemainingChange}
-          originLabel={originLabel}
-          destinationLabel={destinationLabel}
         />
       ))}
     </div>
