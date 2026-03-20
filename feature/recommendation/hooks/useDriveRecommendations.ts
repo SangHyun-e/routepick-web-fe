@@ -32,6 +32,8 @@ type DriveRecommendationState = {
   fetchRecommendations: (params: RecommendationQueryParams) => Promise<boolean>;
   destinationSelection: DestinationSelection | null;
   setDestinationSelection: (selection: DestinationSelection | null) => void;
+  selectedIncludeStops: RecommendedStop[];
+  setSelectedIncludeStops: (stops: RecommendedStop[]) => void;
 };
 
 const DriveRecommendationsContext = createContext<DriveRecommendationState | null>(null);
@@ -44,6 +46,7 @@ function useDriveRecommendationsState(): DriveRecommendationState {
   const [lastQuery, setLastQuery] = useState<RecommendationQueryParams | null>(null);
   const [destinationSelection, setDestinationSelection] =
     useState<DestinationSelection | null>(null);
+  const [selectedIncludeStops, setSelectedIncludeStops] = useState<RecommendedStop[]>([]);
 
   const fetchRecommendations = useCallback(async (params: RecommendationQueryParams) => {
     setLoading(true);
@@ -75,6 +78,8 @@ function useDriveRecommendationsState(): DriveRecommendationState {
       fetchRecommendations,
       destinationSelection,
       setDestinationSelection,
+      selectedIncludeStops,
+      setSelectedIncludeStops,
     }),
     [
       loading,
@@ -85,6 +90,8 @@ function useDriveRecommendationsState(): DriveRecommendationState {
       fetchRecommendations,
       destinationSelection,
       setDestinationSelection,
+      selectedIncludeStops,
+      setSelectedIncludeStops,
     ],
   );
 }

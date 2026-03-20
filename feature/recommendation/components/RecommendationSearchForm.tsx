@@ -16,8 +16,13 @@ const parseNumber = (value: string): number | undefined => {
 };
 
 export default function RecommendationSearchForm() {
-  const { fetchRecommendations, loading, destinationSelection, setDestinationSelection } =
-    useDriveRecommendations();
+  const {
+    fetchRecommendations,
+    loading,
+    destinationSelection,
+    setDestinationSelection,
+    setSelectedIncludeStops,
+  } = useDriveRecommendations();
   const [originQuery, setOriginQuery] = useState('');
   const [selectedOrigin, setSelectedOrigin] = useState<Place | null>(null);
   const [destinationQuery, setDestinationQuery] = useState('');
@@ -78,17 +83,19 @@ export default function RecommendationSearchForm() {
       if (selectedDestination && value !== selectedDestination.name) {
         setSelectedDestination(null);
         setDestinationSelection(null);
+        setSelectedIncludeStops([]);
       }
     },
-    [selectedDestination, setDestinationSelection],
+    [selectedDestination, setDestinationSelection, setSelectedIncludeStops],
   );
 
   const handleSelectDestination = useCallback(
     (place: Place) => {
       setSelectedDestination(place);
       setDestinationSelection({ name: place.name, lat: place.lat, lng: place.lng });
+      setSelectedIncludeStops([]);
     },
-    [setDestinationSelection],
+    [setDestinationSelection, setSelectedIncludeStops],
   );
 
   const handleUseCurrentLocation = useCallback(() => {
@@ -123,6 +130,7 @@ export default function RecommendationSearchForm() {
     async (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
       setFormError(null);
+      setSelectedIncludeStops([]);
 
       if (!selectedOrigin) {
         setFormError('출발지를 검색 후 선택해주세요.');
@@ -168,6 +176,7 @@ export default function RecommendationSearchForm() {
       fetchRecommendations,
       parsedMaxStops,
       selectedTheme,
+      setSelectedIncludeStops,
     ],
   );
 

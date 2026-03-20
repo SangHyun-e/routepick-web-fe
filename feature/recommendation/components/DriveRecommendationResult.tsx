@@ -26,18 +26,37 @@ export default function DriveRecommendationResult() {
     lastQuery,
     fetchRecommendations,
     setDestinationSelection,
+    selectedIncludeStops,
+    setSelectedIncludeStops,
   } = useDriveRecommendations();
   const [selectedCourseIndex, setSelectedCourseIndex] = useState(0);
   const [selectedStopName, setSelectedStopName] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [remainingCount, setRemainingCount] = useState<number | null>(null);
-  const [destinationNotice, setDestinationNotice] = useState<string | null>(null);
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [destinationSettingKey, setDestinationSettingKey] = useState<string | null>(null);
+  const [includeSettingKey, setIncludeSettingKey] = useState<string | null>(null);
+  const [includeSettingAction, setIncludeSettingAction] = useState<'add' | 'remove' | null>(null);
   const resultTopRef = useRef<HTMLDivElement | null>(null);
   const noticeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isEmpty = courses.length === 0;
   const isRefreshing = loading && courses.length > 0;
+  const includeStopKeys = useMemo(
+    () => new Set(selectedIncludeStops.map((stop) => buildStopKey(stop))),
+    [selectedIncludeStops],
+  );
+  const refreshMessage = useMemo(() => {
+    if (includeSettingKey) {
+      return includeSettingAction === 'remove'
+        ? '선택한 장소를 제외하고 새 코스를 추천하는 중입니다...'
+        : '선택한 장소를 포함해서 새 코스를 추천하는 중입니다...';
+    }
+    if (destinationSettingKey) {
+      return '도착지를 반영해 새 코스를 추천하는 중입니다...';
+    }
+    return '새 코스를 추천하는 중입니다...';
+  }, [destinationSettingKey, includeSettingAction, includeSettingKey]);
 
   useEffect(() => {
     if (courses.length === 0) {
@@ -161,10 +180,17 @@ export default function DriveRecommendationResult() {
       setSelectedStopName(stop.name);
       setDestinationSettingKey(stopKey);
 
+      const includeStopsPayload = selectedIncludeStops.map((includeStop) => ({
+        name: includeStop.name,
+        lat: includeStop.lat,
+        lng: includeStop.lng,
+      }));
+
       const success = await fetchRecommendations({
         ...lastQuery,
         destinationLat: stop.lat,
         destinationLng: stop.lng,
+        includeStops: includeStopsPayload,
       });
 
       if (!success) {
@@ -174,7 +200,7 @@ export default function DriveRecommendationResult() {
 
       const message = `${stop.name}을 도착지로 설정하고 새 코스를 추천했어요.`;
       setDestinationSelection({ name: stop.name, lat: stop.lat, lng: stop.lng });
-      setDestinationNotice(message);
+      setActionNotice(message);
       toast.success(message);
       setDestinationSettingKey(null);
       resultTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -183,10 +209,112 @@ export default function DriveRecommendationResult() {
         clearTimeout(noticeTimeoutRef.current);
       }
       noticeTimeoutRef.current = setTimeout(() => {
-        setDestinationNotice(null);
+        setActionNotice(null);
       }, 4000);
     },
-    [fetchRecommendations, lastQuery, setDestinationSelection],
+    [fetchRecommendations, lastQuery, selectedIncludeStops, setDestinationSelection],
+  );
+
+  const handleIncludeStop = useCallback(
+    async (stop: RecommendedStop) => {
+      if (!lastQuery) {
+        return;
+      }
+
+      const stopKey = buildStopKey(stop);
+      if (includeStopKeys.has(stopKey)) {
+        const previous = selectedIncludeStops;
+        const nextIncludeStops = selectedIncludeStops.filter(
+          (includeStop) => buildStopKey(includeStop) !== stopKey,
+        );
+        setSelectedStopName(stop.name);
+        setSelectedIncludeStops(nextIncludeStops);
+        setIncludeSettingKey(stopKey);
+        setIncludeSettingAction('remove');
+
+        const includeStopsPayload = nextIncludeStops.map((includeStop) => ({
+          name: includeStop.name,
+          lat: includeStop.lat,
+          lng: includeStop.lng,
+        }));
+
+        const success = await fetchRecommendations({
+          ...lastQuery,
+          includeStops: includeStopsPayload,
+        });
+
+        if (!success) {
+          setSelectedIncludeStops(previous);
+          setIncludeSettingKey(null);
+          setIncludeSettingAction(null);
+          return;
+        }
+
+        toast.success(`${stop.name}을 코스에서 제외했어요.`);
+        setActionNotice('선택한 장소를 제외하고 새 코스를 추천했어요.');
+        setIncludeSettingKey(null);
+        setIncludeSettingAction(null);
+        resultTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        if (noticeTimeoutRef.current) {
+          clearTimeout(noticeTimeoutRef.current);
+        }
+        noticeTimeoutRef.current = setTimeout(() => {
+          setActionNotice(null);
+        }, 4000);
+        return;
+      }
+
+      if (selectedIncludeStops.length >= 3) {
+        toast.error('포함은 최대 3곳까지 가능해요.');
+        return;
+      }
+
+      const previous = selectedIncludeStops;
+      const nextIncludeStops = [...selectedIncludeStops, stop];
+      setSelectedStopName(stop.name);
+      setSelectedIncludeStops(nextIncludeStops);
+      setIncludeSettingKey(stopKey);
+      setIncludeSettingAction('add');
+
+      const includeStopsPayload = nextIncludeStops.map((includeStop) => ({
+        name: includeStop.name,
+        lat: includeStop.lat,
+        lng: includeStop.lng,
+      }));
+
+      const success = await fetchRecommendations({
+        ...lastQuery,
+        includeStops: includeStopsPayload,
+      });
+
+      if (!success) {
+        setSelectedIncludeStops(previous);
+        setIncludeSettingKey(null);
+        setIncludeSettingAction(null);
+        return;
+      }
+
+      toast.success(`${stop.name}을 코스에 포함했어요`);
+      setActionNotice('선택한 장소를 포함해서 새 코스를 추천했어요.');
+      setIncludeSettingKey(null);
+      setIncludeSettingAction(null);
+      resultTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      if (noticeTimeoutRef.current) {
+        clearTimeout(noticeTimeoutRef.current);
+      }
+      noticeTimeoutRef.current = setTimeout(() => {
+        setActionNotice(null);
+      }, 4000);
+    },
+    [
+      fetchRecommendations,
+      includeStopKeys,
+      lastQuery,
+      selectedIncludeStops,
+      setSelectedIncludeStops,
+    ],
   );
 
   if (loading && courses.length === 0) {
@@ -207,14 +335,14 @@ export default function DriveRecommendationResult() {
 
   return (
     <section ref={resultTopRef} className="space-y-6 sm:space-y-8">
-      {destinationNotice ? (
+      {actionNotice ? (
         <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-          {destinationNotice}
+          {actionNotice}
         </div>
       ) : null}
       {isRefreshing ? (
         <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
-          도착지를 반영해 새 코스를 추천하는 중입니다...
+          {refreshMessage}
         </div>
       ) : null}
       {!isEmpty && (
@@ -286,11 +414,15 @@ export default function DriveRecommendationResult() {
         <RecommendedStopsPanel
           stops={recommendedStops}
           selectedStops={selectedStops}
+          selectedIncludeStops={selectedIncludeStops}
           selectedStopName={selectedStopName}
           variant={isEmpty ? 'empty' : 'default'}
           loading={isRefreshing}
+          includeSettingKey={includeSettingKey}
+          includeSettingAction={includeSettingAction}
           destinationSettingKey={destinationSettingKey}
           onSelectStop={handleSelectStop}
+          onIncludeStop={lastQuery ? handleIncludeStop : undefined}
           onUseStopAsDestination={lastQuery ? handleUseStopAsDestination : undefined}
         />
       </div>
