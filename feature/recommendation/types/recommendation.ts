@@ -46,6 +46,12 @@ export type RecommendedStop = {
   driveSuitability: number;
 };
 
+export type IncludeStop = {
+  name: string;
+  lat: number;
+  lng: number;
+};
+
 export type RecommendationResponse = {
   requestId: string;
   originLat: number;
@@ -65,6 +71,7 @@ export type RecommendationQueryParams = {
   weatherAware?: boolean;
   destinationLat?: number;
   destinationLng?: number;
+  includeStops?: IncludeStop[];
 };
 
 export type CourseExplainResponse = {

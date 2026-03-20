@@ -13,11 +13,15 @@ import { buildStopKey, limitTags } from '../utils/driveRecommendationFormat';
 type RecommendedStopsPanelProps = {
   stops: RecommendedStop[];
   selectedStops: CourseStop[];
+  selectedIncludeStops: RecommendedStop[];
   selectedStopName: string | null;
   variant?: 'default' | 'empty';
   loading?: boolean;
+  includeSettingKey?: string | null;
+  includeSettingAction?: 'add' | 'remove' | null;
   destinationSettingKey?: string | null;
   onSelectStop: (stop: RecommendedStop) => void;
+  onIncludeStop?: (stop: RecommendedStop) => void;
   onUseStopAsDestination?: (stop: RecommendedStop) => void;
 };
 
@@ -32,15 +36,20 @@ type ParkingState = {
 export default function RecommendedStopsPanel({
   stops,
   selectedStops,
+  selectedIncludeStops,
   selectedStopName,
   variant = 'default',
   loading,
+  includeSettingKey,
+  includeSettingAction,
   destinationSettingKey,
   onSelectStop,
+  onIncludeStop,
   onUseStopAsDestination,
 }: RecommendedStopsPanelProps) {
   const [parkingByStop, setParkingByStop] = useState<Record<string, ParkingState>>({});
   const selectedNames = new Set(selectedStops.map((stop) => stop.name));
+  const includeKeys = new Set(selectedIncludeStops.map((stop) => buildStopKey(stop)));
   const isEmptyVariant = variant === 'empty';
   const title = isEmptyVariant ? '이런 장소는 어떠세요?' : '추천 경유지';
   const subtitle = isEmptyVariant
@@ -122,13 +131,23 @@ export default function RecommendedStopsPanel({
           const tags = limitTags(stop.tags, 3);
           const isSelectedStop = stop.name === selectedStopName;
           const isCourseStop = selectedNames.has(stop.name);
-          const highlighted = isSelectedStop || isCourseStop;
           const typeLabel = stop.type || '드라이브 스팟';
           const parkingKey = buildStopKey(stop);
           const destinationKey = buildStopKey(stop);
           const parkingState = parkingByStop[parkingKey];
           const parkingOpen = parkingState?.open ?? false;
           const parkingLoading = parkingState?.loading ?? false;
+          const isIncludedStop = includeKeys.has(destinationKey);
+          const isIncludingStop = includeSettingKey === destinationKey;
+          const highlighted = isSelectedStop || isCourseStop || isIncludedStop;
+          const includeActionLabel = includeSettingAction === 'remove' ? '포함 해제 중...' :
+            '포함해서 다시 추천 중...';
+          const includeButtonLabel = isIncludedStop
+            ? '포함 해제'
+            : isIncludingStop
+                ? includeActionLabel
+                : '이곳 포함해서 다시 추천';
+          const includeButtonDisabled = Boolean(includeSettingKey) || loading;
           const isSettingDestination = destinationSettingKey === destinationKey;
           const destinationButtonLabel = isSettingDestination
             ? '도착지 설정 중...'
@@ -136,6 +155,8 @@ export default function RecommendedStopsPanel({
           const destinationButtonDisabled = Boolean(destinationSettingKey) || loading;
           const cardClass = isSelectedStop
             ? 'border-blue-500 bg-blue-50'
+            : isIncludedStop
+                ? 'border-emerald-300 bg-emerald-50/60'
             : isCourseStop
                 ? 'border-blue-200 bg-blue-50/60'
                 : 'border-slate-200 bg-white hover:border-slate-300';
@@ -155,11 +176,16 @@ export default function RecommendedStopsPanel({
                       <p className="text-sm font-semibold text-slate-900">{stop.name}</p>
                       <p className="text-xs text-slate-500">{typeLabel}</p>
                     </div>
-                    {highlighted && (
-                      <Badge variant="outline" className="text-[10px]">
-                        {isSelectedStop ? '선택 스팟' : '선택 코스'}
-                      </Badge>
-                    )}
+                    <div className="flex flex-wrap gap-1">
+                      {isIncludedStop ? (
+                        <Badge className="text-[10px]">포함됨</Badge>
+                      ) : null}
+                      {highlighted && (
+                        <Badge variant="outline" className="text-[10px]">
+                          {isSelectedStop ? '선택 스팟' : '선택 코스'}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </button>
                 {tags.length > 0 && (
@@ -179,6 +205,16 @@ export default function RecommendedStopsPanel({
                   )}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
+                  {onIncludeStop ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => onIncludeStop(stop)}
+                      disabled={includeButtonDisabled}
+                    >
+                      {includeButtonLabel}
+                    </Button>
+                  ) : null}
                   {onUseStopAsDestination ? (
                     <Button
                       type="button"

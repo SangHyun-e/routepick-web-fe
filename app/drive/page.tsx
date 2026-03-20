@@ -11,14 +11,8 @@ import {
 } from '@/feature/recommendation/hooks/useDriveRecommendations';
 
 function DriveRecommendationContent() {
-  const {
-    courses,
-    lastQuery,
-    fetchRecommendations,
-    loading,
-    error,
-    setDestinationSelection,
-  } = useDriveRecommendations();
+  const { courses, lastQuery, fetchRecommendations, loading, error, setDestinationSelection } =
+    useDriveRecommendations();
 
   const hasDestination = useMemo(() => {
     if (!lastQuery) {

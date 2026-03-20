@@ -45,6 +45,19 @@ export async function getDriveCourseRecommendations(
   if (typeof params.destinationLng === 'number') {
     searchParams.set('destinationLng', String(params.destinationLng));
   }
+  if (params.includeStops && params.includeStops.length > 0) {
+    params.includeStops.forEach((stop, index) => {
+      if (!stop?.name) {
+        return;
+      }
+      if (typeof stop.lat !== 'number' || typeof stop.lng !== 'number') {
+        return;
+      }
+      searchParams.set(`includeStops[${index}].name`, stop.name);
+      searchParams.set(`includeStops[${index}].lat`, String(stop.lat));
+      searchParams.set(`includeStops[${index}].lng`, String(stop.lng));
+    });
+  }
 
   const res = await bffFetch(
     `/api/proxy/api/recommendations/drive-courses?${searchParams.toString()}`,
