@@ -176,7 +176,7 @@ export default function PostForm({
     (course: CourseRecommendationSaveResponse) => {
       const selectedIndexes = selectedStops[course.id] ?? [];
       const selected = selectedIndexes
-        .map((index) => course.stops[index])
+        .map((index) => course.selectedStops[index])
         .filter((stop) => Boolean(stop));
 
       if (selected.length === 0) {
@@ -189,9 +189,13 @@ export default function PostForm({
       }
 
       const stopItems = selected
-        .map((stop) => `<li>${stop.name} - ${stop.address}</li>`)
+        .map((stop) => {
+          const typeLabel = stop.type ? ` (${stop.type})` : '';
+          return `<li>${stop.name}${typeLabel}</li>`;
+        })
         .join('');
-      const html = `<div><p><strong>${course.origin} → ${course.destination}</strong></p><p>${course.theme} 추천 코스</p><ul>${stopItems}</ul></div>`;
+      const title = course.title || '저장한 추천 코스';
+      const html = `<div><p><strong>${title}</strong></p><p>${course.description}</p><ul>${stopItems}</ul></div>`;
 
       editor.chain().focus().insertContent(html).run();
       setSelectedStops((prev) => ({ ...prev, [course.id]: [] }));
@@ -339,7 +343,7 @@ export default function PostForm({
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <div>
                                 <p className="text-sm font-semibold text-slate-900">
-                                  {course.routeSummary}
+                                  {course.title}
                                 </p>
                                 <p className="text-xs text-slate-500">{course.theme}</p>
                               </div>
@@ -352,11 +356,11 @@ export default function PostForm({
                               </button>
                             </div>
                             <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                              {course.stops.map((stop, index) => {
+                              {course.selectedStops.map((stop, index) => {
                                 const selected = (selectedStops[course.id] ?? []).includes(index);
                                 return (
                                   <label
-                                    key={`${course.id}-${stop.name}-${stop.x}`}
+                                    key={`${course.id}-${stop.name}-${stop.lat}`}
                                     className={`flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2 text-xs transition ${
                                       selected
                                         ? 'border-slate-900 bg-slate-900 text-white'
@@ -372,7 +376,7 @@ export default function PostForm({
                                     <span>
                                       <span className="block font-semibold">{stop.name}</span>
                                       <span className="block text-[11px] opacity-80">
-                                        {stop.address}
+                                        {stop.type ?? '드라이브 스팟'}
                                       </span>
                                     </span>
                                   </label>
