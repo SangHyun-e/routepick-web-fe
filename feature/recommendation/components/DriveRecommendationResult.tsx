@@ -30,7 +30,7 @@ export default function DriveRecommendationResult() {
     setSelectedIncludeStops,
   } = useDriveRecommendations();
   const [selectedCourseIndex, setSelectedCourseIndex] = useState(0);
-  const [selectedStopName, setSelectedStopName] = useState<string | null>(null);
+  const [selectedStopKey, setSelectedStopKey] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [remainingCount, setRemainingCount] = useState<number | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
@@ -61,7 +61,7 @@ export default function DriveRecommendationResult() {
   useEffect(() => {
     if (courses.length === 0) {
       setSelectedCourseIndex(0);
-      setSelectedStopName(null);
+      setSelectedStopKey(null);
       return;
     }
     setSelectedCourseIndex(0);
@@ -163,11 +163,11 @@ export default function DriveRecommendationResult() {
 
   const handleSelectCourse = useCallback((index: number) => {
     setSelectedCourseIndex(index);
-    setSelectedStopName(null);
+    setSelectedStopKey(null);
   }, []);
 
   const handleSelectStop = useCallback((stop: RecommendedStop) => {
-    setSelectedStopName(stop.name);
+    setSelectedStopKey(buildStopKey(stop));
   }, []);
 
   const handleUseStopAsDestination = useCallback(
@@ -177,7 +177,7 @@ export default function DriveRecommendationResult() {
       }
 
       const stopKey = buildStopKey(stop);
-      setSelectedStopName(stop.name);
+      setSelectedStopKey(stopKey);
       setDestinationSettingKey(stopKey);
 
       const includeStopsPayload = selectedIncludeStops.map((includeStop) => ({
@@ -227,7 +227,7 @@ export default function DriveRecommendationResult() {
         const nextIncludeStops = selectedIncludeStops.filter(
           (includeStop) => buildStopKey(includeStop) !== stopKey,
         );
-        setSelectedStopName(stop.name);
+        setSelectedStopKey(stopKey);
         setSelectedIncludeStops(nextIncludeStops);
         setIncludeSettingKey(stopKey);
         setIncludeSettingAction('remove');
@@ -272,7 +272,7 @@ export default function DriveRecommendationResult() {
 
       const previous = selectedIncludeStops;
       const nextIncludeStops = [...selectedIncludeStops, stop];
-      setSelectedStopName(stop.name);
+      setSelectedStopKey(stopKey);
       setSelectedIncludeStops(nextIncludeStops);
       setIncludeSettingKey(stopKey);
       setIncludeSettingAction('add');
@@ -407,13 +407,14 @@ export default function DriveRecommendationResult() {
           destination={isEmpty ? null : destination}
           recommendedStops={recommendedStops}
           selectedStops={selectedStops}
-          selectedStopName={selectedStopName}
+          selectedStopKey={selectedStopKey}
+          onSelectStop={handleSelectStop}
         />
         <RecommendedStopsPanel
           stops={recommendedStops}
           selectedStops={selectedStops}
           selectedIncludeStops={selectedIncludeStops}
-          selectedStopName={selectedStopName}
+          selectedStopKey={selectedStopKey}
           variant={isEmpty ? 'empty' : 'default'}
           loading={isRefreshing}
           includeSettingKey={includeSettingKey}

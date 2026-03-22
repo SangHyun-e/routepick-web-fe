@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { CourseStop, RecommendedStop } from '../types/recommendation';
+import { buildStopKey } from '../utils/driveRecommendationFormat';
 
 declare global {
   interface Window {
@@ -31,7 +32,8 @@ type DriveRecommendationMapProps = {
   destination: LatLng | null;
   recommendedStops: RecommendedStop[];
   selectedStops: CourseStop[];
-  selectedStopName: string | null;
+  selectedStopKey: string | null;
+  onSelectStop: (stop: RecommendedStop) => void;
 };
 
 type MapStatus = 'idle' | 'loading' | 'ready' | 'error';
@@ -62,10 +64,6 @@ function isValidLatLng(lat?: number | null, lng?: number | null) {
   return Math.abs(lat as number) <= 90 && Math.abs(lng as number) <= 180;
 }
 
-function buildMarkerKey(name: string, lat: number, lng: number) {
-  return `${name}-${lat}-${lng}`;
-}
-
 export default function DriveRecommendationMap({
   originLabel,
   destinationLabel,
@@ -73,12 +71,24 @@ export default function DriveRecommendationMap({
   destination,
   recommendedStops,
   selectedStops,
-  selectedStopName,
+  selectedStopKey,
+  onSelectStop,
 }: DriveRecommendationMapProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
   const [mapStatus, setMapStatus] = useState<MapStatus>('idle');
+
+  const recommendedStopByKey = useMemo(() => {
+    const entries: Array<[string, RecommendedStop]> = [];
+    recommendedStops.forEach((stop) => {
+      if (!isValidLatLng(stop.lat, stop.lng)) {
+        return;
+      }
+      entries.push([buildStopKey(stop), stop]);
+    });
+    return new Map(entries);
+  }, [recommendedStops]);
 
   const markerPoints = useMemo(() => {
     const points: MarkerPoint[] = [];
@@ -86,9 +96,8 @@ export default function DriveRecommendationMap({
     const selectedKeys = new Set(
       selectedStops
         .filter((stop) => isValidLatLng(stop.lat, stop.lng))
-        .map((stop) => buildMarkerKey(stop.name, stop.lat, stop.lng)),
+        .map((stop) => buildStopKey(stop)),
     );
-    const selectedNames = new Set(selectedStops.map((stop) => stop.name));
 
     const addPoint = (point: MarkerPoint) => {
       if (seen.has(point.key)) {
@@ -120,11 +129,11 @@ export default function DriveRecommendationMap({
       if (!isValidLatLng(stop.lat, stop.lng)) {
         return;
       }
-      const key = buildMarkerKey(stop.name, stop.lat, stop.lng);
-      const isSelectedStop = selectedStopName === stop.name;
+      const key = buildStopKey(stop);
+      const isSelectedStop = selectedStopKey === key;
       const kind: MarkerKind = isSelectedStop
         ? 'selected'
-        : selectedKeys.has(key) || selectedNames.has(stop.name)
+        : selectedKeys.has(key)
             ? 'course'
             : 'recommended';
 
@@ -140,8 +149,8 @@ export default function DriveRecommendationMap({
       if (!isValidLatLng(stop.lat, stop.lng)) {
         return;
       }
-      const key = buildMarkerKey(stop.name, stop.lat, stop.lng);
-      const kind: MarkerKind = selectedStopName === stop.name ? 'selected' : 'course';
+      const key = buildStopKey(stop);
+      const kind: MarkerKind = selectedStopKey === key ? 'selected' : 'course';
       addPoint({
         key,
         label: stop.name,
@@ -151,15 +160,35 @@ export default function DriveRecommendationMap({
     });
 
     return points;
-  }, [origin, destination, originLabel, destinationLabel, recommendedStops, selectedStops, selectedStopName]);
+  }, [
+    origin,
+    destination,
+    originLabel,
+    destinationLabel,
+    recommendedStops,
+    selectedStops,
+    selectedStopKey,
+  ]);
 
-  const selectedPosition = useMemo(() => {
-    if (!selectedStopName) {
+  const selectedStopLabel = useMemo(() => {
+    if (!selectedStopKey) {
       return null;
     }
-    const selectedPoint = markerPoints.find((point) => point.label === selectedStopName);
+    const recommendedMatch = recommendedStopByKey.get(selectedStopKey);
+    if (recommendedMatch) {
+      return recommendedMatch.name;
+    }
+    const courseMatch = selectedStops.find((stop) => buildStopKey(stop) === selectedStopKey);
+    return courseMatch?.name ?? null;
+  }, [recommendedStopByKey, selectedStopKey, selectedStops]);
+
+  const selectedPosition = useMemo(() => {
+    if (!selectedStopKey) {
+      return null;
+    }
+    const selectedPoint = markerPoints.find((point) => point.key === selectedStopKey);
     return selectedPoint?.position ?? null;
-  }, [markerPoints, selectedStopName]);
+  }, [markerPoints, selectedStopKey]);
 
   useEffect(() => {
     if (!KAKAO_MAP_APP_KEY) {
@@ -276,6 +305,10 @@ export default function DriveRecommendationMap({
         image: markerImages.get(point.kind),
         zIndex: MARKER_Z_INDEX[point.kind],
       });
+      const stop = recommendedStopByKey.get(point.key);
+      if (stop && onSelectStop) {
+        window.kakao.maps.event.addListener(marker, 'click', () => onSelectStop(stop));
+      }
       markersRef.current.push(marker);
       bounds.extend(position);
     });
@@ -286,7 +319,7 @@ export default function DriveRecommendationMap({
     } else {
       map.setBounds(bounds, 60, 60, 60, 60);
     }
-  }, [mapStatus, markerPoints]);
+  }, [mapStatus, markerPoints, onSelectStop, recommendedStopByKey]);
 
   useEffect(() => {
     if (!selectedPosition || mapStatus !== 'ready' || !mapRef.current || !window.kakao?.maps) {
@@ -305,8 +338,8 @@ export default function DriveRecommendationMap({
         ? '지도에 표시할 좌표가 없어요'
         : '지도를 준비하고 있어요';
 
-  const highlightMessage = selectedStopName
-    ? `선택 스팟: ${selectedStopName}`
+  const highlightMessage = selectedStopLabel
+    ? `선택 스팟: ${selectedStopLabel}`
     : selectedStops.length > 0
         ? `선택 코스 경유지 ${selectedStops.length}곳 강조`
         : recommendedStops.length > 0
