@@ -9,14 +9,19 @@ function isJwt(token?: string | null) {
   return (t.match(/\./g)?.length ?? 0) === 2;
 }
 
-export async function be(path: string, init: RequestInit = {}) {
-  const h = new Headers(init.headers || {});
+type BeRequestInit = RequestInit & { skipAuth?: boolean };
+
+export async function be(path: string, init: BeRequestInit = {}) {
+  const { skipAuth, ...fetchInit } = init;
+  const h = new Headers(fetchInit.headers || {});
 
   const cookieStore = await cookies();
   const headersList = await nextHeaders();
 
   // 1) AT 자동 부착
-  if (!h.has('Authorization')) {
+  if (skipAuth) {
+    h.delete('Authorization');
+  } else if (!h.has('Authorization')) {
     const at = cookieStore.get(ACCESS_TOKEN_COOKIE)?.value;
     if (isJwt(at)) h.set('Authorization', `Bearer ${at}`);
   }
@@ -25,7 +30,7 @@ export async function be(path: string, init: RequestInit = {}) {
   if (reqCookie) h.set('Cookie', reqCookie);
 
   return fetch(`${SERVER_BASE_URL}${path}`, {
-    ...init,
+    ...fetchInit,
     headers: h,
     cache: 'no-store',
     redirect: 'manual',
