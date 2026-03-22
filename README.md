@@ -44,35 +44,6 @@ routepick-web-fe/
 └─ types/               ─ 공용 타입 정의
 ```
 
----
-
-## 🔐 환경 변수
-
-- `SERVER_BASE_URL`: 서버 측에서 사용할 백엔드 베이스 URL
-- `NEXT_PUBLIC_SERVER_BASE_URL`: 브라우저(EventSource 등)에서 사용할 백엔드 베이스 URL
-- `NEXT_PUBLIC_SITE_URL`: SSR 절대 URL 생성용 사이트 URL
-- `NEXT_PUBLIC_KAKAO_MAP_APP_KEY`: 카카오맵 SDK용 JavaScript 앱 키
-- `SITE_URL`: SSR 절대 URL 생성용 사이트 URL(서버 전용)
-
-### 🚀 배포 예시 (routepick.site)
-
-```
-SERVER_BASE_URL=https://api.routepick.site
-NEXT_PUBLIC_SERVER_BASE_URL=https://api.routepick.site
-NEXT_PUBLIC_SITE_URL=https://routepick.site
-NEXT_PUBLIC_KAKAO_MAP_APP_KEY=카카오_자바스크립트_키
-SITE_URL=https://routepick.site
-```
-
-### 🔧 개발 예시
-
-```
-SERVER_BASE_URL=http://localhost:8080
-NEXT_PUBLIC_SERVER_BASE_URL=http://localhost:8080
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
-NEXT_PUBLIC_KAKAO_MAP_APP_KEY=카카오_자바스크립트_키
-SITE_URL=http://localhost:3000
-```
 
 ## 🔀 브랜치 전략 & 커밋 컨벤션
 
