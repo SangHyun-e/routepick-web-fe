@@ -1,4 +1,4 @@
-import type { CourseStop, RecommendedStop } from '../types/recommendation';
+import type { CourseStop } from '../types/recommendation';
 
 const THEME_LABELS = new Map<string, string>([
   ['nature', '자연 드라이브'],
@@ -58,6 +58,12 @@ export function limitTags(tags: string[] | undefined, limit = 3) {
   return tags.filter(Boolean).slice(0, limit);
 }
 
-export function buildStopKey(stop: RecommendedStop) {
+type StopKeyTarget = {
+  name: string;
+  lat: number;
+  lng: number;
+};
+
+export function buildStopKey(stop: StopKeyTarget) {
   return `${stop.name}-${stop.lat}-${stop.lng}`;
 }

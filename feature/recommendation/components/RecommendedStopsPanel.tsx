@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ type RecommendedStopsPanelProps = {
   stops: RecommendedStop[];
   selectedStops: CourseStop[];
   selectedIncludeStops: RecommendedStop[];
-  selectedStopName: string | null;
+  selectedStopKey: string | null;
   variant?: 'default' | 'empty';
   loading?: boolean;
   includeSettingKey?: string | null;
@@ -37,7 +37,7 @@ export default function RecommendedStopsPanel({
   stops,
   selectedStops,
   selectedIncludeStops,
-  selectedStopName,
+  selectedStopKey,
   variant = 'default',
   loading,
   includeSettingKey,
@@ -48,13 +48,25 @@ export default function RecommendedStopsPanel({
   onUseStopAsDestination,
 }: RecommendedStopsPanelProps) {
   const [parkingByStop, setParkingByStop] = useState<Record<string, ParkingState>>({});
-  const selectedNames = new Set(selectedStops.map((stop) => stop.name));
+  const selectedStopKeys = useMemo(
+    () => new Set(selectedStops.map((stop) => buildStopKey(stop))),
+    [selectedStops],
+  );
   const includeKeys = new Set(selectedIncludeStops.map((stop) => buildStopKey(stop)));
   const isEmptyVariant = variant === 'empty';
   const title = isEmptyVariant ? '이런 장소는 어떠세요?' : '추천 경유지';
   const subtitle = isEmptyVariant
     ? `추천 스팟 ${stops.length}곳을 준비했어요.`
     : `추천 ${stops.length}곳 · 선택 코스 ${selectedStops.length}곳`;
+  const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  useEffect(() => {
+    if (!selectedStopKey) {
+      return;
+    }
+    const node = cardRefs.current[selectedStopKey];
+    node?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [selectedStopKey]);
 
   const handleToggleParking = useCallback(
     async (stop: RecommendedStop) => {
@@ -129,16 +141,15 @@ export default function RecommendedStopsPanel({
       <CardContent className="grid gap-3 p-5 pt-0">
         {stops.map((stop) => {
           const tags = limitTags(stop.tags, 3);
-          const isSelectedStop = stop.name === selectedStopName;
-          const isCourseStop = selectedNames.has(stop.name);
+          const stopKey = buildStopKey(stop);
+          const isSelectedStop = stopKey === selectedStopKey;
+          const isCourseStop = selectedStopKeys.has(stopKey);
           const typeLabel = stop.type || '드라이브 스팟';
-          const parkingKey = buildStopKey(stop);
-          const destinationKey = buildStopKey(stop);
-          const parkingState = parkingByStop[parkingKey];
+          const parkingState = parkingByStop[stopKey];
           const parkingOpen = parkingState?.open ?? false;
           const parkingLoading = parkingState?.loading ?? false;
-          const isIncludedStop = includeKeys.has(destinationKey);
-          const isIncludingStop = includeSettingKey === destinationKey;
+          const isIncludedStop = includeKeys.has(stopKey);
+          const isIncludingStop = includeSettingKey === stopKey;
           const highlighted = isSelectedStop || isCourseStop || isIncludedStop;
           const includeActionLabel = includeSettingAction === 'remove' ? '포함 해제 중...' :
             '포함해서 다시 추천 중...';
@@ -148,7 +159,7 @@ export default function RecommendedStopsPanel({
                 ? includeActionLabel
                 : '이곳 포함해서 다시 추천';
           const includeButtonDisabled = Boolean(includeSettingKey) || loading;
-          const isSettingDestination = destinationSettingKey === destinationKey;
+          const isSettingDestination = destinationSettingKey === stopKey;
           const destinationButtonLabel = isSettingDestination
             ? '도착지 설정 중...'
             : '이곳을 도착지로 설정';
@@ -164,7 +175,13 @@ export default function RecommendedStopsPanel({
           const parkingButtonLabel = parkingOpen ? '주차장 닫기' : '근처 주차장 보기';
 
           return (
-            <Card key={buildStopKey(stop)} className={`rounded-xl border ${cardClass}`}>
+            <Card
+              key={stopKey}
+              ref={(node) => {
+                cardRefs.current[stopKey] = node;
+              }}
+              className={`rounded-xl border ${cardClass}`}
+            >
               <CardContent className="space-y-3 p-4">
                 <button
                   type="button"
